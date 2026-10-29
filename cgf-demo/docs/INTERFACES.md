@@ -248,9 +248,9 @@ For the target competency the engine keeps a rolling window of its last `N` even
 |---|---|
 | `window_success_rate` | Successes in the window divided by events in the window |
 | `challenge_band` | Default 0.4 to 0.7 |
-| `pressure_direction` | `up` below the band (the trainee is still missing the target: keep pressing), `down` above it (the trainee is meeting it: ease off), `hold` inside |
+| `pressure_direction` | `up` above the band (the trainee is handling the target well: raise the pressure), `down` below it (the trainee is struggling with it: ease off), `hold` inside |
 
-**Band direction decided 2026-10-29 (JL): remediation.** The purpose is to exercise a focus area, so the pressure stays on while the trainee is still failing it and eases once they succeed. This replaces the earlier "challenge" reading (raise the pressure when the trainee is cruising). There is one rule, not two modes, so no `band_mode` field is added to the §3 config. With fewer than 3 events for the target (Devin's `MIN_WINDOW`) there is no live evidence yet, so the seat keeps exposure up, as the runtime does today.
+**Band direction decided 2026-10-29 (JL): challenge.** The CGFs get harder when the trainee does well and easier when the trainee struggles. History picks the competency to exercise; the live success rate sets how hard to push it. This reverses the same day's "remediation" reading (press while the trainee is failing, ease once they succeed), which contradicted the intent of the system. There is one rule, not two modes, so no `band_mode` field is added to the §3 config. With fewer than 3 events for the target (Devin's `MIN_WINDOW`) there is no live evidence yet, so the seat keeps exposure up (cause `history`). Easing moves each setting back toward the instructor's base and never past it, so "easier" means no harder than the instructor's own settings.
 
 The policy raises settings toward the envelope maximum on `up`, moves them back toward base on `down`, and leaves them on `hold`.
 

@@ -74,7 +74,7 @@
 
 ## Decisions of 2026-10-29 (JL), after Devin's adaptive runtime
 
-- **Band direction: remediation.** Keep pressing while the trainee is still missing the target, ease off once they meet it (INTERFACES §6, PLAN §2). One rule, no `band_mode` in the config. Devin removes the challenge mode.
+- **Band direction: challenge (reversed 2026-10-29, JL).** Raise the pressure while the trainee handles the target well, ease off while they struggle (INTERFACES §6, PLAN §2). One rule, no `band_mode` in the config. This replaces the same day's remediation decision; the rule is one line in `js/adapt/adapt.js`.
 - **Run length: 2400 s** default. First hails come about 15 minutes in. A validation run showed only four hail events in 2400 s, so the live signal may engage late (see `replies-to-devin-decisions.md`).
 - **Default envelope raised** to the runtime's defaults (aggression and sensitivity base 1.0, reaction delay base 30 s) and extended to every setting a tactic nudges.
 - **Runtime validators added** in `contracts/`: `validateEvent`, `validateAdjustment`, `validateSessionRecord`. Checked against real sessions from the runtime.
@@ -86,4 +86,5 @@
 - **R3 adopted:** the names are "Adaptive practice" and "Fixed assessment", separate from Exercise and Freeplay, shown as an always-visible badge on the host (JL) and runtime (Devin).
 - **R9 decided:** "Why is it reacting?", tension and posture move out of the Trainee tab to the instructor view and the debrief. Devin implements it.
 - **Demo platform:** a warship on `strait-transit`. Fighters and tanks stay "allocation only" until a scenario emits their events.
+- **Done after that (JL's list):** `PARTNERS_RUN` on; `hostLink.forReport` passes the whole record; host mode badge (R3; Eevee styles it, see `requests-for-eevee-r3-r9.md`); runner includes `tests/report/`; pitch files in `docs/pitch/` (run-of-show, fallback plan, HLA/DIS roadmap, savings blanks); `project/push-checklist.md`. Not done: telling Devin and Eevee (the notes exist), rehearsal, video, deck design, savings figures, event rules, IT, and the event clock.
 - **Glenda's open items** (partners in the report, R18, R20, R21, seeded history with sessions, validator fixtures) were handed to a separate agent on branch `glenda/outstanding`. When it pushes, `hostLink.forReport` in `link/host.js` can stop stripping partner entries; see `js/report/REQUESTS-FOR-JL.md`.

@@ -2,6 +2,10 @@
 
 **Owner**: JL. **Date**: 2026-10-29. **Source**: `design/requests.md` (Eevee) and `design/ui-audit.md`. This answers gap #17 in `plan-gaps.md` ("nobody owns triaging it"). The status column in `design/requests.md` is Eevee's to update; this page says what was done and what is waiting.
 
+## Decisions (JL, 2026-10-29)
+
+JL agreed to Eevee's requests. R3 (names adopted) and R9 (move to the instructor view) are decided; R2, R8, R10 to R14 are agreed for Devin (an agent is working through them on `devin/outstanding`); R17 to R21 are agreed for Glenda and are done on the report side. R4 (the glossary) is agreed and waits on Eevee. Eevee updates the status column in `design/requests.md`.
+
 ## Mine (allocation, host, cohort, compare pages)
 
 | ID | Request | Status | Notes |

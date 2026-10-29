@@ -25,7 +25,7 @@ test('series: pressure steps follow the adjustments that served the trainee', ()
   const CGF = load();
   const s = CGF.ReportCharts.series(plain(CGF.History.record('s_20261030_02')), 'trainee_b');
   assert.equal(s.target, 'hail_discipline');
-  assert.deepEqual(plain(s.steps.map(p => p.level)), [1, 2, 3, 4, 5, 4, 3, 2]);
+  assert.deepEqual(plain(s.steps.map(p => p.level)), [1, 2, 1, 0, -1, 0, 1, 2]);
   assert.equal(s.results.length, 11);
   assert.equal(s.results[0].rate, 0);
   assert.equal(s.results[s.results.length - 1].rate, 4 / 10);      // last 10 of FFFSFFSFSSF
@@ -36,7 +36,7 @@ test('timeline: one marker per result, failures as rings, valid single style att
   const svg = CGF.ReportCharts.timeline(plain(CGF.History.record('s_20261030_02')), 'trainee_b');
   assert.equal(count(svg, /rp-chart-ev-ok/g), 4);
   assert.equal(count(svg, /rp-chart-ev-fail/g), 7);
-  assert.equal(count(svg, /rp-chart-phase /g), 2);
+  assert.equal(count(svg, /rp-chart-phase /g), 3);
   assert.equal(count(svg, /<[^>]*\sstyle="[^"]*"[^>]*\sstyle="/g), 0);
   assert.doesNotMatch(svg, /#[0-9a-f]{3,6}\b/i);                    // theme tokens only, no hard-coded colours
   assert.match(svg, /stroke:var\(--rp-chart-pressure, var\(--warn\)\)/);   // a role variable the design lane can set

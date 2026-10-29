@@ -16,11 +16,13 @@ The tables below were written at `34abfda`. Since then:
 | 2, 16 (§9.1 contracts only proposed) | Session record is built and flows through host and report. Not formally signed off by Devin and Glenda |
 | 7 (panes identical) | Superseded by one crew; scripted trainees exist in `trainees/` |
 | 29 (no cooperation) | Built in `js/sim/team.js` (D6); cause tags `live`, `history`, `team` exist |
-| 34 to 36, 38, 39 (partners, single crew, baseline) | Done on JL's side (J7 to J9); D8 built by Devin, JL to verify and lift `PARTNERS_RUN`. Report-side partner handling is with Glenda's agent |
-| 22 (run-of-show) | Demo platform decided: warship on `strait-transit`. The beat-by-beat run-of-show is still open |
+| 34 to 36, 38, 39 (partners, single crew, baseline) | Done: J7 to J9, D8 (Devin), report-side partner handling (Glenda), `PARTNERS_RUN` on, `hostLink.forReport` passes the whole record |
+| 22, 23, 24, 25 (run-of-show, HLA/DIS, fallback) | Written in `docs/pitch/` (`run-of-show.md`, `hla-dis-roadmap.md`, `fallback-plan.md`). Nothing rehearsed, timed or recorded yet |
 | 17 (Eevee markup) | Settled by `design/requests.md`; triage in `eevee-requests-triage.md` |
-| 20 to 25, 27, 28, 13, 18, 19, 21 | Still open (deck owner, savings figures, HLA/DIS slides, fallback and replay, `.gitattributes`, repo hygiene check, event clock, event rules, IT) |
-| 8, 9, 10, 11 | Not verified by this review; run `runner/run-tests.ps1` to confirm |
+| 27, 28 (line endings, hygiene) | Done: `.gitattributes` exists; `project/push-checklist.md` has the hygiene check |
+| 21 (savings figures) | Blank sheet in `pitch/savings-model.md`; needs the division's figures |
+| 20, 13, 18, 19 | Still open: deck owner, event clock, event rules, IT confirmation (Node now installed on JL's laptop only) |
+| 8, 9, 10, 11 | Checked 2026-10-29: all five browser pages pass (`runner/run-tests.ps1`: allocate 104, assess 35, g1 9, link 36, report 16) and `node --test` passes (report 40 with 5 browser-only skips, runtime 45). The runner now also runs `tests/report/*.html` |
 
 ## A. Critical path: nothing downstream can start
 

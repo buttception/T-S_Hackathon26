@@ -34,7 +34,7 @@ The repo's CGFs already react to what the trainee does right now: a tension scor
 | Signal | Source | Time scale | What it decides |
 |---|---|---|---|
 | Experience | Trainee profile: a Beta posterior per competency, kept across sessions | Sessions | **Which** competency to exercise (the weakest one with enough evidence) |
-| Current behaviour | Events and stats from this run, in a rolling window | Seconds to minutes | **How hard** to push: keep the pressure on while the trainee is still missing the target, ease off once they are meeting it (remediation, decided 2026-10-29; INTERFACES §6) |
+| Current behaviour | Events and stats from this run, in a rolling window | Seconds to minutes | **How hard** to push: raise the pressure while the trainee handles the target well, ease off while they struggle with it (challenge, decided 2026-10-29; INTERFACES §6) |
 
 The two are linked. The profile is the prior. Events from the current run update the posterior live, so evidence from this session shifts the target during the session. A trainee who has been weak at hailing but handles it well today stops being the target once the live evidence outweighs the history.
 
@@ -105,7 +105,7 @@ Full file lists, tasks and acceptance tests per person are in `docs/LANES.md`.
 
 **G1 (the readiness gate):** One crew, one pane, scripted crew, run twice on the same seed. Demo platform and scenario (JL, 2026-10-29): a warship on `strait-transit`, the only scenario with a competency signal. Other platforms are allocation only.
 - Run 1: the navigation trainee's profile is weak at hail discipline. The CGFs visibly shift toward hail pressure within two evaluation cycles. The other trainee seat's target differs, so the reasons differ per seat.
-- The live signal works: when the scripted trainee starts acknowledging hails, the pressure eases.
+- The live signal works: when the scripted trainee keeps missing hails, the pressure eases; when the scripted trainee answers them, it rises.
 - (Tentative, only if AI partners are confirmed) At least one seat is an AI partner built from history (`derived_from`). It plays from its parameters, is never targeted, and its profile is not updated.
 - Every adjustment stays inside the envelope. Fixed mode produces zero adjustments.
 - After run 1, `Assess.update` moves the profile and the allocation page shows the new bars and a new predicted target. Run 2 with the same seed starts from that target.
@@ -221,7 +221,7 @@ Design delivers specs and mockups only. It never edits simulation, engine or oth
 | 0:00 | Problem: one instructor, many trainees, fixed scenarios train the average trainee | Title slide |
 | 0:30 | Instructor sets the envelope | Setup panel |
 | 1:00 | Same strait. The crew's navigation trainee has a profile weak at hail discipline; their CGFs start pressing hails. (If AI partners are confirmed: an AI partner built from an older run fills the weapons seat.) The log says why, tagged `history` | Pane, profile strip, log |
-| 2:00 | The trainee starts acknowledging hails; the pressure eases (`live`). History set the target, current behaviour set the intensity | Profile strip and log |
+| 2:00 | The trainee keeps missing hails, so the pressure eases (`live`); a trainee who answers them gets the opposite. History set the target, current behaviour set the intensity | Profile strip and log |
 | 2:30 | Instructor types "test the navigation trainee's collision avoidance". The parsed directive is shown, then the CGFs shift | Steering box and pane |
 | 3:15 | Toggle fixed mode for assessment | Mode toggle, log goes quiet |
 | 3:30 | Report, the profile moves, the allocation page predicts a new target for run 2, then the cohort heatmap | Report and heatmap |
