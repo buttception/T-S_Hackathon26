@@ -1,0 +1,61 @@
+/* Trainee allocation page. Builds on css/style.css variables; selectors are scoped to #allocApp. */
+#allocApp { display: flex; flex-direction: column; height: 100vh; }
+#allocApp header { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 14px; background: var(--panel); border-bottom: 1px solid var(--line); }
+#allocApp header h1 { margin: 0; }
+#allocApp a.btn { text-decoration: none; color: var(--text); }
+#allocApp main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 420px; }
+#rosterPane { padding: 10px 14px; display: flex; flex-direction: column; min-height: 0; }
+#setupPane { background: var(--panel); border-left: 1px solid var(--line); padding: 0 14px 14px; overflow-y: auto; }
+
+.tableWrap { flex: 1; overflow: auto; border: 1px solid var(--line); border-radius: 6px; margin-top: 6px; }
+#roster { width: 100%; border-collapse: collapse; }
+#roster th { position: sticky; top: 0; background: var(--panel2); text-align: left; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); padding: 7px 8px; cursor: pointer; white-space: nowrap; user-select: none; }
+#roster th.sorted { color: var(--text); }
+#roster td { padding: 5px 8px; border-top: 1px solid var(--line); white-space: nowrap; }
+#roster tbody tr { cursor: pointer; }
+#roster tbody tr:hover { background: var(--panel2); }
+#roster tbody tr.taken { background: #12263d; }
+#roster td.id { font-family: Consolas, monospace; }
+#roster td.num { text-align: right; width: 70px; }
+.slotTag { display: inline-block; min-width: 18px; text-align: center; margin-right: 6px; border-radius: 3px;
+  background: var(--accent); color: #04121f; font-weight: 700; font-size: 11px; }
+
+.bar { display: inline-block; vertical-align: middle; width: 70px; height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.bar i { display: block; height: 100%; }
+.bar.thin { opacity: .45; }
+.bar.prior { opacity: .25; }
+.val { display: inline-block; vertical-align: middle; margin-left: 6px; width: 32px; font-family: Consolas, monospace; font-size: 12px; }
+
+.slot { border: 1px solid var(--line); border-radius: 6px; padding: 8px; margin: 6px 0; cursor: pointer; background: var(--panel2); }
+.slot.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.slotHead { display: flex; align-items: center; gap: 8px; }
+.slotName { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.mini { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 6px 0; font-size: 11px; color: var(--muted); }
+.mini b { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+
+.field { display: grid; grid-template-columns: 120px 1fr; gap: 6px 8px; align-items: center; margin: 5px 0; }
+.field > span:first-child { color: var(--muted); font-size: 12px; }
+.field input, .field select { width: 100%; min-width: 0; }
+.field input[type=number], .field input[type=text] { background: var(--panel); color: var(--text); border: 1px solid var(--line);
+  border-radius: 5px; padding: 5px 9px; font: inherit; }
+.field .row { margin: 0; flex-wrap: nowrap; }
+.err { color: #ff9a9a; font-size: 12px; min-height: 0; margin: 0 0 2px 128px; }
+.err:empty { display: none; }
+.slot .err { margin-left: 0; }
+
+.env { width: 100%; border-collapse: collapse; font-size: 12px; }
+.env th { text-align: left; color: var(--muted); font-weight: 400; padding: 2px 4px; }
+.env td { padding: 2px 4px; border-top: 1px solid var(--line); font-family: Consolas, monospace; }
+.env td.num { text-align: right; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button:disabled:hover { border-color: var(--line); }
+details { margin-top: 8px; }
+pre#output { max-height: 220px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 8px; font-size: 11px; }
+
+@media (max-width: 900px) {
+  #allocApp { height: auto; }
+  #allocApp main { grid-template-columns: 1fr; }
+  #setupPane { border-left: none; border-top: 1px solid var(--line); }
+}

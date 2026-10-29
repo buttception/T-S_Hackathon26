@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trainee Allocation</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/allocate.css">
+</head>
+<body>
+<div id="allocApp">
+  <header>
+    <h1>Trainee allocation <small>· pick a trainee for each pane, then hand off the run configs</small></h1>
+    <a class="btn" href="index.html">Open simulator</a>
+  </header>
+
+  <main>
+    <section id="rosterPane">
+      <div class="row">
+        <select id="weakAt"></select>
+        <span class="muted small grow" id="rosterCount"></span>
+        <span class="muted small">Bars: competency mean. Faded: not enough evidence. Click a column to sort.</span>
+      </div>
+      <div class="tableWrap"><table id="roster"></table></div>
+    </section>
+
+    <aside id="setupPane">
+      <h2>Run slots</h2>
+      <div id="slots"></div>
+      <div class="row"><button id="btnSwap">Swap A and B</button><button id="btnReset">Reset</button></div>
+
+      <h2>Run options (shared by both panes)</h2>
+      <label class="field"><span>Scenario</span><select id="optScenario"></select></label>
+      <div class="err" id="err_scenario"></div>
+      <label class="field"><span>Seed</span>
+        <span class="row"><input type="number" id="optSeed" min="0" step="1"><button id="btnReroll" title="Derive a new seed from this one">New seed</button></span></label>
+      <div class="err" id="err_seed"></div>
+      <label class="field"><span>Mode</span>
+        <select id="optMode"><option value="adaptive">Adaptive (practice)</option><option value="fixed">Fixed (assessment, no adjustments)</option></select></label>
+      <label class="field"><span>Duration (sim s)</span><input type="number" id="optDuration" min="1" step="1"></label>
+      <div class="err" id="err_duration_s"></div>
+      <label class="field"><span>Evaluate every (sim s)</span><input type="number" id="optInterval" min="1" step="1"></label>
+      <div class="err" id="err_eval_interval_s"></div>
+
+      <h2>Envelope <span class="muted small">(default; edited in the Setup panel)</span></h2>
+      <table class="env"><thead><tr><th>Setting</th><th>Min</th><th>Base</th><th>Max</th></tr></thead><tbody id="envelope"></tbody></table>
+
+      <h2>Hand off</h2>
+      <div id="outputNote" class="small"></div>
+      <div class="row">
+        <button id="btnSave" class="primary">Save allocation</button>
+        <button id="btnExport">Export JSON</button>
+        <button disabled title="Linked to the simulation run later">Start run (linking later)</button>
+      </div>
+      <label class="field"><span>Run link</span>
+        <span class="row"><input type="text" id="handoffUrl" readonly><button id="btnCopy">Copy</button></span></label>
+      <div class="muted small" id="status"></div>
+      <details><summary class="small muted">Config preview</summary><pre id="output"></pre></details>
+    </aside>
+  </main>
+</div>
+
+<script src="js/util.js"></script>
+<script src="js/engine.js"></script>
+<script src="contracts/contracts.js"></script>
+<script src="fixtures/envelope-default.js"></script>
+<script src="fixtures/profiles/roster.js"></script>
+<script src="js/ui-allocate.js"></script>
+</body>
+</html>

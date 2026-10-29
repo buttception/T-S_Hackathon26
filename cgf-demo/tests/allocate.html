@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Allocation tests</title>
+<style>
+  body { font: 14px/1.5 "Segoe UI", system-ui, sans-serif; background: #0b1420; color: #d6e2f0; padding: 16px; }
+  .pass { color: #4dd17a; } .fail { color: #ff7b54; } h1 { font-size: 16px; }
+  #summary { font-weight: 700; margin: 8px 0 12px; }
+</style>
+</head>
+<body>
+<h1>Allocation tests (contracts + buildRunConfigs)</h1>
+<div id="summary">running…</div>
+<ul id="results"></ul>
+
+<script src="../js/util.js"></script>
+<script src="../contracts/contracts.js"></script>
+<script src="../fixtures/envelope-default.js"></script>
+<script src="../fixtures/profiles/roster.js"></script>
+<script src="../js/ui-allocate.js"></script>
+<script>
+(function () {
+  const C = CGF.contracts, A = CGF.allocate, F = window.CGF_FIXTURES;
+  const results = [];
+  const test = (name, fn) => { try { fn(); results.push([name, null]); } catch (e) { results.push([name, e.message]); } };
+  const eq = (a, b, msg) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error((msg || 'not equal') + ': got ' + JSON.stringify(a) + ', want ' + JSON.stringify(b)); };
+  const ok = (c, msg) => { if (!c) throw new Error(msg || 'expected true'); };
+  const near = (a, b) => ok(Math.abs(a - b) < 1e-9, `got ${a}, want ${b}`);
+  const clone = o => JSON.parse(JSON.stringify(o));
+
+  const sel = () => ({
+    slots: { A: 'trainee_a', B: 'trainee_b' },
+    agents: { A: 'trainees/strong.js', B: 'trainees/weak_hail_discipline.js' },
+    opts: clone(A.DEFAULTS)
+  });
+  const ids = ['strait-transit', 'border-patrol'];
+
+  // ---- fixtures
+  test('envelope fixture is valid', () => eq(C.validateEnvelope(F.envelopeDefault), []));
+  test('every roster profile is valid', () => F.profiles.forEach(p => eq(C.validateProfile(p), [], p.trainee_id)));
+  test('roster has 2 demo trainees and 20 cohort trainees', () => eq(F.profiles.length, 22));
+  test('trainee ids are unique', () => eq(new Set(F.profiles.map(p => p.trainee_id)).size, F.profiles.length));
+
+  // ---- mean and evidence
+  test('mean is alpha / (alpha + beta)', () => {
+    const b = F.profiles.find(p => p.trainee_id === 'trainee_b');
+    near(A.summarise(b).hail_discipline.mean, 5 / 19);
+    near(A.summarise(b).collision_avoidance.mean, 18 / 24);
+  });
+  test('evidence flag turns on at alpha + beta >= 8', () => {
+    const mk = (a, b) => ({ trainee_id: 't', sessions_completed: 1, competencies: { hail_discipline: { alpha: a, beta: b } }, updated_at_session: null });
+    eq(A.summarise(mk(4, 3)).hail_discipline.enough, false);
+    eq(A.summarise(mk(4, 4)).hail_discipline.enough, true);
+  });
+  test('a missing competency falls back to the 1,1 prior with no evidence', () => {
+    const c10 = F.profiles.find(p => p.trainee_id === 'trainee_c10');
+    const s = A.summarise(c10).weapons_discipline;
+    eq([s.alpha, s.beta, s.mean, s.prior, s.enough], [1, 1, 0.5, true, false]);
+  });
+  test('demo trainee B is weakest at hail, A is not', () => {
+    const lowest = id => { const s = A.summarise(F.profiles.find(p => p.trainee_id === id)); return Object.keys(s).sort((x, y) => s[x].mean - s[y].mean)[0]; };
+    eq(lowest('trainee_b'), 'hail_discipline');
+    ok(lowest('trainee_a') !== 'hail_discipline');
+  });
+
+  // ---- validators reject bad data
+  test('profile validator rejects an unknown competency and an unknown field', () => {
+    const p = clone(F.profiles[0]); p.competencies.bogus = { alpha: 1, beta: 1 }; p.extra = 1;
+    eq(C.validateProfile(p).length, 2);
+  });
+  test('envelope validator rejects min > base and out-of-range', () => {
+    ok(C.validateEnvelope({ aggression: { min: 0.5, max: 0.8, base: 0.4 } }).length > 0);
+    ok(C.validateEnvelope({ aggression: { min: 0.1, max: 0.8, base: 0.4 } }).length > 0);
+    ok(C.validateEnvelope({ bogus: { min: 0, max: 1, base: 0.5 } }).length > 0);
+  });
+
+  // ---- buildRunConfigs
+  test('builds two valid configs in slot order', () => {
+    const cfgs = A.buildRunConfigs(sel(), F.envelopeDefault);
+    eq(cfgs.length, 2);
+    cfgs.forEach((c, i) => eq(C.validateScenarioConfig(c, { scenarios: ids }), [], 'slot ' + i));
+    eq(cfgs.map(c => c.trainee.trainee_id), ['trainee_a', 'trainee_b']);
+  });
+  test('both configs share scenario, seed, mode, timing and envelope', () => {
+    const [a, b] = A.buildRunConfigs(sel(), F.envelopeDefault);
+    for (const k of ['scenario_id', 'scenario', 'seed', 'mode', 'duration_s', 'eval_interval_s', 'envelope']) eq(a[k], b[k], k);
+  });
+  test('each slot keeps its own agent profile', () => {
+    const [a, b] = A.buildRunConfigs(sel(), F.envelopeDefault);
+    eq([a.trainee.agent_profile, b.trainee.agent_profile], ['trainees/strong.js', 'trainees/weak_hail_discipline.js']);
+  });
+  test('config envelopes are copies, not shared references', () => {
+    const [a, b] = A.buildRunConfigs(sel(), F.envelopeDefault);
+    a.envelope.aggression.max = 0.5;
+    eq(b.envelope.aggression.max, 0.8); eq(F.envelopeDefault.aggression.max, 0.8);
+  });
+  test('breaking a config field makes validation fail', () => {
+    const [c] = A.buildRunConfigs(sel(), F.envelopeDefault);
+    const bad = (mut) => { const x = clone(c); mut(x); return C.validateScenarioConfig(x).length > 0; };
+    ok(bad(x => { x.mode = 'easy'; }), 'mode');
+    ok(bad(x => { x.seed = 1.5; }), 'seed');
+    ok(bad(x => { x.eval_interval_s = x.duration_s; }), 'interval');
+    ok(bad(x => { x.extra = 1; }), 'extra field');
+    ok(bad(x => { delete x.trainee.agent_profile; }), 'agent');
+    ok(bad(x => { x.envelope.aggression.base = 5; }), 'envelope');
+  });
+  test('the same selection builds byte-identical configs', () => {
+    eq(JSON.stringify(A.buildRunConfigs(sel(), F.envelopeDefault)), JSON.stringify(A.buildRunConfigs(sel(), F.envelopeDefault)));
+  });
+  test('selectionFrom restores what buildRunConfigs built', () => {
+    const s = sel(); s.opts.seed = 99; s.opts.mode = 'fixed';
+    eq(A.selectionFrom(A.buildRunConfigs(s, F.envelopeDefault)), s);
+  });
+  test('selectionFrom returns null for bad input', () => {
+    eq(A.selectionFrom(null), null); eq(A.selectionFrom([{}, {}]), null); eq(A.selectionFrom([1]), null);
+  });
+
+  // ---- selection checks
+  test('a ready selection has no errors', () => eq(A.checkSelection(sel(), ids), {}));
+  test('empty slots block handoff', () => {
+    const s = sel(); s.slots.B = null;
+    ok('slotB' in A.checkSelection(s, ids));
+  });
+  test('the same trainee in both slots is rejected', () => {
+    const s = sel(); s.slots.B = 'trainee_a';
+    ok('slotB' in A.checkSelection(s, ids));
+  });
+  test('a missing agent blocks handoff', () => {
+    const s = sel(); s.agents.A = '';
+    ok('agentA' in A.checkSelection(s, ids));
+  });
+  test('scenarios without a competency signal are rejected', () => {
+    const s = sel(); s.opts.scenario = 'border-patrol';
+    ok('scenario' in A.checkSelection(s, ids));
+  });
+  test('bad seed, duration and interval are flagged on their own fields', () => {
+    const s = sel(); s.opts.seed = 1.5; s.opts.duration_s = 0; s.opts.eval_interval_s = NaN;
+    const e = A.checkSelection(s, ids);
+    ok('seed' in e && 'duration_s' in e && 'eval_interval_s' in e);
+  });
+  test('interval must be shorter than duration', () => {
+    const s = sel(); s.opts.eval_interval_s = s.opts.duration_s;
+    ok('eval_interval_s' in A.checkSelection(s, ids));
+  });
+
+  // ---- seeds and link
+  test('nextSeed is repeatable, in range and moves', () => {
+    eq(A.nextSeed(1234), A.nextSeed(1234));
+    ok(A.nextSeed(1234) !== 1234);
+    let s = 1; for (let i = 0; i < 1000; i++) { s = A.nextSeed(s); ok(Number.isInteger(s) && s >= 0 && s <= 0x7fffffff, 'range'); }
+  });
+  test('the hand-off link round-trips the configs', () => {
+    const cfgs = A.buildRunConfigs(sel(), F.envelopeDefault);
+    const url = A.handoffUrl(cfgs);
+    eq(JSON.parse(decodeURIComponent(url.split('alloc=')[1])), cfgs);
+  });
+
+  const failed = results.filter(r => r[1]);
+  document.getElementById('summary').textContent = `${results.length - failed.length} / ${results.length} passed`;
+  document.getElementById('summary').className = failed.length ? 'fail' : 'pass';
+  document.getElementById('results').innerHTML = results.map(([n, e]) =>
+    `<li class="${e ? 'fail' : 'pass'}">${e ? 'FAIL' : 'PASS'} · ${n}${e ? ' — ' + e : ''}</li>`).join('');
+})();
+</script>
+</body>
+</html>
