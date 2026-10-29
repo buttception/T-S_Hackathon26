@@ -7,7 +7,7 @@ Status: open, agreed, done, declined.
 | ID | Owner | File | Request | Why | Status |
 |---|---|---|---|---|---|
 | R1 | JL | `js/ui-allocate.js` `barColor()` | Stop setting bar colours inline. Set a class instead (for example `bar--low`, `bar--mid`, `bar--high`, and `bar--focus` on the lowest well-evidenced competency); Eevee styles them | Audit A: red/green bars clash with force colours and read as judgement (P3, Ethical AI) | done (0291f1d; CSS override removed) |
-| R2 | Devin | `js/ui.js` lines 27, 132, 150, 161, 183, 188 | Replace inline colours (posture label, hail-pending text, factor bars, chart colours) with classes or CSS variables from `css/tokens.css` once it exists | Audit A (P3); LANES rule that other lanes do not hard-code colours | agreed: solution A (classes), see "R2 spec" below; CSS ready |
+| R2 | Devin | `js/ui.js` lines 27, 132, 150, 161, 183, 188 | Replace inline colours (posture label, hail-pending text, factor bars, chart colours) with classes or CSS variables from `css/tokens.css` once it exists | Audit A (P3); LANES rule that other lanes do not hard-code colours | done (e89c32e; all 8 spec items, no colours left in js/ui.js or runtime.html) |
 | R3 | Team (JL decides) | All pages | Agree one name pair for adaptation on or off (proposal: "Adaptive practice" and "Fixed assessment"), separate from Exercise/Freeplay, and show it as an always-visible badge on runtime and host | Audit B (P3, P5) | partly done: allocation badge (0291f1d). Waiting on JL to adopt the names; then host badge (JL) and runtime badge (Devin) |
 | R4 | All owners | Labels in HTML and JS | Apply the instructor-facing glossary (`design/glossary.md`, to be written) to labels such as harness, tension, posture, envelope, setting names | Audit D, finding 8 (P2, P3) | open: waiting on Eevee to write design/glossary.md |
 | R5 | JL | `allocate.html`, `js/ui-allocate.js` | Collapse seat descriptions to one line with "more"; shorten the platform box to a summary plus a "Source" link | Findings 2, 5 (P1, P2) | done (0291f1d) |
@@ -53,7 +53,7 @@ Updated 2026-10-29 against `main` at `5cf8223`. Each request sits in its main ca
 Colours that mean more than one thing, or that are hard-coded outside the tokens.
 | ID | Owner | Problem |
 |---|---|---|
-| R2 | Devin | Six hard-coded colours in `js/ui.js` (posture label, hail pending, factor bars, chart) still use the old red/green palette |
+| R2 | Devin | Done (e89c32e): runtime colours are classes and tokens |
 | R20 | Glenda | Single trainee events reuse the session pass/fail classes, so a missed hail could be styled as a failed session (also Ethical AI) |
 | R21 | Glenda | One chart colour role means both "missed event" and "focus area", so the focus area is orange in the chart and violet in the table |
 
