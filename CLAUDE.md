@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Rules for every Claude Code session in this repository. Read `cgf-demo/docs/PLAN.md`, `cgf-demo/docs/LANES.md` and `cgf-demo/docs/INTERFACES.md` before writing code. Then read `cgf-demo/README.md` for the existing simulator.
+Rules for every Claude Code session in this repository. Read `cgf-demo/docs/PLAN.md`, `cgf-demo/docs/LANES.md` and `cgf-demo/docs/INTERFACES.md` before writing code. Then read `cgf-demo/README.md` for the existing simulator. Current project state, decisions and open threads are in `cgf-demo/docs/project/overview.md` (start with its "Resume here" block).
 
 ## Project
 
