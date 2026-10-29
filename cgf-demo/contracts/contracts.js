@@ -17,7 +17,11 @@
    *            platform: {type: string, model: string}, crew: CrewMember[]}} ScenarioConfig
    */
 
-  const COMPETENCIES = ['hail_discipline', 'collision_avoidance', 'territorial_awareness', 'weapons_discipline', 'piracy_response'];
+  // The competency catalog (INTERFACES §1). Which seat exercises which ones is in fixtures/platforms.js (seatFocus).
+  const COMPETENCIES = [
+    'hail_discipline', 'collision_avoidance', 'territorial_awareness', 'weapons_discipline', 'speed_management',
+    'threat_evaluation', 'contact_detection', 'picture_reporting', 'escalation_control'
+  ];
   const MODES = ['adaptive', 'fixed'];
   // Platform types and their trainee seats, in seat order (INTERFACES §1). A seat is a trainee station.
   const SEATS_BY_TYPE = { fighter: ['pilot', 'weapon'], warship: ['weapons', 'sensors', 'navigation'], tank: ['commander', 'driver'] };
@@ -59,8 +63,10 @@
 
   function validateProfile(p) {
     if (!isObj(p)) return ['profile: must be an object'];
-    const errs = extraKeys(p, ['trainee_id', 'sessions_completed', 'competencies', 'updated_at_session'], 'profile');
+    const errs = extraKeys(p, ['trainee_id', 'name', 'sessions_completed', 'competencies', 'updated_at_session'], 'profile');
     if (!isStr(p.trainee_id) || !ID_RE.test(p.trainee_id)) errs.push('profile.trainee_id: lower-case id required');
+    // The display name is optional (profiles saved before it existed have none). It is a synthetic sample name.
+    if (p.name !== undefined && (!isStr(p.name) || p.name.length > 40)) errs.push('profile.name: a string of 1 to 40 characters');
     if (!Number.isInteger(p.sessions_completed) || p.sessions_completed < 0) errs.push('profile.sessions_completed: integer >= 0 required');
     if (!isObj(p.competencies)) errs.push('profile.competencies: must be an object');
     else for (const [k, c] of Object.entries(p.competencies)) {

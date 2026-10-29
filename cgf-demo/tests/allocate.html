@@ -19,6 +19,7 @@
 <script src="../fixtures/envelope-default.js"></script>
 <script src="../fixtures/platforms.js"></script>
 <script src="../fixtures/profiles/roster.js"></script>
+<script src="../js/ui-allocate-vehicles.js"></script>
 <script src="../js/ui-allocate.js"></script>
 <script>
 (function () {
@@ -79,13 +80,19 @@
     }
   });
   test('model ids are unique', () => eq(new Set(F.platformModels.map(m => m.id)).size, F.platformModels.length));
-  test('every competency is covered by some seat of every platform type', () => {
+  test('every seat has 3 distinct competencies from the catalog, and every catalog competency is used by some seat', () => {
+    const used = new Set();
     for (const [t, info] of Object.entries(F.platformTypes)) {
-      const covered = new Set(Object.values(info.seatFocus).flat());
-      C.COMPETENCIES.forEach(k => ok(covered.has(k), `${t} misses ${k}`));
       eq(Object.keys(info.seatFocus), info.seats, t + ' focus seats');
+      for (const [seat, list] of Object.entries(info.seatFocus)) {
+        eq(list.length, 3, `${t}/${seat} count`);
+        eq(new Set(list).size, 3, `${t}/${seat} distinct`);
+        list.forEach(k => { ok(C.COMPETENCIES.includes(k), `${t}/${seat}: unknown ${k}`); used.add(k); });
+      }
     }
+    C.COMPETENCIES.forEach(k => ok(used.has(k), `no seat uses ${k}`));
   });
+  test('the competency catalog has 9 entries', () => eq(C.COMPETENCIES.length, 9));
 
   // ---- mean and evidence
   test('mean is alpha / (alpha + beta)', () => {
@@ -371,6 +378,119 @@
   test('the hand-off link round-trips the allocation', () => {
     const a = build(sel());
     eq(JSON.parse(decodeURIComponent(A.handoffUrl(a).split('alloc=')[1])), a);
+  });
+
+  // ---- names, summaries, predictions, crew comparison, auto-fill, vehicles
+  const prof = id => F.profiles.find(p => p.trainee_id === id);
+  const sums = Object.fromEntries(F.profiles.map(p => [p.trainee_id, A.summarise(p)]));
+  const focusOf = (type) => F.platformTypes[type].seatFocus;
+  const sessionsOf = id => prof(id).sessions_completed;
+
+  test('every roster profile has a unique sample name', () => {
+    F.profiles.forEach(p => ok(typeof p.name === 'string' && p.name.length > 0, p.trainee_id + ' name'));
+    eq(new Set(F.profiles.map(p => p.name)).size, F.profiles.length);
+  });
+  test('the validator accepts a missing name, rejects an empty or non-string one', () => {
+    const base = clone(prof('trainee_a'));
+    delete base.name; eq(C.validateProfile(base), []);
+    ok(C.validateProfile(Object.assign(clone(base), { name: '' })).length > 0);
+    ok(C.validateProfile(Object.assign(clone(base), { name: 5 })).length > 0);
+    ok(C.validateProfile(Object.assign(clone(base), { name: 'x'.repeat(41) })).length > 0);
+  });
+  test('nameOf falls back to the id', () => {
+    eq(A.nameOf(prof('trainee_b')), 'Ben Ong'); eq(A.nameOf({ trainee_id: 'trainee_z' }), 'trainee_z');
+  });
+
+  test('describe lists weak, strong, thin and unmeasured competencies in plain words', () => {
+    const d = A.describe(prof('trainee_b'));
+    eq(d.weak.map(r => r.k), ['hail_discipline']);
+    ok(d.strong.some(r => r.k === 'collision_avoidance'));
+    ok(/^Weak: hail discipline \(0\.26, evidence 19\)\./.test(d.text), d.text);
+    ok(/No evidence yet: .*threat evaluation/.test(d.text), d.text);
+  });
+  test('describe can be limited to a seat\'s competencies', () => {
+    const d = A.describe(prof('trainee_b'), focusOf('warship').navigation);
+    ok(!/threat evaluation/.test(d.text), d.text);
+    ok(/Weak: hail discipline/.test(d.text));
+  });
+  test('describe says so when nothing is measured', () => {
+    const empty = { trainee_id: 'e', sessions_completed: 0, competencies: {}, updated_at_session: null };
+    ok(/^Nothing measured yet\./.test(A.describe(empty).text));
+  });
+
+  test('previewTarget picks the weakest measured competency of the seat', () => {
+    const r = A.previewTarget(prof('trainee_b'), focusOf('warship').navigation, 'adaptive');
+    eq([r.competency, r.reason], ['hail_discipline', 'weakest_in_seat']);
+  });
+  test('previewTarget falls back to the weakest overall when the seat has no evidence', () => {
+    const r = A.previewTarget(prof('trainee_b'), focusOf('warship').sensors, 'adaptive');
+    eq([r.competency, r.reason], ['hail_discipline', 'weakest_overall']);
+  });
+  test('previewTarget gives nothing in fixed mode or without evidence', () => {
+    eq(A.previewTarget(prof('trainee_b'), ['hail_discipline'], 'fixed').reason, 'fixed_mode');
+    const empty = { trainee_id: 'e', sessions_completed: 0, competencies: {}, updated_at_session: null };
+    eq(A.previewTarget(empty, ['hail_discipline'], 'adaptive'), { competency: null, reason: 'no_evidence' });
+  });
+  test('describePrediction labels a preview and leaves an Adapt answer unlabelled', () => {
+    const r = { competency: 'hail_discipline', mean: 0.26, reason: 'weakest_in_seat' };
+    ok(/\(preview\)$/.test(A.describePrediction(Object.assign({ source: 'preview' }, r))));
+    ok(!/preview/.test(A.describePrediction(Object.assign({ source: 'adapt', settings: ['weight.ignoredWarning'] }, r))));
+    ok(/Nudges: weight\.ignoredWarning/.test(A.describePrediction({ source: 'adapt', settings: ['weight.ignoredWarning'], competency: 'hail_discipline', reason: 'weakest_in_seat' })));
+  });
+
+  test('compareCrews reports the biggest gap per seat', () => {
+    const s = sel(); s.crews.A.weapons = 'trainee_c05'; s.crews.A.navigation = 'trainee_a'; s.crews.B.navigation = 'trainee_b';
+    const nav = A.compareCrews(s, sums, sessionsOf, focusOf('warship')).seats.find(x => x.seat === 'navigation');
+    eq(nav.top.k, 'hail_discipline'); ok(nav.top.gap > 0.5, 'gap');
+  });
+  test('compareCrews copes with a seat that has no measured competency in common', () => {
+    const c = A.compareCrews(sel(), sums, sessionsOf, focusOf('warship'));
+    eq(c.seats.find(x => x.seat === 'sensors').top, null);   // sensors competencies are not measured yet
+  });
+  test('compareCrews warns about unequal experience and about a comparison that shows nothing', () => {
+    const s = sel(); s.crews.A = { weapons: 'trainee_c15', sensors: 'trainee_c05', navigation: 'trainee_c19' };   // 9, 8, 7 sessions
+    s.crews.B = { weapons: 'trainee_c10', sensors: 'trainee_c06', navigation: 'trainee_c18' };                  // 1, 2, 2 sessions
+    ok(A.compareCrews(s, sums, sessionsOf, focusOf('warship')).warnings.some(w => /experience|sessions/.test(w)));
+    const same = sel(); same.crews.B = clone(same.crews.A);
+    ok(A.compareCrews(same, sums, sessionsOf, focusOf('warship')).warnings.some(w => /may not show a divergence/.test(w)));
+  });
+
+  test('suggestCrews contrasts trainee_a and trainee_b on hail discipline in the navigation seat', () => {
+    const r = A.suggestCrews(F.profiles, sums, 'warship', focusOf('warship'), 'hail_discipline');
+    eq([r.contrast.seat, r.contrast.hi, r.contrast.lo, r.contrast.k], ['navigation', 'trainee_a', 'trainee_b', 'hail_discipline']);
+    eq([r.crews.A.navigation, r.crews.B.navigation], ['trainee_a', 'trainee_b']);
+  });
+  test('suggestCrews fills every seat once, with no trainee twice, for every platform type', () => {
+    for (const t of Object.keys(F.platformTypes)) {
+      const r = A.suggestCrews(F.profiles, sums, t, focusOf(t), 'hail_discipline');
+      ok(r, t + ' result');
+      const ids = A.SLOTS.flatMap(c => Object.values(r.crews[c]));
+      eq(ids.length, 2 * A.seatsOf(t).length, t + ' seats'); eq(new Set(ids).size, ids.length, t + ' unique');
+      ok(Math.abs(sessionsOf(r.contrast.hi) - sessionsOf(r.contrast.lo)) <= 2, t + ' experience');
+    }
+  });
+  test('suggestCrews is deterministic and works without a preferred competency', () => {
+    eq(A.suggestCrews(F.profiles, sums, 'tank', focusOf('tank')), A.suggestCrews(F.profiles, sums, 'tank', focusOf('tank')));
+    ok(A.suggestCrews(F.profiles, sums, 'fighter', focusOf('fighter'), 'hail_discipline'), 'fighter has no hail seat but still gets a pair');
+  });
+  test('a suggested allocation is valid once agents are chosen', () => {
+    const r = A.suggestCrews(F.profiles, sums, 'warship', focusOf('warship'), 'hail_discipline');
+    const s = sel(); s.crews = r.crews;
+    for (const c of A.SLOTS) for (const seat of Object.keys(s.crews[c])) s.agents[c][seat] = 'trainees/strong.js';
+    eq(A.checkSelection(s, ctx), {}); eq(C.validateAllocation(build(s), { scenarios: ids, domainOf }), []);
+  });
+
+  test('every platform type has a vehicle diagram with one marker per seat, in seat order', () => {
+    for (const t of Object.keys(F.platformTypes)) {
+      eq(CGF.vehicles.seatsOf(t), C.SEATS_BY_TYPE[t], t);
+      const svg = CGF.vehicles.svg(t, { [C.SEATS_BY_TYPE[t][0]]: { name: 'Aisha Rahman', active: true } }, 'A');
+      eq((svg.match(/class="seatDot"/g) || []).length, C.SEATS_BY_TYPE[t].length, t + ' markers');
+      ok(svg.includes('>AR<'), t + ' initials');
+    }
+  });
+  test('vehicle diagrams escape names', () => {
+    const svg = CGF.vehicles.svg('tank', { commander: { name: '<img onerror=x>', active: false } }, 'A');
+    ok(!svg.includes('<img'), 'escaped');
   });
 
   const failed = results.filter(r => r[1]);

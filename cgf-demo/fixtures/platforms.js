@@ -17,23 +17,23 @@
     fighter: {
       label: 'Fighter (2 seats)', domain: 'air', seats: ['pilot', 'weapon'],
       seatFocus: {
-        pilot:  ['collision_avoidance', 'territorial_awareness', 'hail_discipline'],
-        weapon: ['weapons_discipline', 'piracy_response']
+        pilot:  ['collision_avoidance', 'territorial_awareness', 'speed_management'],
+        weapon: ['weapons_discipline', 'contact_detection', 'threat_evaluation']
       }
     },
     warship: {
       label: 'Warship (3 seats)', domain: 'sea', seats: ['weapons', 'sensors', 'navigation'],
       seatFocus: {
-        weapons:    ['weapons_discipline'],
-        sensors:    ['piracy_response'],
+        weapons:    ['weapons_discipline', 'threat_evaluation', 'escalation_control'],
+        sensors:    ['contact_detection', 'picture_reporting', 'threat_evaluation'],
         navigation: ['collision_avoidance', 'territorial_awareness', 'hail_discipline']
       }
     },
     tank: {
       label: 'Tank (2 seats)', domain: 'land', seats: ['commander', 'driver'],
       seatFocus: {
-        commander: ['hail_discipline', 'weapons_discipline', 'piracy_response'],
-        driver:    ['collision_avoidance', 'territorial_awareness']
+        commander: ['threat_evaluation', 'weapons_discipline', 'hail_discipline'],
+        driver:    ['collision_avoidance', 'territorial_awareness', 'speed_management']
       }
     }
   };

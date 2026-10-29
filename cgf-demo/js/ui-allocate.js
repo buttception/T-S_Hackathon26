@@ -17,8 +17,16 @@
   const DEFAULT_PLATFORM = { type: 'warship', model: 'formidable' };
   const LABELS = {
     hail_discipline: 'Hail', collision_avoidance: 'Collision', territorial_awareness: 'Territorial',
-    weapons_discipline: 'Weapons', piracy_response: 'Piracy'
+    weapons_discipline: 'Weapons', speed_management: 'Speed', threat_evaluation: 'Threat eval',
+    contact_detection: 'Detection', picture_reporting: 'Reporting', escalation_control: 'Escalation'
   };
+
+  const LONG = {
+    hail_discipline: 'hail discipline', collision_avoidance: 'collision avoidance', territorial_awareness: 'territorial awareness',
+    weapons_discipline: 'weapons discipline', speed_management: 'speed management', threat_evaluation: 'threat evaluation',
+    contact_detection: 'contact detection', picture_reporting: 'picture reporting', escalation_control: 'escalation control'
+  };
+  const WEAK_BELOW = 0.5, STRONG_FROM = 0.7;   // a measured competency is weak below 0.50 and strong from 0.70
 
   // ------------------------------------------------------------ pure functions
   const clone = o => JSON.parse(JSON.stringify(o));
@@ -33,6 +41,115 @@
       out[k] = { alpha: ab.alpha, beta: ab.beta, mean: mean(ab), n, enough: n >= C.EVIDENCE_MIN, prior: !c };
     }
     return out;
+  }
+
+  const nameOf = p => (p && (p.name || p.trainee_id)) || '';
+
+  // Plain-language summary of a profile, computed by code (never by the LLM). `only` limits it to some competencies,
+  // for example the ones a seat exercises. Weak and strong need enough evidence; the rest are listed as thin or none.
+  function describe(profile, only) {
+    const s = summarise(profile), keys = only && only.length ? only : C.COMPETENCIES;
+    const rows = keys.map(k => Object.assign({ k }, s[k]));
+    const enough = rows.filter(r => r.enough);
+    const weak = enough.filter(r => r.mean < WEAK_BELOW).sort((a, b) => a.mean - b.mean);
+    const strong = enough.filter(r => r.mean >= STRONG_FROM).sort((a, b) => b.mean - a.mean);
+    const thin = rows.filter(r => !r.prior && !r.enough);
+    const none = rows.filter(r => r.prior);
+    const fmt = r => `${LONG[r.k]} (${r.mean.toFixed(2)}, evidence ${Math.round(r.n)})`;
+    const parts = [weak.length ? `Weak: ${weak.map(fmt).join(', ')}.` : enough.length ? 'No clear weakness.' : 'Nothing measured yet.'];
+    if (strong.length) parts.push(`Strong: ${strong.map(fmt).join(', ')}.`);
+    if (thin.length) parts.push(`Thin evidence: ${thin.map(r => LONG[r.k]).join(', ')}.`);
+    if (none.length) parts.push(`No evidence yet: ${none.map(r => LONG[r.k]).join(', ')}.`);
+    return { weak, strong, thin, none, text: parts.join(' ') };
+  }
+
+  // A preview of the engine's first target for one seat, by the rule in INTERFACES §5.1. The real answer comes from
+  // Adapt.predictTarget (Devin, docs/project/request-devin-predict-target.md); the page prefers it and only uses
+  // this when it is absent, and labels the result a preview.
+  function previewTarget(profile, competencies, mode) {
+    if (mode === 'fixed') return { competency: null, reason: 'fixed_mode' };
+    const s = summarise(profile);
+    const weakest = list => list.filter(k => s[k].enough).sort((a, b) => s[a].mean - s[b].mean)[0] || null;
+    let k = weakest(competencies || []), reason = 'weakest_in_seat';
+    if (!k) { k = weakest(C.COMPETENCIES); reason = 'weakest_overall'; }
+    if (!k) return { competency: null, reason: 'no_evidence' };
+    return { competency: k, mean: s[k].mean, evidence: s[k].n, reason };
+  }
+
+  function describePrediction(r) {
+    if (!r) return '';
+    const tag = r.source === 'adapt' ? '' : ' (preview)';
+    if (r.reason === 'fixed_mode') return 'Fixed mode: no adjustments.';
+    if (!r.competency) return 'No target yet: no competency has enough evidence.' + tag;
+    const why = r.reason === 'weakest_overall' ? ' None of this seat’s competencies has enough evidence, so this is the weakest overall.' : '';
+    const sets = Array.isArray(r.settings) && r.settings.length ? ` Nudges: ${r.settings.join(', ')}.` : '';
+    const mean = typeof r.mean === 'number' ? ` (${r.mean.toFixed(2)})` : '';
+    return `Likely first target: ${LONG[r.competency] || r.competency}${mean}.${why}${sets}${tag}`;
+  }
+
+  // Compare crew A with crew B seat by seat. Per seat it reports the biggest gap between the two trainees on the
+  // competencies that seat exercises, and it warns when the comparison would be unfair or show nothing.
+  function compareCrews(sel, summaries, sessionsOf, seatFocus) {
+    const seats = [], warnings = [];
+    for (const seat of seatsOf(sel.platform.type)) {
+      const a = sel.crews.A[seat], b = sel.crews.B[seat];
+      if (!a || !b) continue;
+      const gaps = ((seatFocus && seatFocus[seat]) || []).filter(k => summaries[a][k].enough && summaries[b][k].enough)
+        .map(k => ({ k, a: summaries[a][k].mean, b: summaries[b][k].mean, gap: summaries[a][k].mean - summaries[b][k].mean }))
+        .sort((x, y) => Math.abs(y.gap) - Math.abs(x.gap));
+      seats.push({ seat, a, b, top: gaps[0] || null });
+    }
+    const ids = c => Object.values(sel.crews[c]).filter(Boolean);
+    const avg = c => ids(c).length ? ids(c).reduce((t, id) => t + sessionsOf(id), 0) / ids(c).length : null;
+    const ea = avg('A'), eb = avg('B');
+    if (ea !== null && eb !== null && Math.abs(ea - eb) >= 3)
+      warnings.push(`Crew A averages ${ea.toFixed(1)} sessions and crew B ${eb.toFixed(1)}, so the comparison favours the more experienced crew.`);
+    if (seats.length && seats.every(s => !s.top)) warnings.push('No seat has a measured competency for both trainees yet, so there is nothing to compare.');
+    else if (seats.length && !seats.some(s => s.top && Math.abs(s.top.gap) >= 0.2))
+      warnings.push('No seat differs by 0.20 or more on its measured competencies, so the side-by-side may not show a divergence.');
+    return { seats, warnings, experience: { A: ea, B: eb } };
+  }
+
+  // Fill both crews. One seat gets the sharpest contrast: the strongest and weakest trainee on `prefer` (or, when that
+  // competency is in no seat of this platform, on any seat competency), at most 2 sessions apart, strong one in crew A.
+  // Every other seat gets the two remaining trainees closest in level and experience. Deterministic. Null if no pair.
+  function suggestCrews(profiles, summaries, type, seatFocus, prefer) {
+    const seats = seatsOf(type), ids = profiles.map(p => p.trainee_id), sess = {};
+    profiles.forEach(p => { sess[p.trainee_id] = p.sessions_completed; });
+    const wanted = prefer && seats.some(s => (seatFocus[s] || []).includes(prefer)) ? prefer : null;
+    let best = null;
+    for (const seat of seats) for (const k of (seatFocus[seat] || [])) {
+      if (wanted && k !== wanted) continue;
+      for (const hi of ids) for (const lo of ids) {
+        if (hi === lo || Math.abs(sess[hi] - sess[lo]) > 2) continue;
+        const h = summaries[hi][k], l = summaries[lo][k];
+        if (!h.enough || !l.enough) continue;
+        const gap = h.mean - l.mean;
+        if (gap > 0 && (!best || gap > best.gap + 1e-12)) best = { seat, k, hi, lo, gap };
+      }
+    }
+    if (!best) return null;
+    const crews = { A: {}, B: {} }, used = new Set([best.hi, best.lo]);
+    crews.A[best.seat] = best.hi; crews.B[best.seat] = best.lo;
+    const level = (id, seat) => {
+      const m = ((seatFocus[seat]) || []).map(k => summaries[id][k]).filter(s => s.enough).map(s => s.mean);
+      return m.length ? m.reduce((x, y) => x + y, 0) / m.length : 0.5;
+    };
+    const hasEvidence = (id, seat) => ((seatFocus[seat]) || []).some(k => summaries[id][k].enough);
+    for (const seat of seats) {
+      if (seat === best.seat) continue;
+      const pool = ids.filter(id => !used.has(id));
+      let pick = null;
+      for (let i = 0; i < pool.length; i++) for (let j = i + 1; j < pool.length; j++) {
+        // Prefer trainees with enough evidence on the seat's competencies, then a similar level, then similar experience
+        const cost = Math.abs(level(pool[i], seat) - level(pool[j], seat)) + 0.02 * Math.abs(sess[pool[i]] - sess[pool[j]]) +
+          (hasEvidence(pool[i], seat) ? 0 : 1) + (hasEvidence(pool[j], seat) ? 0 : 1);
+        if (!pick || cost < pick.cost - 1e-12) pick = { a: pool[i], b: pool[j], cost };
+      }
+      if (!pick) return null;
+      crews.A[seat] = pick.a; crews.B[seat] = pick.b; used.add(pick.a); used.add(pick.b);
+    }
+    return { crews, contrast: best };
   }
 
   // Next seed from the current one (31-bit LCG): repeatable, no Math.random
@@ -148,7 +265,8 @@
 
   const handoffUrl = allocation => 'host.html?alloc=' + encodeURIComponent(JSON.stringify(allocation));
 
-  CGF.allocate = { STORE_KEY, SLOTS, DEFAULTS, DEFAULT_PLATFORM, mean, seatsOf, summarise, nextSeed, domainOfIn,
+  CGF.allocate = { STORE_KEY, SLOTS, DEFAULTS, DEFAULT_PLATFORM, LONG, mean, seatsOf, summarise, nameOf, describe,
+    previewTarget, describePrediction, compareCrews, suggestCrews, nextSeed, domainOfIn,
     defaultScenarioFor, emptyCrews, withPlatform, seatTrainee, nextEmptySeat, checkSelection, buildAllocation,
     selectionFrom, handoffUrl };
 
@@ -161,7 +279,7 @@
   const st = {
     profiles: [], summaries: {}, envelope: null, scenarioIds: [], domainOf: () => 'sea', models: F.platformModels || [],
     platform: clone(DEFAULT_PLATFORM), crews: {}, agents: {}, active: { crew: 'A', seat: 'weapons' },
-    opts: Object.assign({}, DEFAULTS), sortKey: 'trainee_id', sortDir: 1, weakAt: '', status: ''
+    opts: Object.assign({}, DEFAULTS), sortKey: 'trainee_id', sortDir: 1, weakAt: '', status: '', inspect: null
   };
   const typeInfo = () => (F.platformTypes || {})[st.platform.type] || { seats: [], seatFocus: {} };
   const modelInfo = () => st.models.find(m => m.id === st.platform.model) || null;
@@ -171,6 +289,28 @@
     read() { try { return JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) { return null; } },
     write(v) { try { localStorage.setItem(STORE_KEY, JSON.stringify(v)); return true; } catch (e) { return false; } }
   };
+
+  // Instructor notes, one text per trainee, kept in this browser (cgf.notes.<trainee_id>). Never sent anywhere.
+  const notes = {
+    get(id) { try { return localStorage.getItem('cgf.notes.' + id) || ''; } catch (e) { return ''; } },
+    set(id, text) { try { if (text) localStorage.setItem('cgf.notes.' + id, text); else localStorage.removeItem('cgf.notes.' + id); } catch (e) { /* storage blocked */ } }
+  };
+  const profileOf = id => st.profiles.find(p => p.trainee_id === id) || null;
+  const nameById = id => (profileOf(id) ? nameOf(profileOf(id)) : id || '');
+
+  // The engine's first target for a seat. Adapt.predictTarget (Devin) when it is loaded, else the labelled preview.
+  function predictFor(id, seat) {
+    const profile = profileOf(id);
+    if (!profile) return null;
+    const input = { profile: clone(profile), seat, competencies: (typeInfo().seatFocus || {})[seat] || [], mode: st.opts.mode };
+    try {
+      if (window.Adapt && typeof window.Adapt.predictTarget === 'function') {
+        const r = window.Adapt.predictTarget(input);
+        if (r && typeof r === 'object') return Object.assign({ source: 'adapt' }, r);
+      }
+    } catch (e) { console.error('Adapt.predictTarget failed, using the preview:', e); }
+    return Object.assign({ source: 'preview' }, previewTarget(input.profile, input.competencies, input.mode));
+  }
 
   function barColor(m) { return m < 0.4 ? '#ff7b54' : m < 0.6 ? '#ffd166' : '#4dd17a'; }
   const activeFocus = () => (typeInfo().seatFocus || {})[st.active.seat] || [];
@@ -188,7 +328,7 @@
   function sortedRows() {
     let rows = st.profiles.slice();
     if (st.weakAt) rows = rows.filter(p => { const s = st.summaries[p.trainee_id][st.weakAt]; return s.enough && s.mean < 0.5; });
-    const key = p => st.sortKey === 'trainee_id' ? p.trainee_id
+    const key = p => st.sortKey === 'trainee_id' ? nameOf(p).toLowerCase()
       : st.sortKey === 'sessions' ? p.sessions_completed : st.summaries[p.trainee_id][st.sortKey].mean;
     return rows.sort((a, b) => { const x = key(a), y = key(b); return (x < y ? -1 : x > y ? 1 : 0) * st.sortDir; });
   }
@@ -201,7 +341,8 @@
     const body = rows.map(p => {
       const sum = st.summaries[p.trainee_id], at = seatOf(p.trainee_id);
       return `<tr data-id="${esc(p.trainee_id)}" class="${at ? 'taken' : ''}">` +
-        `<td class="id">${at ? `<span class="slotTag" title="Crew ${at.crew}, ${esc(seatLabel(at.seat))}">${at.crew}·${esc(at.seat)}</span>` : ''}${esc(p.trainee_id)}</td>` +
+        `<td class="id" title="${esc(p.trainee_id)}">${at ? `<span class="slotTag" title="Crew ${at.crew}, ${esc(seatLabel(at.seat))}">${at.crew}·${esc(at.seat)}</span>` : ''}` +
+        `${esc(nameOf(p))}${notes.get(p.trainee_id) ? ' <span class="muted" title="You have a note on this trainee">✎</span>' : ''}</td>` +
         `<td class="num">${p.sessions_completed}</td>` + C.COMPETENCIES.map(k => compCell(sum[k], focus.includes(k))).join('') + '</tr>';
     }).join('');
     $('roster').innerHTML = `<thead><tr>${head}</tr></thead><tbody>${body ||
@@ -209,27 +350,79 @@
     $('rosterCount').textContent = `${rows.length} of ${st.profiles.length} trainees · highlighted columns matter for the ${esc(seatLabel(st.active.seat))} seat`;
   }
 
+  // The selected trainee in full: every competency, a plain-language summary, and a private note.
+  function renderDetail() {
+    const el = $('detail'), p = st.inspect && profileOf(st.inspect);
+    if (!p) {
+      el.innerHTML = '<span class="muted small">Point at a trainee in the roster to see their competencies, strengths, weaknesses and your notes. Click to seat them.</span>';
+      return;
+    }
+    const sum = st.summaries[p.trainee_id], d = describe(p), focus = activeFocus(), at = seatOf(p.trainee_id);
+    const bars = C.COMPETENCIES.map(k => {
+      const s = sum[k], cls = s.prior ? 'bar prior' : s.enough ? 'bar' : 'bar thin';
+      return `<div class="small ${focus.includes(k) ? '' : 'dim'}"><span style="display:inline-block;width:130px">${esc(LONG[k])}</span>` +
+        `<span class="${cls}"><i style="width:${(s.mean * 100).toFixed(0)}%;background:${barColor(s.mean)}"></i></span>` +
+        `<span class="val">${s.prior ? '—' : s.mean.toFixed(2)}</span>` +
+        `<span class="muted">${s.prior ? 'no evidence' : 'evidence ' + Math.round(s.n) + (s.enough ? '' : ' (thin)')}</span></div>`;
+    }).join('');
+    el.innerHTML = `<div class="row"><b>${esc(nameOf(p))}</b><span class="muted small">${esc(p.trainee_id)} · ${p.sessions_completed} session${p.sessions_completed === 1 ? '' : 's'}` +
+      `${at ? ` · seated in crew ${esc(at.crew)}, ${esc(seatLabel(at.seat))}` : ''}</span></div>` +
+      `<div class="small">${esc(d.text)}</div>${bars}` +
+      `<label class="field"><span>Your notes</span><textarea id="noteBox" rows="2" data-id="${esc(p.trainee_id)}" placeholder="Private notes on this trainee">${esc(notes.get(p.trainee_id))}</textarea></label>`;
+  }
+
+  // A one-line comparison of the two crews, seat by seat, and any warning that the comparison would be unfair.
+  function renderCompare() {
+    const el = $('compare'), seats = seatsOf(st.platform.type);
+    if (!seats.every(s => st.crews.A[s] && st.crews.B[s])) {
+      el.innerHTML = '<span class="muted small">Fill every seat in both crews to compare them.</span>';
+      return;
+    }
+    const cmp = compareCrews(selection(), st.summaries, id => profileOf(id).sessions_completed, typeInfo().seatFocus);
+    const lines = cmp.seats.map(s => {
+      const t = s.top;
+      return `<div class="small"><b>${esc(seatLabel(s.seat))}</b>: ${esc(nameById(s.a))} vs ${esc(nameById(s.b))} · ` + (t
+        ? `biggest gap ${esc(LONG[t.k])} ${t.a.toFixed(2)} vs ${t.b.toFixed(2)}` : '<span class="muted">no measured competency in common</span>') + '</div>';
+    }).join('');
+    el.innerHTML = '<b class="small">Crew A vs crew B</b>' + lines +
+      cmp.warnings.map(w => `<div class="small muted">⚠ ${esc(w)}</div>`).join('');
+  }
+
   function renderCrews(errs) {
-    const agents = F.agentProfiles || [], model = modelInfo(), info = typeInfo();
+    const agents = F.agentProfiles || [], model = modelInfo(), info = typeInfo(), V = CGF.vehicles;
     $('slots').innerHTML = SLOTS.map(c => {
-      const cards = seatsOf(st.platform.type).map(seat => {
+      const people = {};
+      const cards = seatsOf(st.platform.type).map((seat, i) => {
         const id = st.crews[c][seat], sum = id && st.summaries[id], isActive = st.active.crew === c && st.active.seat === seat;
         const focus = (info.seatFocus || {})[seat] || [], seatDef = model && model.seats[seat];
-        const mini = sum ? focus.map(k => `<span title="${LABELS[k]}: ${sum[k].prior ? 'no data' : sum[k].mean.toFixed(2)}">` +
+        people[seat] = { name: id ? nameById(id) : '', active: isActive };
+        const mini = sum ? focus.map(k => `<span title="${LONG[k]}: ${sum[k].prior ? 'no data' : sum[k].mean.toFixed(2)}">` +
           `<b style="background:${sum[k].prior ? 'var(--line)' : barColor(sum[k].mean)}"></b>${LABELS[k]} ${sum[k].prior ? '—' : sum[k].mean.toFixed(2)}</span>`).join('') : '';
         const e = errs[`agent_${c}_${seat}`] || (id && errs[`seat_${c}_${seat}`]);
+        const pred = id ? describePrediction(predictFor(id, seat)) : '';
         return `<div class="seat ${isActive ? 'active' : ''}" data-crew="${c}" data-seat="${seat}">` +
-          `<div class="seatHead"><b>${esc(seatDef ? seatDef.label : seat)}</b><span class="grow"></span>` +
+          `<div class="seatHead"><b>${i + 1} · ${esc(seatDef ? seatDef.label : seat)}</b><span class="grow"></span>` +
           (id ? `<button data-clear="${c}:${seat}" title="Clear this seat">Clear</button>` : '') + '</div>' +
           (seatDef ? `<div class="seatText">${esc(seatDef.text)}</div>` : '') +
-          `<div class="seatWho">${id ? `<b>${esc(id)}</b>` : `<span class="muted">${isActive ? 'Click a trainee in the roster' : 'Click here, then a trainee'}</span>`}</div>` +
-          (sum ? `<div class="mini">${mini}</div>` : '') +
+          `<div class="seatWho">${id ? `<b data-inspect="${esc(id)}">${esc(nameById(id))}</b> <span class="muted small">${esc(id)}</span>` : `<span class="muted">${isActive ? 'Click a trainee in the roster' : 'Click here, then a trainee'}</span>`}</div>` +
+          (sum ? `<div class="mini">${mini}</div><div class="small muted">${esc(describe(profileOf(id), focus).text)}</div>` : '') +
+          (pred ? `<div class="small">${esc(pred)}</div>` : '') +
           `<label class="field"><span>Scripted agent</span><select data-agent="${c}:${seat}"><option value="">Choose…</option>` +
           agents.map(a => `<option value="${esc(a.path)}" ${st.agents[c][seat] === a.path ? 'selected' : ''}>${esc(a.label)}</option>`).join('') +
           '</select></label>' + (e ? `<div class="err">${esc(e)}</div>` : '') + '</div>';
       }).join('');
-      return `<div class="crew"><div class="crewHead">Crew ${c} <span class="muted small">pane ${c}</span></div>${cards}</div>`;
+      const sims = (V.TYPES[st.platform.type] || { simulated: [] }).simulated.map(s => s[2]);
+      return `<div class="crew" data-crew="${c}"><div class="crewHead">Crew ${c} <span class="muted small">pane ${c} · ${esc((modelInfo() || {}).name || '')}</span></div>` +
+        `${V.svg(st.platform.type, people, c)}` +
+        (sims.length ? `<div class="small muted">Dashed markers are simulated: ${esc(sims.join(', '))}.</div>` : '') + `${cards}</div>`;
     }).join('');
+  }
+
+  function renderEnvelope() {
+    const range = k => C.SETTING_RANGES[k] || C.WEIGHT_RANGE;
+    $('envelope').innerHTML = Object.entries(st.envelope).map(([k, e]) =>
+      `<tr><td title="allowed ${range(k)[0]} to ${range(k)[1]}">${esc(k)}</td>` +
+      ['min', 'base', 'max'].map(f => `<td><input type="number" step="any" style="width:64px" data-env="${esc(k)}:${f}" value="${e[f]}"></td>`).join('') + '</tr>').join('');
   }
 
   function renderPlatform(errs) {
@@ -255,7 +448,10 @@
 
   function render() {
     const errs = checkSelection(st, ctx()), ready = !Object.keys(errs).length;
-    renderPlatform(errs); renderScenarios(errs); renderRoster(); renderCrews(errs);
+    renderPlatform(errs); renderScenarios(errs); renderRoster(); renderCrews(errs); renderCompare();
+    if (document.activeElement !== $('noteBox')) renderDetail();   // never rebuild the note box while it is being typed in
+    const envErrs = C.validateEnvelope(st.envelope);
+    $('err_envelope').innerHTML = envErrs.map(esc).join('<br>');
     const empty = Object.keys(errs).filter(k => k.startsWith('seat_') && /^Pick/.test(errs[k])).length;
     let alloc = null, cErrs = [];
     if (ready) {
@@ -275,13 +471,30 @@
   }
 
   function apply(next) { Object.assign(st, { platform: next.platform, crews: next.crews, agents: next.agents, opts: next.opts }); }
+  const defaultAgentFor = id => (F.defaultAgent || {})[id] || ((F.agentProfiles || [])[0] || {}).path || '';
+
+  // "Suggest demo pair": the sharpest contrast on one competency in one seat, the other seats matched (suggestCrews).
+  function suggest() {
+    const prefer = st.weakAt || F.demoCompetency || null;
+    const r = suggestCrews(st.profiles, st.summaries, st.platform.type, typeInfo().seatFocus || {}, prefer);
+    if (!r) { st.status = 'No suitable pair: no two trainees within 2 sessions of each other differ on a measured competency of this platform.'; return render(); }
+    const next = emptyCrews(st.platform.type);
+    for (const c of SLOTS) for (const [seat, id] of Object.entries(r.crews[c])) { next.crews[c][seat] = id; next.agents[c][seat] = defaultAgentFor(id); }
+    Object.assign(st, { crews: next.crews, agents: next.agents });
+    st.inspect = r.contrast.lo;
+    st.active = { crew: 'A', seat: seatsOf(st.platform.type)[0] };
+    st.status = `Suggested: ${nameById(r.contrast.hi)} (crew A) and ${nameById(r.contrast.lo)} (crew B) in the ${seatLabel(r.contrast.seat)} seat, ` +
+      `${LONG[r.contrast.k]} ${r.contrast.gap.toFixed(2)} apart. The other seats are matched on level and experience.`;
+    render();
+  }
   const selection = () => ({ platform: st.platform, crews: st.crews, agents: st.agents, opts: st.opts });
 
   function assign(id) {
     const { crew, seat } = st.active;
     if (!(seat in st.crews[crew])) return;
-    const next = seatTrainee(selection(), crew, seat, id, (F.defaultAgent || {})[id] || ((F.agentProfiles || [])[0] || {}).path || '');
+    const next = seatTrainee(selection(), crew, seat, id, defaultAgentFor(id));
     apply(next);
+    st.inspect = id;
     st.active = nextEmptySeat(selection(), st.active);
     st.status = '';
     render();
@@ -323,6 +536,21 @@
       const tr = e.target.closest('tr[data-id]');
       if (tr) assign(tr.dataset.id);
     });
+    $('roster').addEventListener('mouseover', e => {   // point at a trainee to read their detail without seating them
+      const tr = e.target.closest('tr[data-id]');
+      if (tr && tr.dataset.id !== st.inspect && document.activeElement !== $('noteBox')) { st.inspect = tr.dataset.id; renderDetail(); }
+    });
+    $('detail').addEventListener('input', e => { if (e.target.id === 'noteBox') notes.set(e.target.dataset.id, e.target.value); });
+    $('detail').addEventListener('change', e => { if (e.target.id === 'noteBox') renderRoster(); });   // refresh the note marker
+    $('envelope').addEventListener('input', e => {
+      const key = e.target.dataset.env;
+      if (!key) return;
+      const [k, f] = key.split(':');
+      st.envelope[k][f] = e.target.value === '' ? NaN : Number(e.target.value);
+      st.status = ''; render();
+    });
+    $('btnEnvReset').onclick = () => { st.envelope = clone(F.envelopeDefault); renderEnvelope(); render(); };
+    $('btnSuggest').onclick = suggest;
     $('slots').addEventListener('click', e => {
       const clr = e.target.closest('[data-clear]');
       if (clr) {
@@ -330,6 +558,10 @@
         st.crews[c][s] = null; st.agents[c][s] = ''; st.active = { crew: c, seat: s };
         return render();
       }
+      const dot = e.target.closest('.seatDot');   // a seat marker on the vehicle picks that seat
+      if (dot) { st.active = { crew: dot.closest('.crew').dataset.crew, seat: dot.dataset.seat }; return render(); }
+      const who = e.target.closest('[data-inspect]');
+      if (who) st.inspect = who.dataset.inspect;
       const seat = e.target.closest('.seat');
       if (seat && !e.target.closest('select')) { st.active = { crew: seat.dataset.crew, seat: seat.dataset.seat }; render(); }
     });
@@ -376,7 +608,8 @@
       st.platform = clone(DEFAULT_PLATFORM);
       Object.assign(st, emptyCrews(st.platform.type));
       st.active = { crew: 'A', seat: seatsOf(st.platform.type)[0] };
-      st.opts = Object.assign({}, DEFAULTS); st.status = ''; writeOpts(); render();
+      st.opts = Object.assign({}, DEFAULTS); st.status = ''; st.inspect = null;
+      st.envelope = clone(F.envelopeDefault); renderEnvelope(); writeOpts(); render();
     };
   }
 
@@ -393,15 +626,13 @@
     st.profiles = (F.profiles || []).filter(p => { const e = C.validateProfile(p); if (e.length) bad.push(...e); return !e.length; });
     if (bad.length) console.error('roster fixture:', bad);
     st.profiles.forEach(p => { st.summaries[p.trainee_id] = summarise(p); });
-    st.envelope = F.envelopeDefault;
-    const envErrs = C.validateEnvelope(st.envelope);
+    const envErrs = C.validateEnvelope(F.envelopeDefault);
     if (envErrs.length) throw new Error('default envelope fixture: ' + envErrs.join('; '));
+    st.envelope = clone(F.envelopeDefault);   // editable on this page; the default is kept for "Reset envelope"
 
     $('optType').innerHTML = Object.entries(F.platformTypes || {}).map(([k, t]) => `<option value="${esc(k)}">${esc(t.label)}</option>`).join('');
     $('weakAt').innerHTML = '<option value="">All trainees</option>' +
       C.COMPETENCIES.map(k => `<option value="${k}">Weak at ${LABELS[k].toLowerCase()} (mean below 0.50)</option>`).join('');
-    $('envelope').innerHTML = Object.entries(st.envelope).map(([k, e]) =>
-      `<tr><td>${esc(k)}</td><td class="num">${e.min}</td><td class="num">${e.base}</td><td class="num">${e.max}</td></tr>`).join('');
 
     Object.assign(st, emptyCrews(st.platform.type));
     st.active = { crew: 'A', seat: seatsOf(st.platform.type)[0] };
@@ -410,8 +641,12 @@
     const saved = selectionFrom(store.read(), { scenarios: st.scenarioIds, domainOf: st.domainOf });
     const fits = saved && st.models.some(m => m.id === saved.platform.model && m.type === saved.platform.type)
       && SLOTS.every(s => Object.values(saved.crews[s]).every(id => st.summaries[id]));
-    if (fits) { apply(saved); st.active = { crew: 'A', seat: seatsOf(st.platform.type)[0] }; st.status = 'Restored the last saved allocation.'; }
-    writeOpts(); wire(); render();
+    if (fits) {
+      apply(saved); st.active = { crew: 'A', seat: seatsOf(st.platform.type)[0] }; st.status = 'Restored the last saved allocation.';
+      const savedEnv = (store.read() || {}).shared && store.read().shared.envelope;
+      if (savedEnv && !C.validateEnvelope(savedEnv).length) st.envelope = clone(savedEnv);
+    }
+    renderEnvelope(); writeOpts(); wire(); render();
   }
 
   boot().catch(err => {

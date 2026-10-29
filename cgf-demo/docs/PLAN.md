@@ -145,7 +145,8 @@ Competency to tactic mapping for v1 (proposed; Sim and Engine validate it agains
 | `collision_avoidance` | CPA | `cpa` weight, closer shadowing |
 | `territorial_awareness` | time in territorial and contiguous zones | `territorial` and `contiguous` weights, reduce calm-down |
 | `weapons_discipline` | fire-control radar time | `fcRadar` weight, quicker reaction |
-| `piracy_response` | speed change when approached | piracy approach rate and `detection` |
+| `speed_management` | speed change when approached | raider approach rate and `detection` |
+| `threat_evaluation`, `contact_detection`, `picture_reporting`, `escalation_control` | not measured yet | no tactic until Devin adds the events (INTERFACES §4) |
 
 ### Console
 
