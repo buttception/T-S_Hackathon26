@@ -117,7 +117,7 @@ identity: Black under *Non-hostile state* turns from suspect to neutral.
 
 | Demo | Length | What it shows |
 | --- | --- | --- |
-| **Vision: adaptive CGF trainer** | ~5 min, then the debrief and trainee data | The whole idea in one run: history picks the target, the live signal sets the pressure, CGFs work as a team, elite harness, plain-English steering, session record, fixed mode, neutral shipping reacting, and the same harness files swapped on land and in the air. Setup and presenting notes: [RUNNING.md](RUNNING.md) |
+| **Vision: adaptive CGF trainer** | ~4.5 min, debrief and trainee data included | The whole idea in one run: history picks the target, the live signal sets the pressure, CGFs work as a team, elite harness, plain-English steering, session record, fixed mode, neutral shipping reacting, and the same harness files swapped on land and in the air. Setup and presenting notes: [RUNNING.md](RUNNING.md) |
 | **Harness reuse and prompting: sea, land, air** | ~4 min | Typed prompts; the same prompt and manoeuvre under *Hostile* then (after a restart) *Non-hostile*; then the same harness files on land and in the air; ends with sea and air together |
 | **Local LLM prompting, plain English** | ~3 min | Natural-language prompts turned into commands by the local model, with preview; falls back to keywords when there is no model |
 | **Sea and air together** | ~1.5 min | Red ships and fighters under one harness; merchants and airliners under another; one prompt flips Red |

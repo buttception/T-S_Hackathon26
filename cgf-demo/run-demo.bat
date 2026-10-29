@@ -52,6 +52,6 @@ start "" "%URL%"
 
 :done
 echo.
-echo The demo plays by itself (about 5 minutes), then the debrief and the trainee data.
+echo The demo plays by itself, then the debrief and the trainee data: about 4.5 minutes in all.
 echo Space pauses, Esc stops it and gives you control, F11 leaves full screen.
 endlocal

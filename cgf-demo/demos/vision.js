@@ -24,8 +24,8 @@
 
   CGF.registerDemo({
     id: 'vision',
-    name: 'Vision: adaptive CGF trainer (~5 min)',
-    pace: 1.25,   // 25% faster than the step holds below
+    name: 'Vision: adaptive CGF trainer (~4.5 min)',
+    pace: 1.9,    // the whole run, debrief pages included, fits in about 4.5 minutes
     scenario: 'strait-transit',
     params: { timeScale: 60 },
     view: { zoom: 26 },
