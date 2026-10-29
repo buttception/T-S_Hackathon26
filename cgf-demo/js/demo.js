@@ -39,6 +39,12 @@
 
   function clearSteer() { R.steerTo = null; R.steerUnit = null; }
 
+  // The units a prompt acted on, from the engine's 'instr-target' events while it runs. Works whatever the wording,
+  // so the camera can follow an LLM prompt too.
+  let targets = null;
+  CGF.on('instr-target', u => { if (targets) targets.add(u); });
+  CGF.on('reset', () => { targets = null; });   // a scenario load: the reset handler above sets the view
+
   // Helpers available to demo steps
   const api = {
     units: force => CGF.sim.units.filter(u => u.force === force && u.role === 'cgf'),
@@ -62,7 +68,8 @@
       if (!us.length) return;
       const xs = us.map(u => u.x), ys = us.map(u => u.y);
       const c = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
-      const half = Math.max(...us.map(u => Math.max(Math.abs(u.x - c.x), Math.abs(u.y - c.y)))) * (margin || 1.4) + 4 * (CGF.scenario.scale.range || 1);
+      const s = CGF.scenario.scale.range || 1;
+      const half = Math.max(Math.max(...us.map(u => Math.max(Math.abs(u.x - c.x), Math.abs(u.y - c.y)))) * (margin || 1.4) + 4 * s, 10 * s);
       api.focus(c, half);
     },
     // Units that joined a teammate's response (cooperating CGFs), newest last
@@ -148,11 +155,21 @@
         if (T.shown >= T.text.length && now >= T.nextAt + 500) {
           T.sent = true;
           CGF.ui.showTyping(T.text, true);
-          const active = R.active;
+          const active = R.active, mine = targets = new Set();
           CGF.ui.submitPrompt(T.text, { auto: true, fallback: T.fallback }).finally(() => {
             if (R.active !== active || R.typing !== T) return;
             R.typing = null;
             R.startReal = performance.now();
+            // show what the prompt did: the preview card in the panel, and the units it changed on the map
+            const card = document.getElementById('llmPreview');
+            if (card && !card.classList.contains('hidden')) card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            const changed = targets === mine ? [...mine].filter(u => CGF.sim.units.includes(u)) : [];
+            targets = null;
+            if (changed.length && !st.focus) {
+              const s = CGF.scenario.scale.range || 1, spread = Math.max(...changed.map(u => Math.max(...changed.map(v => U.dist(u, v)))));
+              if (spread < CGF.scenario.view.half * 0.6) api.frame(changed);
+              else api.focus(changed.sort((a, b) => U.dist(a, CGF.sim.own) - U.dist(b, CGF.sim.own))[0], 18 * s);   // too spread out: the nearest
+            }
           });
         }
         return;

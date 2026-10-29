@@ -16,7 +16,7 @@
   // Steering through the Reasoning tab's own box, so the audience sees the text, the parsed directive and Apply
   const typeSteer = text => {
     const el = document.getElementById('steerText');
-    if (el) { el.value = text; document.getElementById('btnSteerParse').click(); }
+    if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.value = text; document.getElementById('btnSteerParse').click(); }
   };
   // Apply appears once the parse has finished (the local LLM is tried first), so the step keeps trying
   const applySteer = () => { const b = document.getElementById('btnSteerApply'); if (b) b.click(); };

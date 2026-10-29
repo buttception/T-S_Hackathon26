@@ -24,8 +24,8 @@
     el.scrollTop = el.scrollHeight;
   }
   function actionHtml(a) {
-    const f = CGF.scenario.forces[a.forceKey], color = f ? f.color : '#d7a8ff';
-    return `<div class="act"><span class="muted">${a.time}</span> <b style="color:${color}">${esc(a.unit)}</b> ${esc(a.action)}` +
+    const f = CGF.scenario.forces[a.forceKey];   // force colours are force identity (scenario data); no force: muted class
+    return `<div class="act"><span class="muted">${a.time}</span> <b ${f ? `style="color:${f.color}"` : 'class="unit--none"'}>${esc(a.unit)}</b> ${esc(a.action)}` +
       `${a.state ? ` <span class="muted">[${esc(a.state)}${a.tension !== '' ? ' · ' + a.tension : ''}]</span>` : ''}` +
       `${a.cause ? `<div class="cause">Why: ${esc(a.cause)}</div>` : ''}${a.detail ? `<div class="cause">${esc(a.detail)}</div>` : ''}</div>`;
   }
@@ -134,7 +134,7 @@
 
     const p = sim.posture;
     $('postureLabel').textContent = p < 0.15 ? 'Cautious' : p < 0.45 ? 'Assertive' : 'Provocative';
-    $('postureLabel').style.color = p < 0.15 ? '#4dd17a' : p < 0.45 ? '#ffd166' : '#ff5c5c';
+    $('postureLabel').className = p < 0.15 ? 'posture--cautious' : p < 0.45 ? 'posture--assertive' : 'posture--provocative';
     $('postureVal').textContent = `(${Math.round(p * 100)}/100)`;
     $('postureBar').style.width = (p * 100) + '%';
 
@@ -147,12 +147,12 @@
       const head = `<span><b style="color:${color}">${esc(u.name)}</b> <span class="muted">${esc(u.type || '')} · ${esc(CGF.forceOf(u).label)}</span></span>`;
       if (u.role !== 'cgf') return `<div class="contact ${u === sim.selected ? 'sel' : ''}" data-name="${esc(u.name)}">${head}<span></span>
         <span class="meta">BRG ${U.pad3(b)} · RNG ${d.toFixed(1)} nm</span></div>`;
-      const H = CGF.harnessOf(u), st = CGF.stateOf(u), sc = CGF.stateColor(u);
+      const H = CGF.harnessOf(u), st = CGF.stateOf(u), lvl = Math.min(u.stateIdx || 0, 4);
       const pend = u.pendingIdx !== null ? ` → ${esc(H.states[u.pendingIdx].name)} in ${Math.max(0, Math.ceil(CGF.params.reaction * (H.reactionMult || 1) - (sim.t - u.pendingSince)))}s` : '';
-      return `<div class="contact ${u === sim.selected ? 'sel' : ''}" data-name="${esc(u.name)}">${head}
-        <span style="color:${sc};font-weight:600">${esc(st.name)}${pend}</span>
-        <div class="bar"><div style="width:${u.tension}%;background:${sc}"></div></div>
-        <span class="meta">${H.armed ? 'Tension' : 'Alarm'} ${Math.round(u.tension)} · BRG ${U.pad3(b)} · RNG ${d.toFixed(1)} nm${u.warnPending ? ' · <b style="color:#ffb347">HAIL PENDING (H)</b>' : ''}</span></div>`;
+      return `<div class="contact esc-${lvl} ${u === sim.selected ? 'sel' : ''}" data-name="${esc(u.name)}">${head}
+        <span class="escState">${esc(st.name)}${pend}</span>
+        <div class="bar"><div class="escFill" style="width:${u.tension}%"></div></div>
+        <span class="meta">${H.armed ? 'Tension' : 'Alarm'} ${Math.round(u.tension)} · BRG ${U.pad3(b)} · RNG ${d.toFixed(1)} nm${u.warnPending ? ' · <b class="hailPending">HAIL PENDING (H)</b>' : ''}</span></div>`;
     }).join('') || '<div class="muted">No contacts on radar.</div>';
 
     const s = sim.selected;
@@ -163,7 +163,7 @@
         .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
       const agg = CGF.aggressionOf(s), rate = s.P > 0 ? s.P * agg * CGF.params.sensitivity : s.P;
       $('why').innerHTML = (rows.length ? rows.map(([k, v]) => `<div class="factor"><span>${esc((CGF.factors[k] || {}).label || k)}</span>
-          <div class="bar"><div style="width:${U.clamp(Math.abs(v) / 40 * 100, 3, 100)}%;background:${v > 0 ? '#ff7b54' : '#4dd17a'}"></div></div>
+          <div class="bar"><div class="${v > 0 ? 'factor--raise' : 'factor--lower'}" style="width:${U.clamp(Math.abs(v) / 40 * 100, 3, 100)}%"></div></div>
           <span>${v > 0 ? '+' : ''}${v.toFixed(1)}</span></div>`).join('')
         : `<div class="muted">${U.dist(s, o) > CGF.detectionRange() ? 'Ownship not detected (outside CGF detection range).' : 'Nothing provocative right now.'}</div>`) +
         `<div class="muted small" style="margin-top:4px">Harness: ${esc(H.name)}. Net ${rate >= 0 ? '+' : ''}${rate.toFixed(1)}/min after aggression ×${agg.toFixed(2)}; calm-down −${(H.decayPerMin * CGF.params.decay).toFixed(1)}/min toward baseline ${H.baseTension}.</div>`;
@@ -185,12 +185,14 @@
 
   function drawChart() {
     const c = $('chart'), g = c.getContext('2d'), w = c.width, h = c.height, data = CGF.sim.chart;
-    g.fillStyle = '#0d1726'; g.fillRect(0, 0, w, h);
-    g.strokeStyle = 'rgba(138,160,184,.15)';
+    // a canvas cannot use var(): read the chart tokens (css/tokens.css, --rt-chart-<role>) once per draw
+    const cs = getComputedStyle(document.documentElement), tok = n => cs.getPropertyValue('--rt-chart-' + n).trim();
+    g.fillStyle = tok('bg'); g.fillRect(0, 0, w, h);
+    g.strokeStyle = tok('grid');
     for (const y of [25, 50, 75]) { g.beginPath(); g.moveTo(0, h - y / 100 * h); g.lineTo(w, h - y / 100 * h); g.stroke(); }
     if (data.length < 2) return;
     const n = Math.max(data.length, 60);
-    for (const [idx, color] of [[0, '#ff7b7b'], [1, '#4da6ff']]) {
+    for (const [idx, color] of [[0, tok('cgf')], [1, tok('trainee')]]) {
       g.strokeStyle = color; g.lineWidth = 1.5; g.beginPath();
       data.forEach((d, i) => { const x = i / (n - 1) * w, y = h - d[idx] / 100 * (h - 4) - 2; i ? g.lineTo(x, y) : g.moveTo(x, y); });
       g.stroke();
@@ -364,6 +366,7 @@
   function showTyping(text, done) {
     const el = $('cmd');
     el.value = text;
+    if (!el.classList.contains('typing') && !done) el.scrollIntoView({ block: 'center', behavior: 'smooth' });   // the audience sees the box being typed in
     el.classList.toggle('typing', !done);
     if (done) setTimeout(() => { if (el.value === text) el.value = ''; el.classList.remove('typing'); }, 600);
   }

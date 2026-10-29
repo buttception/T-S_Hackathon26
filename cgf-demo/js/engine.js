@@ -153,6 +153,12 @@
     return own != null ? own : (m.all != null ? m.all : 1);
   };
   CGF.zonesAt = p => CGF.scenario.zones.filter(z => U.pointInPoly(p.x, p.y, z.poly));
+  // Escalation colours come from the design tokens --escalation-0 to --escalation-4 (css/tokens.css), read once at
+  // start-up; the array above is the fallback (tests, or a page without the stylesheet)
+  try {
+    const cs = getComputedStyle(document.documentElement);
+    CGF.style.stateColors = CGF.style.stateColors.map((c, i) => cs.getPropertyValue('--escalation-' + i).trim() || c);
+  } catch (e) { /* no DOM */ }
   CGF.stateColor = u => CGF.style.stateColors[Math.min(u.stateIdx || 0, CGF.style.stateColors.length - 1)];
 
   // Combined effect of all active malfunctions
@@ -500,14 +506,15 @@
   };
 
   // ------------------------------------------------------------ instructor injects
-  function instr(text) { CGF.sim.stats.injects++; CGF.log('INSTRUCTOR ' + text, 'instr'); }
+  // units: the CGFs the inject acts on, reported as 'instr-target' (the demo camera follows them)
+  function instr(text, units) { CGF.sim.stats.injects++; CGF.log('INSTRUCTOR ' + text, 'instr'); for (const u of units || []) CGF.emit('instr-target', u); }
 
   CGF.inject = {
     adjust(u, delta) {
       if (!u || u.role !== 'cgf') return;
       const H = CGF.harnessOf(u);
       u.tension = U.clamp(u.tension + delta, 0, 100);
-      instr(`${delta > 0 ? 'escalated' : 'de-escalated'} ${u.name} (tension ${Math.round(u.tension)})`);
+      instr(`${delta > 0 ? 'escalated' : 'de-escalated'} ${u.name} (tension ${Math.round(u.tension)})`, [u]);
       const target = stateIndexFor(u.tension, u.stateIdx, H);
       if (target !== u.stateIdx) enterState(u, target, 'instructor');
     },
@@ -516,13 +523,13 @@
       const H = CGF.harnessOf(u), idx = H.states.findIndex(s => s.name === stateName);
       if (idx < 0) return;
       u.tension = U.clamp(H.states[idx].min + 5, 0, 100);
-      instr(`forced ${u.name} to "${stateName}"`);
+      instr(`forced ${u.name} to "${stateName}"`, [u]);
       if (idx !== u.stateIdx) enterState(u, idx, 'instructor');
     },
     radio(u, text) {
       if (!u || u.role !== 'cgf') return;
       const sim = CGF.sim, st = CGF.harnessOf(u).states.find(s => s.warn && s.msg);
-      instr(`radio demand from ${u.name}`);
+      instr(`radio demand from ${u.name}`, [u]);
       const msg = radio(u, text ? `${u.name}: ${text}` : st ? st.msg : '{unit}: Stop and state your intentions.');
       CGF.record(u, 'Radio demand', msg, 'instructor');
       u.warnPending = true; u.warnTime = sim.t; u.lastWarn = sim.t; u.ignoreLogged = false; sim.stats.warnings++;
@@ -538,7 +545,7 @@
       if (H) def.tension = U.clamp(H.baseTension + 30, 0, 100);
       const u = makeUnit(def);
       sim.units.push(u);
-      instr(`spawned ${u.name} (${S.forces[force].label})`);
+      instr(`spawned ${u.name} (${S.forces[force].label})`, [u]);
       if (u.role === 'cgf') CGF.record(u, 'Entered the area', `Spawned by instructor in state ${CGF.stateOf(u).name}`, 'instructor');
       CGF.emit('units');
     },
@@ -564,7 +571,7 @@
     },
     repairAll() { CGF.malfunctions.forEach(m => CGF.inject.malfunction(m.id, false)); },
     setForceHarness(force, id) {
-      try { CGF.setForceHarness(force, id); CGF.sim.stats.injects++; }
+      try { CGF.setForceHarness(force, id); CGF.sim.stats.injects++; for (const u of CGF.cgfs().filter(x => x.force === force)) CGF.emit('instr-target', u); }
       catch (err) { CGF.log('Harness not changed: ' + err.message, 'alert'); CGF.emit('harness'); }
     },
     setMode(mode) {
