@@ -91,7 +91,7 @@ select:hover { border-color: var(--accent); }
 .tab { background: none; border: 1px solid transparent; border-bottom: none; border-radius: 5px 5px 0 0; color: var(--muted); padding: 5px 8px; }
 .tab.active { background: var(--panel2); border-color: var(--line); color: var(--text); }
 .muted { color: var(--muted); }
-.small { font-size: 11px; }
+.small { font-size: var(--fs-small); }   /* shared scale: nothing an instructor reads is below 12px */
 .slider { display: grid; grid-template-columns: 110px 1fr 52px; gap: 6px; align-items: center; margin: 3px 0; }
 .slider input { width: 100%; }
 .slider span:last-child { text-align: right; font-family: Consolas, monospace; }
