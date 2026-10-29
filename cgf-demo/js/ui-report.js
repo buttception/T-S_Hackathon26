@@ -152,7 +152,7 @@
     const list = ks => ks.length ? ks.map(label).join(', ') : 'none yet';
     const w = rec ? D.why(rec, id) : null, latest = isLatest(e);
     const n = latest ? D.next(id, { record: rec }) : null;
-    return `<section class="rp-trainee" id="t-${esc(e.session_id)}-${esc(id)}">
+    return `<section class="rp-trainee" id="t-${esc(e.session_id)}-${esc(id)}" data-trainee="${esc(id)}" data-session="${esc(e.session_id)}">
       <h3>${esc(nameOf(id))}${seat ? ` <span class="muted">· ${esc(seatLabel(seat))} seat</span>` : ''}</h3>
       ${keyFacts(e, rec, w, n)}
       <p class="rp-narrative">${esc(e.report.narrative)}</p>
@@ -202,7 +202,13 @@
     const blocks = want.sessions.map(sid => sessionSection(sid, want.records[sid] || H.record(sid)));
     $('rpBody').innerHTML = blocks.join('') || '<p>No sessions to report yet. Finish a run on the host page, or open this page with ?trainee=…</p>';
     $('rpSub').textContent = want.sessions.length > 1 ? `${want.sessions.length} sessions` : want.sessions[0] || '';
-    $('rpTrainee').innerHTML = '<option value="">Jump to a trainee…</option>' + H.trainees().map(t => `<option>${esc(t)}</option>`).join('');
+    // Trainees on this page scroll to their section; any other trainee opens their latest report
+    const here = [...document.querySelectorAll('.rp-trainee')].map(sec => ({ id: sec.id, trainee: sec.dataset.trainee, sid: sec.dataset.session }));
+    const multi = new Set(here.map(h => h.sid)).size > 1;
+    const others = H.trainees().filter(t => !here.some(h => h.trainee === t));
+    $('rpTrainee').innerHTML = '<option value="">Jump to a trainee…</option>' +
+      (here.length ? `<optgroup label="In this report">${here.map(h => `<option value="#${esc(h.id)}">${esc(nameOf(h.trainee))}${multi ? ` · ${esc(h.sid)}` : ''}</option>`).join('')}</optgroup>` : '') +
+      (others.length ? `<optgroup label="Other trainees (opens their latest report)">${others.map(t => `<option value="${esc(t)}">${esc(nameOf(t))}</option>`).join('')}</optgroup>` : '');
     window.__rpShown = want;
   }
 
@@ -215,10 +221,35 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
+  // Smooth scroll to a section (instant when the user prefers reduced motion). The hash is left alone, because
+  // it can hold the session record. The section gets rp-jump-target for a moment, as a hook for a highlight.
+  let jumpTimer = null;
+  function jumpTo(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    const h = el.querySelector('h3');
+    if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+    document.querySelectorAll('.rp-jump-target').forEach(x => x.classList.remove('rp-jump-target'));
+    el.classList.add('rp-jump-target');
+    clearTimeout(jumpTimer);
+    jumpTimer = setTimeout(() => el.classList.remove('rp-jump-target'), 2000);
+  }
+
   function init() {
     $('rpPrint').addEventListener('click', () => window.print());
     $('rpExport').addEventListener('click', exportJson);
-    $('rpTrainee').addEventListener('change', e => { if (e.target.value) location.href = 'report.html?trainee=' + encodeURIComponent(e.target.value); });
+    $('rpTrainee').addEventListener('change', e => {
+      const v = e.target.value;
+      if (!v) return;
+      if (v[0] === '#') jumpTo(v.slice(1)); else location.href = 'report.html?trainee=' + encodeURIComponent(v);
+    });
+    // Links to a trainee's section (crew table) scroll the same way
+    $('rpBody').addEventListener('click', e => {
+      const a = e.target.closest('a[href^="#t-"]');
+      if (a) { e.preventDefault(); jumpTo(a.getAttribute('href').slice(1)); }
+    });
     try { render(); } catch (err) { $('rpBody').innerHTML = `<p class="rp-bad">Could not build the report: ${esc(err.message)}</p>`; }
   }
 
