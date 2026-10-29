@@ -79,29 +79,41 @@
       const f = S.forces[k], H = sim.forceHarness[k];
       // teamwork (js/sim/team.js): the harness's value unless the instructor sets one for this force
       const tw = CGF.teamworkOf ? Math.round(CGF.teamworkOf(k) * 100) : 0;
-      return `<div class="forceRow"><b style="color:${f.color}">${esc(f.tag)} · ${esc(f.label)}</b>
-        <select data-force="${k}">${H ? '' : '<option value="">(no harness)</option>'}${harnessOptions(H && H.id, CGF.harnessesFor(k))}</select></div>` +
+      return forceRowHtml(k, true) +
+        `<select data-force="${k}" aria-label="Harness for ${esc(f.label)}">${H ? '' : '<option value="">(no harness)</option>'}${harnessOptions(H && H.id, CGF.harnessesFor(k))}</select>` +
         (H && H.armed ? `<div class="slider"><span class="small muted">Teamwork</span>
         <input type="range" data-team="${k}" min="0" max="100" step="5" value="${tw}" title="How well this force's units share a picture and act together">
         <span id="tw-${k}">${tw}%</span></div>` : '');
     }).join('');
-    $('forceList').innerHTML = Object.entries(S.forces).map(([k, f]) => {
-      const H = sim.forceHarness[k], n = sim.units.filter(u => u.force === k).length;
-      return `<div><b style="color:${f.color}">${esc(f.label)}</b> <span class="muted">· ${k === S.ownShip.force ? 'trainee' : `${n} units · ${H ? esc(H.name) : 'no harness'}`}</span></div>`;
-    }).join('');
+    $('forceList').innerHTML = Object.keys(S.forces).map(k => forceRowHtml(k, true)).join('');   // Setup is the instructor's page
+    $('forces').innerHTML = Object.keys(S.forces).map(k => forceRowHtml(k, false)).join('');    // Trainee tab: no counts, no harnesses (R9)
     $('spawnForce').innerHTML = keys.filter(k => S.spawn[k]).map(k => `<option value="${k}">${esc(S.forces[k].label)}</option>`).join('');
     $('actFilter').innerHTML = '<option value="">All forces</option>' + keys.map(k => `<option value="${k}">${esc(S.forces[k].label)}</option>`).join('');
     $('actFilter').value = actFilter;
-    // Identity key (symbol shape and colour) and force key (label tag, zone colour, current harness)
+    buildLegend();
+    refreshTargets();
+  }
+
+  // One force row everywhere (design R28). The force colour is scenario data, passed as --force (the CSS paints with it).
+  // instr: add the instructor-only part (unit count, harness name); the trainee's markup never contains it (R9).
+  function forceRowHtml(k, instr) {
+    const S = CGF.scenario, sim = CGF.sim, f = S.forces[k], own = k === S.ownShip.force;
+    const H = sim.forceHarness[k], n = sim.units.filter(u => u.force === k).length;
+    const label = esc(f.label) + (own ? ' · you' : '');
+    const detail = instr && !own ? `<span class="instrOnly">${n} unit${n === 1 ? '' : 's'} · <span class="harness">${H ? esc(H.name) : 'no harness'}</span></span>` : '';
+    return `<div class="forceRow" data-force-row="${esc(k)}" style="--force:${f.color}"><i></i><span class="tag">${esc(f.tag)}</span><span class="label">${label}</span><span class="kind">${esc(f.kind || '')}</span>${detail}</div>`;
+  }
+
+  // Map key (design R27): "Symbol = identity" and "Tag and zone = force". Harness names only in the instructor view (R9).
+  function buildLegend() {
+    const S = CGF.scenario, instr = CGF.ui ? CGF.ui.isInstructorView() : false;
     const ID = CGF.style.identity;
     const shapeCss = id => id.shape === 'circle' ? 'border-radius:50%' : id.shape === 'diamond' ? 'transform:rotate(45deg) scale(.8)' : '';
-    $('legend').innerHTML =
-      `<div class="muted">Identity</div>` +
-      ['friend', 'hostile', 'suspect', 'neutral'].map(k => `<div><i style="border-color:${ID[k].color};border-style:${ID[k].dashed ? 'dashed' : 'solid'};background:${U.hexA(ID[k].light, .25)};${shapeCss(ID[k])}"></i>${ID[k].label}</div>`).join('') +
-      `<div class="muted" style="margin-top:4px">Forces</div>` +
-      Object.entries(S.forces).map(([k, f]) =>
-        `<div><b style="color:${f.color};min-width:28px">${esc(f.tag)}</b>${esc(f.label)}${sim.forceHarness[k] ? ` <span class="muted">· ${esc(sim.forceHarness[k].name)}</span>` : ''}</div>`).join('');
-    refreshTargets();
+    $('legendGroups').innerHTML =
+      `<div class="legendGroup"><div class="legendHead">Symbol = identity</div>` +
+      ['friend', 'hostile', 'suspect', 'neutral'].map(k => `<div><i style="border-color:${ID[k].color};border-style:${ID[k].dashed ? 'dashed' : 'solid'};background:${U.hexA(ID[k].light, .25)};${shapeCss(ID[k])}"></i>${ID[k].label}</div>`).join('') + `</div>` +
+      `<div class="legendGroup"><div class="legendHead">Tag and zone = force</div>` +
+      Object.keys(S.forces).map(k => forceRowHtml(k, instr)).join('') + `</div>`;
   }
 
   function refreshTargets() {
@@ -124,6 +136,33 @@
   function updateRunButton() {
     const sim = CGF.sim;
     $('btnRun').textContent = sim.outcome ? 'Finished' : sim.running ? 'Pause' : (sim.t > 0 ? 'Resume' : 'Start');
+    $('btnRun').dataset.state = sim.outcome ? 'finished' : sim.running ? 'pause' : 'play';   // the CSS draws the icon from this (R22)
+  }
+
+  // What ends the run (R23): words for the toggle, the scenario line and the HUD
+  const MODE_TEXT = { exercise: 'Ends at objective', freeplay: 'Free play' };
+  function refreshModeToggle() {
+    const mode = CGF.sim.mode;
+    document.querySelectorAll('#modeToggle [data-mode]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.mode === mode)));
+    const meta = $('scnMeta'); if (meta) meta.textContent = `${CGF.scenarioInfo(CGF.scenario).domain} · ${MODE_TEXT[mode] || mode}`;
+  }
+
+  // Scenario line (R25), mission brief and pinned objective (R26)
+  function buildScenarioInfo() {
+    const S = CGF.scenario, info = CGF.scenarioInfo(S), b = CGF.briefOf(S);
+    const chips = Object.keys(S.forces).filter(k => k !== S.ownShip.force)
+      .map(k => `<span class="chip"><i style="--force:${S.forces[k].color}"></i>${esc(S.forces[k].tag)}</span>`).join('');
+    $('scn').innerHTML = `<div class="scnTop"><span class="scnName">${esc(info.shortName)}</span><span class="scnMeta" id="scnMeta"></span></div><div class="chips">${chips}</div>`;
+    const el = $('brief');
+    el.classList.toggle('muted', !b.structured);   // a plain-string brief renders as before: one muted paragraph
+    el.innerHTML = !b.structured ? esc(b.text) : '<dl class="mission">' +
+      (b.objective ? `<dt>Objective</dt><dd>${esc(b.objective)}</dd>` : '') +
+      (b.situation.length ? `<dt>Situation</dt><dd><ul>${b.situation.map(s => `<li>${esc(s)}</li>`).join('')}</ul></dd>` : '') +
+      (b.constraints ? `<dt>Constraints</dt><dd>${esc(b.constraints)}</dd>` : '') + '</dl>';
+    const pin = $('objPin');
+    pin.hidden = !b.objective;
+    pin.innerHTML = b.objective ? `<b>Objective</b> · ${esc(b.objective)}` : '';
+    refreshModeToggle();
   }
   const injTarget = () => CGF.sim.units.find(u => u.name === $('injTarget').value) || null;
 
@@ -156,7 +195,7 @@
     refreshModeBadge(); refreshEnvelopes();
     const zones = CGF.zonesAt(shown).filter(z => z.owner !== o.force);
     $('hud').textContent =
-      `${U.fmtTime(sim.t)}   x${CGF.params.timeScale}   ${sim.mode === 'freeplay' ? 'FREEPLAY' : 'EXERCISE'}${sim.fog ? '   FOG' : ''}\n` +
+      `${U.fmtTime(sim.t)}   x${CGF.params.timeScale}   ${sim.mode === 'freeplay' ? 'FREE PLAY' : 'ENDS AT OBJECTIVE'}${sim.fog ? '   FOG' : ''}\n` +
       `${o.name}\n` +
       `HDG ${U.pad3(o.hdg)}  (ordered ${U.pad3(o.ordHdg)})\n` +
       `SPD ${o.spd.toFixed(0)} ${S.unitLabels.speed}  (ordered ${o.ordSpd})\n` +
@@ -435,9 +474,8 @@
       const S = CGF.scenario;
       $('log').innerHTML = ''; $('banner').style.display = 'none';
       if (!CGF.demo.isRunning()) $('caption').style.display = 'none'; // a finished demo's last caption goes away
-      $('scenarioName').textContent = S.name; $('brief').textContent = S.brief || '';
       $('scenarioSel').value = S.id;
-      $('modeSel').value = CGF.sim.mode;
+      buildScenarioInfo();
       buildForceControls(); refreshMalfButtons(); updateRunButton(); renderActions();
     });
     CGF.on('harness', () => { buildForceControls(); renderActions(); });
@@ -452,8 +490,15 @@
     CGF.on('params', () => SLIDERS.forEach(s => { $('sl-' + s.key).value = CGF.params[s.key]; $('sv-' + s.key).textContent = s.fmt(CGF.params[s.key]); }));
     $('btnDemo').addEventListener('click', () => CGF.demo.isRunning() ? CGF.demo.stop() : CGF.demo.start($('demoSel').value, { loop: $('demoLoop').checked }));
     CGF.on('outcome', (kind, text) => { const b = $('banner'); b.className = kind || ''; b.textContent = text; b.style.display = kind ? 'block' : 'none'; updateRunButton(); });
-    CGF.on('mode', () => { $('modeSel').value = CGF.sim.mode; updateRunButton(); });
-    $('modeSel').addEventListener('change', e => CGF.inject.setMode(e.target.value));
+    CGF.on('mode', () => { refreshModeToggle(); updateRunButton(); });
+    $('modeToggle').addEventListener('click', e => {
+      const b = e.target.closest('[data-mode]');
+      if (b) CGF.inject.setMode(b.dataset.mode);
+    });
+    // The map key remembers whether it was open (per browser; the page works without storage)
+    const lg = $('legend');
+    try { if (localStorage.getItem('cgf.legendOpen') === '0') lg.open = false; } catch (e) { /* storage blocked */ }
+    lg.addEventListener('toggle', () => { try { localStorage.setItem('cgf.legendOpen', lg.open ? '1' : '0'); } catch (e) { /* storage blocked */ } });
 
     $('btnRun').addEventListener('click', CGF.actions.toggleRun);
     $('btnReset').addEventListener('click', () => CGF.loadScenario(CGF.scenario.id, currentHarnessIds()));
@@ -513,6 +558,7 @@
       document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === t));
       document.querySelectorAll('[data-pane]').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== activeTab));
       if (activeTab === 'cgflog') renderActions();
+      if (CGF.sim) buildLegend();   // harness names show in the key only on the instructor tab (R27)
       refresh();
     }));
 

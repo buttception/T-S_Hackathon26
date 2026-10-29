@@ -13,13 +13,17 @@
     <div id="hud"></div>
     <div id="banner"></div>
     <div id="malfBar"></div>
-    <div id="legend"></div>
+    <div id="objPin" hidden></div>
+    <!-- Map key (design R27): collapsible; js/ui.js fills the groups (harness names only in the instructor view) -->
+    <details id="legend" open><summary>Map key</summary><div class="legendGroups" id="legendGroups"></div></details>
     <div id="caption"></div>
   </div>
 
   <aside id="panel">
     <div id="panelHead">
       <div class="row"><h1 id="title" class="grow">CGF Maritime Trainer <small>· loading…</small></h1><span id="modeBadge" class="modeBadge mode-none"></span></div>
+      <!-- Scenario line (design R25): short name, domain, run mode, one chip per non-trainee force; js/ui.js fills it -->
+      <div class="scn" id="scn"></div>
       <div class="row">
         <button id="btnRun" class="primary">Start</button>
         <button id="btnReset">Restart</button>
@@ -27,11 +31,10 @@
           <option value="15">×15</option><option value="30">×30</option><option value="60">×60</option>
           <option value="120">×120</option><option value="240">×240</option><option value="480">×480</option>
         </select>
-        <select id="modeSel" title="Exercise: objective and failure state end the run. Freeplay: open-ended, nothing ends it.">
-          <option value="exercise">Exercise</option>
-          <option value="freeplay">Freeplay</option>
-        </select>
-        <span class="muted small" id="scenarioName"></span>
+      </div>
+      <!-- What ends the run (design R23): not adaptive/fixed (that is the badge above) -->
+      <div class="row">
+        <div class="segToggle" id="modeToggle" role="radiogroup" aria-label="Run ends"><span class="segLabel">Run ends</span><button role="radio" aria-checked="true" data-mode="exercise" title="The objective and the failure state end the run">At objective</button><button role="radio" aria-checked="false" data-mode="freeplay" title="Open-ended: nothing ends the run">Never (free play)</button></div>
       </div>
       <div class="row">
         <span class="muted small">Demo</span>
@@ -93,7 +96,10 @@
       <!-- TRAINEE -->
       <section data-pane="trainee">
         <h2>Mission</h2>
-        <div id="brief" class="muted"></div>
+        <div id="brief"></div>
+
+        <h2>Forces</h2>
+        <div id="forces"></div>
 
         <h2>Contacts</h2>
         <div id="contacts"></div>
