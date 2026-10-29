@@ -1,5 +1,5 @@
 /* Design tokens: colour. Owner: Eevee (design/PRINCIPLES.md, design/ui-audit.md finding A).
-   DRAFT for review: not yet loaded by any page.
+   Loaded by css/style.css (@import), so every page that links style.css gets these.
 
    Colours are split into groups that never stand in for each other:
    - force identity: who a unit is (MIL-STD-2525 / APP-6). Map, symbols and force names only.
