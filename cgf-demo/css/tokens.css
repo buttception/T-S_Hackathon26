@@ -10,7 +10,7 @@
 
 :root {
   /* Surfaces and text */
-  --surface-bg: #081421;        /* page background. Futuristic palette "Ion blue", adopted 2026-10-30 */
+  --surface-bg: #121921;        /* page background. Futuristic palette "Ion blue", adopted 2026-10-30; bg #121921 from 2026-10-30 (Eevee) */
   --surface-panel: #0d1c30;     /* side panels, headers */
   --surface-raised: #12243c;    /* cards, inputs, buttons */
   --surface-sunken: #0a1828;    /* logs, code, charts */
@@ -31,7 +31,7 @@
   /* Glow: only on things that already mean "look here" (primary action, active card or tab, keyboard focus) */
   --ui-accent-glow: rgba(47, 157, 255, 0.35);
   --ui-accent-glow-strong: rgba(47, 157, 255, 0.55);
-  --page-glow: rgba(47, 157, 255, 0.22);       /* screen only; text keeps 4.6:1 or better on its brightest point */
+  --page-glow: rgba(47, 157, 255, 0.18);       /* screen only; accent text keeps 4.7:1 on its brightest point */
   --page-glow-ai: rgba(185, 143, 255, 0.10);
 
   /* Force identity, mirrors CGF.style.identity in js/engine.js. Never used for status. */
