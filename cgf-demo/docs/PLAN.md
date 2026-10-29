@@ -17,6 +17,14 @@ Win on the published criteria by finishing one sharp loop, not by building many 
 
 Rule: nothing in Phase 2 starts until Gate G1 passes. An unfinished core loses more readiness marks than any enhancement earns.
 
+## 2a. What each CGF must do (added 2026-10-29, JL)
+
+1. **Work together and share information.** CGFs in a force share a picture (what they know about the ownship and what other units have done), and act on it as a group.  Today units act independently; the only cross-unit link is the `conflict` factor. Task D6.
+2. **React to the trainee's current actions.** Exists: tension factors and harness states. Task D2 adds the live success-rate signal.
+3. **Customise from the trainee's past training.** The profile picks the competency to exercise. Task D2 (tailoring on `link-init`).
+
+Sharing is information only; it stays inside the envelope and cannot change scores or outcomes (invariant 8).
+
 ## 2. The merged idea
 
 The repo's CGFs already react to what the trainee does right now: a tension score from weighted factors, with harness states that escalate. The adaptation layer adds a second, slower signal: what the trainee is known to be weak at.

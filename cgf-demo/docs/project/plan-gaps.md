@@ -54,6 +54,18 @@
 | 27 | **Line endings.** Git warns that LF becomes CRLF on this machine. Add a `.gitattributes` (`* text=auto eol=lf`) before four people on different machines commit, or diffs and file-hash checks will churn. |
 | 28 | **Public repo hygiene.** The repo is public. Roster names and trainee data must stay synthetic; add a one-line check to the merge checklist. Personal emails stay out of docs. |
 
+## D2. CGF capabilities added 2026-10-29 (JL)
+
+Devin's CGFs must (1) work together and share information, (2) react to the trainee's current actions, (3) customise from the trainee's past training. Now in `LANES.md` (D6, D7) and `PLAN.md` §2a.
+
+| # | Gap | Owner |
+|---|---|---|
+| 29 | **Cooperation does not exist.** Units are independent in `engine.js`; only the `conflict` factor links them, and only for civil traffic. A shared picture, group escalation and handover need new engine state. | Devin (D6) |
+| 30 | **No contract for shared information.** Events (§4) and adjustments (§7) have no `team` cause and no field saying which unit informed which. Needs a Lead decision before D6 and D7 emit anything. | JL |
+| 31 | **Determinism and cost.** Sharing must be order-independent (units updated in a fixed order, picture read before write) or invariant 3 breaks. | Devin |
+| 32 | **Demo beat is missing.** PLAN §8 shows history and live behaviour, not two CGFs cooperating. Add one beat or the feature earns no marks. | JL |
+| 33 | **Competency link.** Which competencies cooperation exercises (for example `hail_discipline` ignored, so the whole force escalates) is not mapped. | JL and Devin |
+
 ## E. Housekeeping found while reading
 
 - The vault copy of `overview.md` says "Nothing is built yet" in Status, while the same page lists the allocation page and link as built. The repo copy is the source of truth; sync the vault copy.
