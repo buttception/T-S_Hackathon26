@@ -1,5 +1,6 @@
 // End-of-training report page (report.html): the debrief for every trainee in a session, with their
-// history and what to work on next. Builds nothing itself; reads Report and History.
+// history and what to work on next. Builds nothing itself; reads Report, History and Debrief (why the CGFs
+// acted as they did, and how this session calibrates the trainee's next one).
 //
 // What it shows, by URL:
 //   report.html?session=<id>#record=<session record>   opened by the host when a run ends (Report.finishSession)
@@ -11,7 +12,7 @@
 // Owner: Glenda (report lane).
 (function () {
   'use strict';
-  const CGF = window.CGF, R = CGF.Report, H = CGF.History;
+  const CGF = window.CGF, R = CGF.Report, H = CGF.History, D = CGF.Debrief;
   const $ = id => document.getElementById(id);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const label = k => R.LABELS[k] || k || '—';
@@ -76,9 +77,9 @@
     const seatOf = t => rec ? (rec.crew.find(c => c.trainee_id === t) || {}).seat : null;
     return `<table class="rp-table rp-crew"><thead><tr><th>Trainee</th><th>Seat</th><th>Events (success / fail)</th><th>Strongest</th><th>Needs most work</th><th>Next focus</th></tr></thead><tbody>` +
       entries.map(e => {
-        const f = e.report.facts, [s, fl] = totals(f), bw = bestAndWorst(f), ctx = H.context(e.trainee_id, 5);
+        const f = e.report.facts, [s, fl] = totals(f), bw = bestAndWorst(f);
         return `<tr><td><a href="#t-${esc(e.session_id)}-${esc(e.trainee_id)}">${esc(e.trainee_id)}</a></td><td>${esc(seatLabel(seatOf(e.trainee_id)))}</td>` +
-          `<td>${s} / ${fl}</td><td class="rp-good">${esc(label(bw.best))}</td><td class="rp-bad">${esc(label(bw.worst))}</td><td>${esc(label(ctx.weak[0]))}</td></tr>`;
+          `<td>${s} / ${fl}</td><td class="rp-good">${esc(label(bw.best))}</td><td class="rp-bad">${esc(label(bw.worst))}</td><td>${esc(label(D.next(e.trainee_id, { record: rec }).target))}</td></tr>`;
       }).join('') + '</tbody></table>';
   }
 
@@ -104,6 +105,29 @@
       }).join('') + '</tbody></table>';
   }
 
+  // Why the CGFs got sharper or eased off for this trainee, phase by phase
+  function whySection(e, rec) {
+    if (!rec) return '';
+    const w = D.why(rec, e.trainee_id);
+    const dirText = p => p.source === 'instructor_steer' ? '◆ Instructor steer' : p.direction === 'up' ? '▲ Sharper (harder)' : p.direction === 'down' ? '▼ Eased off (easier)' : 'Held';
+    const span = p => p.t0 === p.t1 ? mmss(p.t0) : `${mmss(p.t0)}–${mmss(p.t1)}`;
+    const rows = w.phases.map(p => `<tr><td>${span(p)}</td><td class="${p.direction === 'up' ? 'rp-bad' : p.direction === 'down' ? 'rp-good' : ''}">${dirText(p)}</td>` +
+      `<td>${esc(label(p.target))}</td><td>${p.changes.map(c => `${esc(c.behaviour)} <span class="muted small">(${esc(c.setting)} ${c.old} → ${c.new}${c.clamped ? ', capped' : ''})</span>`).join('<br>')}</td>` +
+      `<td>${esc(p.reason)}${p.evidence.moments.length ? `<br><span class="muted small">Evidence: ${p.evidence.moments.map(m => `${mmss(m.t)} ${esc((R.EVENT_LABELS[m.type] || m.type).toLowerCase())}`).join('; ')}</span>` : ''}</td></tr>`).join('');
+    return `<div class="rp-why"><h4>Why the CGFs acted this way</h4>${w.lines.map(l => `<p>${esc(l)}</p>`).join('')}` +
+      (rows ? `<table class="rp-table rp-why-table"><thead><tr><th>When</th><th>CGF behaviour</th><th>Aimed at</th><th>What the CGFs did</th><th>Why</th></tr></thead><tbody>${rows}</tbody></table>` : '') +
+      (w.phases.length && w.crew_phases ? `<p class="muted small">${w.crew_phases} other adjustment${w.crew_phases === 1 ? '' : 's'} in this run served a crewmate's seat.</p>` : '') + '</div>';
+  }
+
+  // How this trainee's history sets up the CGFs for their next session (only on their latest session)
+  function nextSection(e, rec) {
+    const latest = H.list(e.trainee_id).slice(-1)[0];
+    if (!latest || latest.session_id !== e.session_id)
+      return '<div class="rp-next"><h4>Calibration for the next session</h4><p class="muted small">Shown on the trainee\u2019s latest session; open their latest report to see it.</p></div>';
+    const n = D.next(e.trainee_id, { record: rec });
+    return `<div class="rp-next"><h4>Calibration for the next session</h4>${n.lines.map(l => `<p>${esc(l)}</p>`).join('')}</div>`;
+  }
+
   function traineeSection(e, rec) {
     const id = e.trainee_id, ctx = H.context(id, 5), f = e.report.facts;
     const seat = rec ? (rec.crew.find(c => c.trainee_id === id) || {}).seat : null;
@@ -113,8 +137,9 @@
       <h3>${esc(id)}${seat ? ` <span class="muted">· ${esc(seatLabel(seat))}</span>` : ''}</h3>
       <p class="rp-narrative">${esc(e.report.narrative)}</p>
       ${competencyTable(e)}
-      <div class="rp-context"><b>${ctx.sessions === 1 ? 'From this session' : `Across the last ${ctx.sessions} sessions`}</b> · weak: ${esc(list(ctx.weak))} · strong: ${esc(list(ctx.strong))}.
-        ${ctx.weak.length ? `Next session should exercise ${esc(label(ctx.weak[0]).toLowerCase())}.` : ''}</div>
+      ${whySection(e, rec)}
+      ${nextSection(e, rec)}
+      <div class="rp-context"><b>${ctx.sessions === 1 ? 'From this session' : `Across the last ${ctx.sessions} sessions`}</b> · weak: ${esc(list(ctx.weak))} · strong: ${esc(list(ctx.strong))}.</div>
       <details class="rp-history-wrap"${H.list(id).length > 1 ? ' open' : ''}><summary>Training history (${H.list(id).length} session${H.list(id).length === 1 ? '' : 's'})</summary>${historyTable(id, focus)}</details>
     </section>`;
   }
