@@ -41,7 +41,7 @@
 .crew { margin: 8px 0; }
 .crewHead { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 2px; }
 .seat { border: 1px solid var(--line); border-radius: 6px; padding: 8px; margin: 5px 0; cursor: pointer; background: var(--panel2); }
-.seat.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.seat.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 20px var(--ui-accent-glow); }
 .seatHead { display: flex; align-items: center; gap: 8px; }
 .seatText { color: var(--muted); font-size: 11.5px; margin: 2px 0 4px; }
 .seatWho { margin: 2px 0; }

@@ -19,6 +19,12 @@ HTML and JavaScript files.
 
 ## 2. Run it
 
+**One click, with the local LLM:** double-click `run-demo.bat`. It starts Ollama if needed and loads the model, serves
+the folder on localhost, and opens the vision demo full screen. When the demo ends it shows Ben's debrief, then the
+trainee data. `run-demo.bat --no-open` checks the set-up without opening the browser.
+
+**By hand:**
+
 1. Open `runtime.html` in Chrome or Edge (double-click it, or drag it into the browser).
 2. Press **Start**, or pick a demo next to **Play demo**.
 

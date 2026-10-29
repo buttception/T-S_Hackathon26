@@ -8,24 +8,45 @@
 #cohortApp header h1 { margin: 0; }
 #cohortApp a.btn { text-decoration: none; color: var(--text); }
 #cohortApp main { padding: 10px 14px 24px; max-width: 1400px; }
-.cohort-caption { background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: 6px; padding: 8px 12px; }
+.cohort-caption { background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: 8px; padding: var(--space-3) var(--space-4); }
 
-.cohort-table { border-collapse: collapse; width: 100%; font-size: 13px; }
-.cohort-table th { text-align: left; color: var(--text-muted); font-weight: 400; padding: 5px 8px; white-space: nowrap; }
-.cohort-table td { padding: 5px 8px; border-top: 1px solid var(--border); }
+.cohort-table { border-collapse: collapse; width: 100%; font-size: var(--fs-body); }
+/* Column headers: caption level, uppercase and tracked, like every table on the other pages; row headers stay body size */
+.cohort-table thead th { text-align: left; color: var(--text-muted); font-size: var(--fs-caption); font-weight: var(--fw-medium); text-transform: uppercase;
+  letter-spacing: .04em; padding: var(--space-2) var(--space-3); white-space: nowrap; vertical-align: bottom; }
+.cohort-table tbody th { text-align: left; font-weight: var(--fw-regular); padding: var(--space-2) var(--space-3); white-space: nowrap; }
+.cohort-table td { padding: var(--space-2) var(--space-3); border-top: 1px solid var(--border); }
 .cohort-table td.num { text-align: right; white-space: nowrap; }
-.cohort-table tbody th { color: var(--text); font-family: Consolas, monospace; }
-.cohort-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; }
+.cohort-table tbody th { color: var(--text); font-family: var(--font-mono); border-top: 1px solid var(--border); }
+.cohort-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
 
 .cohort-bar { display: inline-block; vertical-align: middle; width: 110px; height: 8px; background: var(--data-track); border-radius: 4px; overflow: hidden; }
 .cohort-bar i { display: block; height: 100%; background: var(--data-fill); }
-.val { display: inline-block; vertical-align: middle; margin-left: 6px; font-family: Consolas, monospace; }
+.val { display: inline-block; vertical-align: middle; margin-left: 6px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
 /* The heatmap: five steps of one neutral hue, low to high, from the data scale. No red or green. */
-.cohort-heatmap td.heat { text-align: center; font-family: Consolas, monospace; min-width: 64px; }
+/* Competency headers may wrap to two lines, so all nine columns fit without a sideways scroll (P2) */
+.cohort-heatmap thead th { white-space: normal; min-width: 72px; }
+.cohort-heatmap td.heat { text-align: center; font-family: var(--font-mono); font-variant-numeric: tabular-nums; min-width: 64px; }
 .heat--0 { background: var(--data-0); color: var(--text); }
 .heat--1 { background: var(--data-1); color: var(--text-strong); }
 .heat--2 { background: var(--data-2); color: var(--text-on-accent); }
 .heat--3 { background: var(--data-3); color: var(--text-on-accent); }
 .heat--4 { background: var(--data-4); color: var(--text-on-accent); }
 .heat--none { color: var(--text-muted); }
+
+/* ---- Type and spacing: the shared six-level scale from tokens.css, laid out like the allocation page (2026-10-29) */
+#cohortApp { font-family: var(--font-ui); font-size: var(--fs-body); line-height: var(--lh-body); }
+#cohortApp header { padding: var(--space-4) var(--space-5); }
+#cohortApp header h1 { font-size: var(--fs-page); font-weight: var(--fw-medium); line-height: var(--lh-tight); color: var(--text-strong); }
+/* Subtitle on its own line; the markup starts it with "· ", so the dot and its space are pulled left and clipped */
+#cohortApp header h1 small { display: block; margin-top: var(--space-1); font-size: var(--fs-body); font-weight: var(--fw-regular);
+  color: var(--text-muted); text-indent: -0.62em; clip-path: inset(0); }
+#cohortApp header h1 small::first-letter { text-transform: uppercase; }
+#cohortApp .btn, #cohortApp button { font-size: var(--fs-body); min-height: 34px; padding: 6px var(--space-3); white-space: nowrap; }
+#cohortApp :focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+#cohortApp main { padding: var(--space-5) var(--space-5) var(--space-6); }
+#cohortApp main > p, #cohortApp main > .row { margin: var(--space-3) 0; }
+#cohortApp h2 { font-size: var(--fs-section); font-weight: var(--fw-medium); line-height: var(--lh-tight); text-transform: none; letter-spacing: 0;
+  color: var(--text-strong); border-bottom: none; padding: 0; margin: var(--space-6) 0 var(--space-3); }
+#cohortApp .small { font-size: var(--fs-small); }

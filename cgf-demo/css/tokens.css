@@ -10,22 +10,29 @@
 
 :root {
   /* Surfaces and text */
-  --surface-bg: #0b1420;        /* page background */
-  --surface-panel: #111c2b;     /* side panels, headers */
-  --surface-raised: #16243a;    /* cards, inputs, buttons */
-  --surface-sunken: #0d1726;    /* logs, code, charts */
-  --border: #24364d;
-  --border-strong: #3a5577;
-  --text: #d6e2f0;              /* 13.7:1 on panel */
-  --text-strong: #e6edf5;
-  --text-muted: #8aa0b8;        /* 6.4:1 on panel */
-  --text-on-accent: #04121f;
+  --surface-bg: #081421;        /* page background. Futuristic palette "Ion blue", adopted 2026-10-30 */
+  --surface-panel: #0d1c30;     /* side panels, headers */
+  --surface-raised: #12243c;    /* cards, inputs, buttons */
+  --surface-sunken: #0a1828;    /* logs, code, charts */
+  --border: #1e3653;
+  --border-strong: #4a78a8;      /* 3.4:1 on raised: input and button outlines (WCAG 1.4.11) */
+  --text: #e1eaf4;              /* 14.1:1 on panel */
+  --text-strong: #f7fafd;       /* 16.4:1 on panel */
+  --text-muted: #93abc6;        /* 7.2:1 on panel, 6.6:1 on raised */
+  --text-on-accent: #03101f;    /* 6.7:1 on the accent, 5.3:1 on --ui-accent-fill-end */
 
   /* Interactive: buttons, focus, selection (blue = interactive, as on the web) */
-  --ui-accent: #4da6ff;         /* 6.7:1 on panel */
-  --ui-accent-strong: #2f6db0;
-  --ui-accent-bg: #1d4a7a;
-  --ui-selected-bg: #13263d;
+  --ui-accent: #2f9dff;         /* Ion blue. 6.0:1 on panel, 5.5:1 on raised. Kept blue, not cyan, so it never reads as
+                                   the friendly force colour (P3) */
+  --ui-accent-strong: #1f6fd6;
+  --ui-accent-bg: #0b3a73;      /* text-strong on it 10.7:1 */
+  --ui-selected-bg: #0f2a4c;    /* accent text on it 5.1:1 */
+  --ui-accent-fill-end: #2387f0; /* bottom of the filled primary button gradient */
+  /* Glow: only on things that already mean "look here" (primary action, active card or tab, keyboard focus) */
+  --ui-accent-glow: rgba(47, 157, 255, 0.35);
+  --ui-accent-glow-strong: rgba(47, 157, 255, 0.55);
+  --page-glow: rgba(47, 157, 255, 0.22);       /* screen only; text keeps 4.6:1 or better on its brightest point */
+  --page-glow-ai: rgba(185, 143, 255, 0.10);
 
   /* Force identity, mirrors CGF.style.identity in js/engine.js. Never used for status. */
   --force-friend: #00a8dc;   --force-friend-light: #80e0ff;
@@ -37,17 +44,17 @@
   /* Status: hues chosen to sit apart from the force colours. Pair with an icon or word. */
   --status-critical: #ff5fc8;      /* magenta: failure, error, blocking problem. 6.3:1 */
   --status-critical-bg: #3a1233;
-  --status-critical-text: #ffd1ef;
+  --status-critical-text: #ffd6f1;
   --status-caution: #ffa94d;       /* orange: needs attention soon (malfunction, hail pending). 9:1 */
   --status-caution-bg: #3d2610;
-  --status-caution-text: #ffe1c2;
-  --status-done: #e6edf5;          /* complete or normal: no hue, shown with a check icon */
-  --status-done-bg: #1c2b40;
+  --status-caution-text: #ffe4c7;
+  --status-done: #f7fafd;          /* complete or normal: no hue, shown with a check icon */
+  --status-done-bg: #1a2d47;
 
   /* Source of an action (CGF log, reasoning panel) */
-  --source-ai: #b58cff;            /* engine adaptation and LLM-parsed commands. 6.7:1 */
-  --source-ai-bg: #251a3d;
-  --source-ai-text: #e6d9ff;
+  --source-ai: #b98fff;            /* engine adaptation and LLM-parsed commands. 6.9:1 */
+  --source-ai-bg: #24183f;
+  --source-ai-text: #ebdfff;
   --source-instructor: var(--ui-accent);   /* a person did it */
   --source-cgf: var(--text-muted);         /* the CGF's own behaviour */
 
@@ -55,11 +62,11 @@
   --mode-adaptive: var(--source-ai);       /* the AI is shaping the run */
   --mode-adaptive-bg: var(--source-ai-bg);
   --mode-fixed: var(--text-strong);        /* standardised, nothing adapts; shown with a lock icon */
-  --mode-fixed-bg: #1c2b40;
+  --mode-fixed-bg: #1a2d47;
 
   /* Data: one neutral hue, so a low value never reads as hostile or as failure */
-  --data-track: #1c2b40;
-  --data-fill: #9fb3c8;            /* 8:1 on panel */
+  --data-track: #1a2d47;
+  --data-fill: #a3bad3;            /* 8.6:1 on panel, 7:1 on its track */
   --data-thin: 0.45;               /* opacity when evidence is thin */
   --data-prior: 0.25;              /* opacity when there is no evidence yet */
   --data-focus: var(--source-ai);  /* outline on the competency the AI is targeting */
