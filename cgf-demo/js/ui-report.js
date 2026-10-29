@@ -166,19 +166,30 @@
     </section>`;
   }
 
+  // Key moments, in two sections: what the trainees did, then what the CGFs changed
   function momentsSection(rec) {
     if (!rec) return '<p class="muted small">Key moments are available when the report is opened from the end of a run.</p>';
-    const ev = rec.events;
-    const adj = rec.adjustments;
-    return `<details class="rp-moments"><summary>Key moments (${ev.length} events, ${adj.length} CGF adjustments)</summary>
-      <table class="rp-table"><thead><tr><th>Time</th><th>Trainee</th><th>What happened</th><th>Competency</th><th>Result</th></tr></thead><tbody>` +
-      ev.map(e => `<tr><td>${mmss(e.t)}</td><td>${esc(e.trainee_id)}</td><td>${esc(R.EVENT_LABELS[e.type] || e.type)}</td><td>${esc(e.competency ? label(e.competency) : '—')}</td>` +
-        `<td class="${e.outcome === 'success' ? 'rp-good' : e.outcome === 'fail' ? 'rp-bad' : ''}">${esc(e.outcome || '—')}</td></tr>`).join('') +
-      `</tbody></table>` +
-      (adj.length ? `<table class="rp-table"><thead><tr><th>Time</th><th>Difficulty</th><th>Setting</th><th>Change</th><th>Target</th><th>Source</th></tr></thead><tbody>` +
+    const ev = rec.events, adj = rec.adjustments;
+    // Who an adjustment served: its seat, or for records without one, the trainee behind its evidence events
+    const byId = {};
+    for (const e of ev) byId[e.event_id] = e;
+    const servedBy = a => {
+      if (a.seat) { const t = (rec.crew.find(c => c.seat === a.seat) || {}).trainee_id; return `${seatLabel(a.seat)}${t ? ` (${t})` : ''}`; }
+      const t = (a.evidence_event_ids || []).map(id => (byId[id] || {}).trainee_id).find(Boolean);
+      return t || '—';
+    };
+    const events = `<details class="rp-moments rp-moments-events"><summary>Trainee events (${ev.length})</summary>` +
+      (ev.length ? `<table class="rp-table"><thead><tr><th>Time</th><th>Trainee</th><th>What happened</th><th>Competency</th><th>Result</th></tr></thead><tbody>` +
+        ev.map(e => `<tr><td>${mmss(e.t)}</td><td>${esc(e.trainee_id)}</td><td>${esc(R.EVENT_LABELS[e.type] || e.type)}</td><td>${esc(e.competency ? label(e.competency) : '—')}</td>` +
+          `<td class="${e.outcome === 'success' ? 'rp-good' : e.outcome === 'fail' ? 'rp-bad' : ''}">${esc(e.outcome || '—')}</td></tr>`).join('') +
+        '</tbody></table>' : '<p class="muted small">No events were recorded in this session.</p>') + '</details>';
+    const adjustments = `<details class="rp-moments rp-moments-adjustments"><summary>CGF adjustments (${adj.length})</summary>` +
+      (adj.length ? `<table class="rp-table"><thead><tr><th>Time</th><th>Difficulty</th><th>What the CGFs did</th><th>Setting</th><th>Change</th><th>Aimed at</th><th>For</th><th>Source</th></tr></thead><tbody>` +
         adj.map(a => `<tr><td>${mmss(a.t)}</td><td>${a.pressure_direction === 'up' ? '▲ raised' : a.pressure_direction === 'down' ? '▼ lowered' : 'held'}</td>` +
-          `<td>${esc(a.setting)}</td><td>${a.old} → ${a.new}${a.clamped ? ' (clamped)' : ''}</td><td>${esc(label(a.target_competency))}</td><td>${esc(a.source)}</td></tr>`).join('') +
+          `<td>${esc(D.behaviour(a.setting, a.old, a.new))}</td><td>${esc(a.setting)}</td><td>${a.old} → ${a.new}${a.clamped ? ' (clamped)' : ''}</td>` +
+          `<td>${esc(label(a.target_competency))}</td><td>${esc(servedBy(a))}</td><td>${esc(a.source)}</td></tr>`).join('') +
         '</tbody></table>' : '<p class="muted small">No CGF adjustments in this session.</p>') + '</details>';
+    return `<div class="rp-moments-wrap"><h3>Key moments</h3>${events}${adjustments}</div>`;
   }
 
   function sessionSection(sid, rec) {
