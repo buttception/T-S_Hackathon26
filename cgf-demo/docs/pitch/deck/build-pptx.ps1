@@ -150,14 +150,14 @@ Eyebrow $s "04 $dot Allocate" $ACCENT
 Block $s 48 176 250 'Six platforms' 'Fighter, warship and tank, two models each, with their own seats.'
 Block $s 48 282 250 'Know the trainee' 'Competency bars and focus areas per seat, plus a private note.'
 Block $s 48 388 250 'Practice or assess' 'The mode badge, run length and the envelope are set before start.'
-[void](Pic $s 'allocate_c.png' 322 176 590 'The trainee allocation page: warship crew seats on the left, trainee pool with competency bars on the right')
+[void](Pic $s 'allocate.png' 322 176 590 'The trainee allocation page: warship crew seats on the left, trainee pool with competency bars on the right')
 Footer $s "ADAPTIVE CGF TRAINER  $dot  SYNTHETIC TRAINEES" $MUTED
 Notes $s "Live beat if the demo runs: pick the warship, press Suggest demo crew, point at the competency bars and the likely first target, then the Adaptive practice badge. Fallback: this screenshot. All names are synthetic."
 
 # ---------------------------------------------------------------- 6 run
 $s = NewSlide $BG 'The enemy reacts to this crew, not a script' 36 62 864 100 $STRONG
 Eyebrow $s "05 $dot Run" $ACCENT
-[void](Pic $s 'runtime_c.png' 48 176 590 'The runtime: a strait transit map with red, black, pirate and neutral contacts, and the contact list beside it')
+[void](Pic $s 'runtime.png' 48 176 590 'The runtime: a strait transit map with red, black, pirate and neutral contacts, and the contact list beside it')
 Block $s 662 176 250 'Targets the focus area' 'The first pressure lands on the competency the profile says needs it.'
 Block $s 662 282 250 'Forces cooperate' 'A unit that meets a response shares it, and nearby units join in.'
 Block $s 662 388 250 'Invisible to the trainee' 'The trainee sees an exercise. The reasoning shows to the instructor.'
@@ -219,14 +219,14 @@ Eyebrow $s "08 $dot Debrief" $ACCENT
 Block $s 48 176 250 'One debrief per trainee' 'Events handled, focus area, and why the CGFs acted.'
 Block $s 48 282 250 'Pressure over time' "A chart of CGF pressure against the trainee${ap}s success rate."
 Block $s 48 388 250 'Then the update' 'The profile and history change, and the next target is predicted.'
-[void](Pic $s 'report_c.png' 322 176 590 'The end-of-training report: a table of trainees, a debrief with focus area, and a chart of CGF pressure')
+[void](Pic $s 'report.png' 322 176 590 'The end-of-training report: a table of trainees, a debrief with focus area, and a chart of CGF pressure')
 Footer $s "ADAPTIVE CGF TRAINER  $dot  SEEDED SESSION" $MUTED
 Notes $s "Code computes every figure in the report; the narrative is a template. The order is fixed: report, then competency update, then the history entry. The screenshot is a seeded session, not a live run."
 
 # ---------------------------------------------------------------- 10 cohort
 $s = NewSlide $BG 'Where the whole intake is developing' 36 62 864 100 $STRONG
 Eyebrow $s "09 $dot Cohort" $ACCENT
-[void](Pic $s 'cohort_c.png' 48 176 590 'The cohort overview: competency means across 22 trainees and a heatmap by trainee')
+[void](Pic $s 'cohort.png' 48 176 590 'The cohort overview: competency means across 22 trainees and a heatmap by trainee')
 Block $s 662 176 250 '22 synthetic trainees' 'A heatmap of competencies, with the evidence behind each cell.'
 Block $s 662 282 250 '5 of 9 measured' "The other four read $([char]0x201C)no evidence$([char]0x201D) until the simulator emits events for them."
 Block $s 662 388 250 'For the curriculum' 'Not for ranking people.'
