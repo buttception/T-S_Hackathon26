@@ -63,8 +63,10 @@
 
   function validateProfile(p) {
     if (!isObj(p)) return ['profile: must be an object'];
-    const errs = extraKeys(p, ['trainee_id', 'sessions_completed', 'competencies', 'updated_at_session'], 'profile');
+    const errs = extraKeys(p, ['trainee_id', 'name', 'sessions_completed', 'competencies', 'updated_at_session'], 'profile');
     if (!isStr(p.trainee_id) || !ID_RE.test(p.trainee_id)) errs.push('profile.trainee_id: lower-case id required');
+    // The display name is optional (profiles saved before it existed have none). It is a synthetic sample name.
+    if (p.name !== undefined && (!isStr(p.name) || p.name.length > 40)) errs.push('profile.name: a string of 1 to 40 characters');
     if (!Number.isInteger(p.sessions_completed) || p.sessions_completed < 0) errs.push('profile.sessions_completed: integer >= 0 required');
     if (!isObj(p.competencies)) errs.push('profile.competencies: must be an object');
     else for (const [k, c] of Object.entries(p.competencies)) {

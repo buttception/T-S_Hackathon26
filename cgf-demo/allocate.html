@@ -15,13 +15,14 @@
   </header>
 
   <main>
-    <section id="rosterPane">
+    <section id="rosterPane" style="min-width:0"><!-- lets the wide roster scroll inside its own column; Eevee can move this into allocate.css -->
       <div class="row">
         <select id="weakAt"></select>
         <span class="muted small grow" id="rosterCount"></span>
         <span class="muted small">Bars: competency mean. Faded: not enough evidence. Click a column to sort.</span>
       </div>
       <div class="tableWrap"><table id="roster"></table></div>
+      <div id="detail" class="platformInfo"></div>
     </section>
 
     <aside id="setupPane">
@@ -33,7 +34,8 @@
 
       <h2>Crews <span class="muted small">(one per pane)</span></h2>
       <div id="slots"></div>
-      <div class="row"><button id="btnSwap">Swap crews A and B</button><button id="btnReset">Reset</button></div>
+      <div id="compare" class="platformInfo"></div>
+      <div class="row"><button id="btnSuggest" title="Fill both crews: the sharpest contrast on one competency in one seat, the other seats matched on level and experience">Suggest demo pair</button><button id="btnSwap">Swap crews A and B</button><button id="btnReset">Reset</button></div>
 
       <h2>Run options (shared by both panes)</h2>
       <label class="field"><span>Scenario</span><select id="optScenario"></select></label>
@@ -48,8 +50,10 @@
       <label class="field"><span>Evaluate every (sim s)</span><input type="number" id="optInterval" min="1" step="1"></label>
       <div class="err" id="err_eval_interval_s"></div>
 
-      <h2>Envelope <span class="muted small">(default; edited in the Setup panel)</span></h2>
+      <h2>Envelope <span class="muted small">(the limits the AI may not leave)</span></h2>
       <table class="env"><thead><tr><th>Setting</th><th>Min</th><th>Base</th><th>Max</th></tr></thead><tbody id="envelope"></tbody></table>
+      <div class="err" id="err_envelope"></div>
+      <div class="row"><button id="btnEnvReset">Reset envelope</button></div>
 
       <h2>Hand off</h2>
       <div id="outputNote" class="small"></div>
@@ -72,6 +76,7 @@
 <script src="fixtures/envelope-default.js"></script>
 <script src="fixtures/platforms.js"></script>
 <script src="fixtures/profiles/roster.js"></script>
+<script src="js/ui-allocate-vehicles.js"></script>
 <script src="js/ui-allocate.js"></script>
 </body>
 </html>

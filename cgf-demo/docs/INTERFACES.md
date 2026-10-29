@@ -188,6 +188,8 @@ Seeded profiles ship as `fixtures/profiles/*.js` (assigning to `window.CGF_FIXTU
 }
 ```
 
+`name` is the trainee's display name, a synthetic sample name (1 to 40 characters, optional). `trainee_id` stays the key everywhere. **Instructor notes** are separate from the profile: a plain string in `localStorage` under `cgf.notes.<trainee_id>`, written by the allocation page. The report may read it; nothing else does.
+
 Mean is `alpha / (alpha + beta)`. Prior for a new competency is `alpha = 1, beta = 1`. A competency counts as having enough evidence once `alpha + beta >= 8`.
 
 The profile is the **prior**. During a session the engine keeps a working copy that each event updates, so the target can change within the session. The stored profile changes only at `end_session`.
@@ -336,6 +338,7 @@ Owner: Glenda (report lane). The report is built from the session record (§9.1)
 | Evaluate | Devin (`js/adapt/`) | `Adapt.evaluate(events, now) -> Adjustment[]` |
 | Steer | Devin | `Adapt.steer(directive) -> void` |
 | Live state for the reasoning panel | Devin | `Adapt.liveState() -> {target, windowSuccessRate, pressureDirection, workingProfile}` |
+| Predict a seat's first target (allocation page) | Devin (`js/adapt/predict.js`, standalone) | `Adapt.predictTarget({profile, seat, competencies, mode}) -> {competency, mean, evidence, reason, settings}`. Pure; the same rule as the live policy (§5.1). Full request: `docs/project/request-devin-predict-target.md` |
 | End session | Devin | `Adapt.endSession() -> SessionRecord` (§9.1). It no longer writes the profile; JL's `Assess.update` does |
 | Cohort | JL (`js/assess/`) | `Assess.cohort() -> object` (trainee id to competency to mean) |
 
