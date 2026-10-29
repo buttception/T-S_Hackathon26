@@ -79,13 +79,19 @@
     }
   });
   test('model ids are unique', () => eq(new Set(F.platformModels.map(m => m.id)).size, F.platformModels.length));
-  test('every competency is covered by some seat of every platform type', () => {
+  test('every seat has 3 distinct competencies from the catalog, and every catalog competency is used by some seat', () => {
+    const used = new Set();
     for (const [t, info] of Object.entries(F.platformTypes)) {
-      const covered = new Set(Object.values(info.seatFocus).flat());
-      C.COMPETENCIES.forEach(k => ok(covered.has(k), `${t} misses ${k}`));
       eq(Object.keys(info.seatFocus), info.seats, t + ' focus seats');
+      for (const [seat, list] of Object.entries(info.seatFocus)) {
+        eq(list.length, 3, `${t}/${seat} count`);
+        eq(new Set(list).size, 3, `${t}/${seat} distinct`);
+        list.forEach(k => { ok(C.COMPETENCIES.includes(k), `${t}/${seat}: unknown ${k}`); used.add(k); });
+      }
     }
+    C.COMPETENCIES.forEach(k => ok(used.has(k), `no seat uses ${k}`));
   });
+  test('the competency catalog has 9 entries', () => eq(C.COMPETENCIES.length, 9));
 
   // ---- mean and evidence
   test('mean is alpha / (alpha + beta)', () => {

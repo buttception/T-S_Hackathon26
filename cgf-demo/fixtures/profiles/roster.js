@@ -1,10 +1,12 @@
 // Seeded trainee profiles (docs/INTERFACES.md §5): two demo trainees and a cohort of 20. All synthetic.
-// Competency order in the rows below: hail, collision, territorial, weapons, piracy, as [alpha, beta].
-// null leaves a competency out of the profile, so it falls back to the prior (alpha = 1, beta = 1).
+// Competency order in the rows below: hail, collision, territorial, weapons, speed, as [alpha, beta].
+// The four newer competencies (threat evaluation, contact detection, picture reporting, escalation control) are not
+// seeded: no event measures them yet, so they fall back to the prior (alpha = 1, beta = 1), shown as "no evidence".
+// null leaves a competency out of the profile for the same reason.
 (function () {
   'use strict';
   const F = window.CGF_FIXTURES = window.CGF_FIXTURES || {};
-  const KEYS = ['hail_discipline', 'collision_avoidance', 'territorial_awareness', 'weapons_discipline', 'piracy_response'];
+  const KEYS = ['hail_discipline', 'collision_avoidance', 'territorial_awareness', 'weapons_discipline', 'speed_management'];
 
   function p(id, sessions, rows) {
     const competencies = {};

@@ -17,7 +17,11 @@
    *            platform: {type: string, model: string}, crew: CrewMember[]}} ScenarioConfig
    */
 
-  const COMPETENCIES = ['hail_discipline', 'collision_avoidance', 'territorial_awareness', 'weapons_discipline', 'piracy_response'];
+  // The competency catalog (INTERFACES §1). Which seat exercises which ones is in fixtures/platforms.js (seatFocus).
+  const COMPETENCIES = [
+    'hail_discipline', 'collision_avoidance', 'territorial_awareness', 'weapons_discipline', 'speed_management',
+    'threat_evaluation', 'contact_detection', 'picture_reporting', 'escalation_control'
+  ];
   const MODES = ['adaptive', 'fixed'];
   // Platform types and their trainee seats, in seat order (INTERFACES §1). A seat is a trainee station.
   const SEATS_BY_TYPE = { fighter: ['pilot', 'weapon'], warship: ['weapons', 'sensors', 'navigation'], tank: ['commander', 'driver'] };

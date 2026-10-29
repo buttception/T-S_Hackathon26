@@ -17,7 +17,8 @@
   const DEFAULT_PLATFORM = { type: 'warship', model: 'formidable' };
   const LABELS = {
     hail_discipline: 'Hail', collision_avoidance: 'Collision', territorial_awareness: 'Territorial',
-    weapons_discipline: 'Weapons', piracy_response: 'Piracy'
+    weapons_discipline: 'Weapons', speed_management: 'Speed', threat_evaluation: 'Threat eval',
+    contact_detection: 'Detection', picture_reporting: 'Reporting', escalation_control: 'Escalation'
   };
 
   // ------------------------------------------------------------ pure functions

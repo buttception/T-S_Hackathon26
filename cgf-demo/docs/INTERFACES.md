@@ -8,7 +8,7 @@ Everything marked **provisional** is confirmed or corrected by Sim (task S2) aga
 
 | Name | Values |
 |---|---|
-| Competency (provisional) | `hail_discipline`, `collision_avoidance`, `territorial_awareness`, `weapons_discipline`, `piracy_response` |
+| Competency (catalog of 9; by seat in section 1.1) | `hail_discipline`, `collision_avoidance`, `territorial_awareness`, `weapons_discipline`, `speed_management`, `threat_evaluation`, `contact_detection`, `picture_reporting`, `escalation_control` |
 | Mode | `adaptive`, `fixed` |
 | Platform type | `fighter`, `warship`, `tank` |
 | Seats per platform type (trainee stations, in this order) | `fighter`: `pilot`, `weapon`. `warship`: `weapons`, `sensors`, `navigation`. `tank`: `commander`, `driver` |
@@ -16,6 +16,22 @@ Everything marked **provisional** is confirmed or corrected by Sim (task S2) aga
 | Adjustment source | `engine`, `instructor_steer` |
 | Directive intensity | `low`, `medium`, `high` |
 | Policy | `rules_v1`, `bandit_v2` |
+
+### 1.1 Competencies by seat (decided 2026-10-29)
+
+The competencies a seat exercises depend on its role. Each seat has 3. Competency ids are global, so a trainee's profile follows them between seats and platforms. The source of truth in code is `seatFocus` in `fixtures/platforms.js`; the roles come from the sourced seat descriptions there.
+
+| Platform | Seat | Competencies |
+|---|---|---|
+| Warship | `weapons` (Tactical Action Officer) | `weapons_discipline`, `threat_evaluation`, `escalation_control` |
+| Warship | `sensors` (Operations specialist) | `contact_detection`, `picture_reporting`, `threat_evaluation` |
+| Warship | `navigation` (Officer of the Deck) | `collision_avoidance`, `territorial_awareness`, `hail_discipline` |
+| Fighter | `pilot` | `collision_avoidance`, `territorial_awareness`, `speed_management` |
+| Fighter | `weapon` (Weapon systems officer) | `weapons_discipline`, `contact_detection`, `threat_evaluation` |
+| Tank | `commander` | `threat_evaluation`, `weapons_discipline`, `hail_discipline` |
+| Tank | `driver` | `collision_avoidance`, `territorial_awareness`, `speed_management` |
+
+`piracy_response` became `speed_management`, because the competency applies to any platform that has to manage its speed, not only at sea. Measurable now (section 4): `hail_discipline`, `collision_avoidance`, `territorial_awareness`, `weapons_discipline` and `speed_management`. The other four are not measured yet.
 
 ## 2. CGF settings and envelope
 
@@ -143,12 +159,14 @@ Handoff: the page writes the `Allocation` to `localStorage` under `cgf.allocatio
 | `territorial_incursion` | `territorial_awareness` | fail | time in territorial or contiguous zone |
 | `fc_restraint` | `weapons_discipline` | success | no fire-control radar on a non-hostile |
 | `fc_radar_lock` | `weapons_discipline` | fail | `fcRadar` factor |
-| `pirate_speed_response` | `piracy_response` | success | speed raised when approached |
-| `pirate_slow_response` | `piracy_response` | fail | `slowSpeed` factor |
+| `pirate_speed_response` | `speed_management` | success | speed raised when approached by raiders |
+| `pirate_slow_response` | `speed_management` | fail | `slowSpeed` factor |
 | `tension_peak` | none | none | unit tension crossing a threshold; feeds the live signal |
 | `exercise_failed` | none | none | `failState` reached |
 
 Events with `competency: null` do not update the profile. They feed the live signal.
+
+**Not yet measured (2026-10-29).** No event exists yet for `threat_evaluation`, `contact_detection`, `picture_reporting` or `escalation_control`. Until Devin adds events for them they stay at the prior (no evidence), the policy never targets them, and the allocation page shows "no evidence". Devin decides which of the four can be measured honestly from the simulator and tells JL; any that cannot is dropped from the catalog and from `seatFocus`.
 
 **`seat` (added 2026-10-29, per-seat adaptation).** Every event that updates a competency names the seat that caused it, and `trainee_id` is the crew member in that seat. The runtime decides the seat from who controls the thing the event is about; Devin maps each event type to a seat (for example hail events to the seat that answers hails). `seat` is `null` for events that belong to the whole crew (`tension_peak`, `exercise_failed`). A competency event with `seat: null` is invalid.
 
@@ -179,7 +197,7 @@ The profile is the **prior**. During a session the engine keeps a working copy t
 Adaptation runs per seat. The profile stays per trainee, so a trainee's history follows them between seats and platforms.
 
 - **Working copy:** one per seat of a pane, started from the profile of the trainee in that seat and updated only by events with that `seat`.
-- **Target:** for each seat, the weakest competency with enough evidence among that seat's focus competencies (`seatFocus` in `fixtures/platforms.js`, provisional). If none of them has enough evidence, the weakest competency with enough evidence overall.
+- **Target:** for each seat, the weakest competency with enough evidence among that seat's competencies (section 1.1; `seatFocus` in `fixtures/platforms.js`). If none of them has enough evidence, the weakest competency with enough evidence overall.
 - **Combining seats:** all of a pane's seats can have a target at once. For each setting the pane's CGFs receive, the engine applies the single largest requested change among the seats and ignores the others for that cycle. Changes are never summed. The adjustment record says which seat it served.
 - **Live signal:** the window and the challenge band (section 6) are kept per seat. A pane's overall pressure follows its seats: any seat `up` raises the pane only if no seat is `down`; any seat `down` wins.
 - **Fixed mode** gives no adjustments for any seat.
