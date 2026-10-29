@@ -195,7 +195,7 @@ kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 3
 #panel .small, #panel .muted.small { font-size: var(--fs-small); line-height: var(--lh-tight); }
 #panel p { margin: 0 0 var(--space-2); }
 /* Tabs: bigger targets, and the open tab is marked by an accent underline as well as the fill */
-#panel .tabs { gap: var(--space-1); margin-top: var(--space-3); }
+#panel .tabs { gap: var(--space-1); margin-top: 0; }   /* the Demo row above sets the 24px gap */
 #panel .tab { padding: var(--space-2) 10px; font-weight: var(--fw-medium); white-space: nowrap; }
 #panel .tab.active { color: var(--text-strong); box-shadow: inset 0 -2px 0 var(--accent), 0 8px 16px -10px var(--ui-accent-glow-strong); }
 /* Lists and cards */
@@ -216,6 +216,10 @@ kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 3
 /* Scenario line (design R25): short name, domain and run mode, one chip per non-trainee force */
 .scn { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: var(--space-2) var(--space-3); margin: var(--space-3) 0 var(--space-5); }   /* 24px below: the scenario reads as its own block (Eevee, 2026-10-29) */
 .scn:empty { display: none; }
+/* Header groups (Eevee, 2026-10-29): player controls, Run ends and Demo as separate groups, and a clear break before the tabs.
+   The rows have no ids of their own, so each is picked by the control it holds. */
+#panelHead .row:has(#btnRun), #panelHead .row:has(#modeToggle) { margin-bottom: var(--space-4); }
+#panelHead .row:has(#demoSel) { margin-bottom: var(--space-5); }
 .scnTop { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-2); }
 .scnName { font-size: var(--fs-card); font-weight: var(--fw-medium); color: var(--text-strong); }
 .scnMeta { font-size: var(--fs-small); color: var(--muted); }
