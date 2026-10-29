@@ -164,13 +164,13 @@
       $('emptyWhy').innerHTML = found.errors.length ? found.errors.map(esc).join('<br>') : 'No allocation has been saved in this browser yet.';
       return;
     }
-    const a = found.allocation, configs = C.expandAllocation(a), sh = a.shared;
+    const a = found.allocation, config = C.expandAllocation(a), sh = a.shared;
     allocationId = a.allocation_id;
     $('summary').innerHTML = `<b>${esc(a.allocation_id)}</b> · ${esc(sh.platform.type)} ${esc(sh.platform.model)} · ${esc(sh.scenario)} · seed ${sh.seed} · ` +
       `${esc(sh.mode)} · ${sh.duration_s} s <span class="muted small">(from the ${found.source})</span>`;
     window.addEventListener('message', onMessage);
     const frame = $('frame');
-    rt = { config: configs[0], frame, state: 'loading', status: null, apiMissing: [], error: null };
+    rt = { config, frame, state: 'loading', status: null, apiMissing: [], error: null };
     frame.src = runtimeUrl();
     $('btnStart').onclick = () => send('start');
     $('btnPause').onclick = () => send('pause');
