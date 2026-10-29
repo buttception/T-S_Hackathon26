@@ -39,11 +39,54 @@
         <button class="tab active" data-tab="trainee">Trainee</button>
         <button class="tab" data-tab="instructor">Instructor</button>
         <button class="tab" data-tab="cgflog">CGF log</button>
+        <button class="tab" data-tab="reasoning">Reasoning</button>
         <button class="tab" data-tab="setup">Setup</button>
       </div>
     </div>
 
     <div id="panelBody">
+      <!-- REASONING (adaptive sessions: why the CGFs got harder or easier). Owner: Devin, js/ui-reasoning.js -->
+      <section data-pane="reasoning" class="hidden">
+        <h2>Adaptive session</h2>
+        <div id="rsnStatus" class="muted small"></div>
+        <div id="rsnLocal">
+          <div class="muted small">Local run without the host page: a warship crew, with the trainee below in the navigation seat.</div>
+          <div class="row">
+            <select id="rsnTrainee" title="Trainee in the navigation seat"></select>
+            <select id="rsnAgent" class="grow" title="Scripted behaviour for that seat"></select>
+          </div>
+          <div class="row">
+            <select id="rsnMode" title="Fixed mode makes no adjustments (assessment runs)">
+              <option value="adaptive">Adaptive</option>
+              <option value="fixed">Fixed</option>
+            </select>
+            <select id="rsnBand" title="How the live success rate maps to pressure">
+              <option value="challenge">Challenge band (INTERFACES §6)</option>
+              <option value="remediation">Remediation (PLAN G1)</option>
+            </select>
+            <input type="text" id="rsnDuration" value="2400" size="5" title="Run length in sim seconds">
+            <button id="btnRsnStart" class="primary">Start</button>
+          </div>
+        </div>
+
+        <h2>Seats: target and live signal</h2>
+        <div id="rsnSeats"></div>
+
+        <h2>Steer the AI</h2>
+        <div class="row">
+          <input type="text" id="steerText" placeholder="e.g. test trainee B's collision avoidance hard for 5 minutes">
+          <button id="btnSteerParse">Parse</button>
+        </div>
+        <div id="steerPreview" class="preview" hidden></div>
+
+        <h2>Adjustments and why</h2>
+        <label class="small muted"><input type="checkbox" id="rsnLlm"> Rephrase reasons with the local LLM (numbers are checked; falls back to the template)</label>
+        <div id="rsnAdjustments" class="logbox"></div>
+
+        <h2>Session record</h2>
+        <div class="row"><button id="btnExportRecord">Export session record (JSON)</button><span id="rsnRecordInfo" class="muted small grow"></span></div>
+      </section>
+
       <!-- TRAINEE -->
       <section data-pane="trainee">
         <h2>Mission</h2>
@@ -186,6 +229,24 @@
 <script src="js/demo.js"></script>
 <script src="js/llm.js"></script>
 <script src="js/ui.js"></script>
+<!-- Training data (read only; owner JL): contracts, platforms and seat focus, seeded profiles -->
+<script src="contracts/contracts.js"></script>
+<script src="fixtures/platforms.js"></script>
+<script src="fixtures/profiles/roster.js"></script>
+<!-- Adaptive runtime (owner Devin): events, settings, scripted crews, adaptation, reasoning panel -->
+<script src="js/sim/rng.js"></script>
+<script src="js/sim/events.js"></script>
+<script src="js/sim/apply.js"></script>
+<script src="js/sim/crew-agent.js"></script>
+<script src="trainees/strong.js"></script>
+<script src="trainees/weak_hail_discipline.js"></script>
+<script src="js/adapt/predict.js"></script>
+<script src="js/adapt/clamp.js"></script>
+<script src="js/adapt/policy-rules.js"></script>
+<script src="js/adapt/adapt.js"></script>
+<script src="js/adapt/steer.js"></script>
+<script src="js/adapt/runtime.js"></script>
+<script src="js/ui-reasoning.js"></script>
 <!-- Boot: loads config.js (or ?config=path/to/config.js), then its plugins, harnesses and scenarios -->
 <script src="js/main.js"></script>
 <!-- Link to host.html (side-by-side run). Inert unless the page is a ?pane= iframe. Owner: JL, see link/README.md -->

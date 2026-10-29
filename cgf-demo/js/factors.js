@@ -43,7 +43,7 @@
 
   reg('opening', { label: 'Opening range', fn: c => {
     const rr = U.rangeRate(c.own, c.u);
-    return rr > 2 * c.ss && c.d < c.R.close * 1.5 ? rr / (15 * c.ss) : 0;
+    return rr > 2 * c.ss && c.d < c.R.close * 1.5 ? Math.min(1, rr / (15 * c.ss)) : 0;
   } });
 
   // Military activity nearby: armed CGF units at an escalated state, or the ownship using fire-control radar.

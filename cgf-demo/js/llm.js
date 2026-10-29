@@ -98,13 +98,13 @@ Example: "red should back off and be friendly now"
     return res.json();
   }
 
-  async function chat(messages) {
+  async function chat(messages, schema) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), settings.timeoutSec * 1000);
     const base = settings.url.replace(/\/+$/, '');
     try {
       if (settings.provider === 'ollama') {
-        const r = await post(`${base}/api/chat`, { model: settings.model, messages, stream: false, format: SCHEMA, options: { temperature: 0.1 } }, ctrl.signal);
+        const r = await post(`${base}/api/chat`, { model: settings.model, messages, stream: false, format: schema || SCHEMA, options: { temperature: 0.1 } }, ctrl.signal);
         return r.message && r.message.content;
       }
       const body = { model: settings.model, messages, temperature: 0.1, response_format: { type: 'json_object' } };
@@ -230,5 +230,9 @@ Example: "red should back off and be friendly now"
     return (j.models || j.data || []).map(m => m.name || m.id);
   }
 
-  CGF.llm = { settings, saveSettings, interpret, apply, test, buildContext, systemPrompt, check };
+  // Generic JSON call for other features (steering directives, rephrased reasons). The caller validates the result.
+  const chatJson = async (system, user, schema) =>
+    parseJson(await chat([{ role: 'system', content: system }, { role: 'user', content: user }], schema));
+
+  CGF.llm = { settings, saveSettings, interpret, apply, test, buildContext, systemPrompt, check, chatJson };
 })();

@@ -68,6 +68,8 @@
     for (const s of H.states) if (typeof s.min !== 'number' || !s.name) throw new Error(`harness "${H.id}": every state needs a name and a numeric min`);
     H.states.sort((a, b) => a.min - b.min);
     H.ranges = Object.assign({}, RANGE_DEFAULTS, H.ranges);
+    // A weight whose factor is not registered would be ignored silently; keep the list so it can be reported
+    H.unknownWeights = Object.keys(H.weights).filter(k => !CGF.factors[k]);
     return H;
   }
   CGF.validateHarness = src => { prepareHarness(src); return true; };
@@ -142,6 +144,14 @@
   };
   CGF.displayedOwn = () => ({ x: CGF.sim.own.x + CGF.sim.gpsDrift.x, y: CGF.sim.own.y + CGF.sim.gpsDrift.y });
   CGF.aggressionOf = u => CGF.harnessOf(u).aggression * CGF.params.aggression * (u.temperament || 1);
+  // Multiplier on one factor weight of one unit. sim.weightMult (set by CGF.apply in js/sim/apply.js) maps
+  // factor -> { all: m, <harness id>: m }; a harness-specific entry wins over "all". Default 1.
+  CGF.weightMult = (u, k) => {
+    const m = CGF.sim.weightMult && CGF.sim.weightMult[k];
+    if (!m) return 1;
+    const H = CGF.harnessOf(u), own = H && m[H.id];
+    return own != null ? own : (m.all != null ? m.all : 1);
+  };
   CGF.zonesAt = p => CGF.scenario.zones.filter(z => U.pointInPoly(p.x, p.y, z.poly));
   CGF.stateColor = u => CGF.style.stateColors[Math.min(u.stateIdx || 0, CGF.style.stateColors.length - 1)];
 
@@ -239,7 +249,11 @@
     CGF.sim.selected = CGF.cgfs().find(u => CGF.affiliationOf(u) !== 'neutral') || CGF.cgfs()[0] || null;
     CGF.emit('reset');
     CGF.log(`Scenario loaded: ${S.name}. ${S.brief || ''}`);
-    for (const k of CGF.forcesWithHarness()) CGF.log(`${S.forces[k].label}: ${CGF.sim.forceHarness[k].name}`);
+    for (const k of CGF.forcesWithHarness()) {
+      const H = CGF.sim.forceHarness[k];
+      CGF.log(`${S.forces[k].label}: ${H.name}`);
+      if (H.unknownWeights.length) CGF.log(`Harness "${H.name}": no factor registered for weight(s) ${H.unknownWeights.join(', ')}; they have no effect.`, 'alert');
+    }
   };
 
   // Swap one force's harness mid-scenario. Units, positions, tension and time are kept;
@@ -284,12 +298,19 @@
     CGF.log(`${u.name}: ${old.name} → ${st.name}${cause ? ' (' + cause + ')' : ''}`, up ? 'alert' : 'sys');
     CGF.record(u, up ? (st.action || `Escalated to ${st.name}`) : (st.standDown || `Stood down to ${st.name}`), `${old.name} → ${st.name}`, reasons);
     if (up && st.msg) CGF.record(u, 'Radio call', radio(u, st.msg), reasons);
-    if (st.warn) { u.warnPending = true; u.warnTime = sim.t; u.lastWarn = sim.t; u.ignoreLogged = false; sim.stats.warnings++; }
+    // the state change is reported before any new warning, so a warning it supersedes is closed first
+    CGF.emit('sim:state', u, H.states.indexOf(old), idx);
+    if (st.warn) { u.warnPending = true; u.warnTime = sim.t; u.lastWarn = sim.t; u.ignoreLogged = false; sim.stats.warnings++; CGF.emit('sim:warn', u); }
     else u.warnPending = false;
     if (st.fcRadar && up) { CGF.log(`ALERT: ${sim.own.name} illuminated by ${u.name} fire-control radar`, 'alert'); CGF.record(u, 'Fire-control radar lock on ownship', '', reasons); }
     const pk = sim.stats.peak[u.force];
     if (up && (!pk || idx > pk.idx)) sim.stats.peak[u.force] = { idx, name: st.name };
-    if (H.failState && st.name === H.failState && !sim.outcome) finish('fail', `ESCALATION: ${u.name} (${CGF.forceOf(u).label}) reached "${st.name}". Scenario failed.`);
+    // A unit can re-enter its failure state in freeplay; report it once per unit, not on every re-entry
+    if (H.failState && st.name === H.failState && !sim.outcome && !u.failReported) {
+      u.failReported = true;
+      CGF.emit('sim:fail', u);
+      finish('fail', `ESCALATION: ${u.name} (${CGF.forceOf(u).label}) reached "${st.name}". Scenario failed.`);
+    }
   }
 
   function updateCgf(u, dt) {
@@ -302,14 +323,17 @@
       const fac = CGF.factors[k];
       if (fac && (detected || fac.global)) f[k] = U.clamp(fac.fn(ctx) || 0, 0, 1);
     }
+    // CGF.weightMult: adaptation multipliers on factor weights (1 unless CGF.apply has changed them)
+    const w = k => (H.weights[k] || 0) * CGF.weightMult(u, k);
     let sum = 0, pos = 0;
-    for (const k in f) { const v = (H.weights[k] || 0) * f[k]; sum += v; if (v > 0) pos += v; }
+    for (const k in f) { const v = w(k) * f[k]; sum += v; if (v > 0) pos += v; }
     u.factors = f; u.P = sum; u.Ppos = H.armed ? pos : 0;
 
     if (f.ignoredWarning && !u.ignoreLogged) {
       u.ignoreLogged = true; sim.stats.ignored++;
       CGF.log(`${u.name}: warning ignored by ownship`, 'alert');
       CGF.record(u, 'Logged warning as ignored', 'No acknowledgement from ownship');
+      CGF.emit('sim:hail-ignored', u);
     }
 
     // Provocation is scaled by aggression; de-escalation is not. Then decay toward the harness baseline.
@@ -317,7 +341,7 @@
     const rate = sum > 0 ? sum * gain : sum;
     u.tension += rate * dt / 60;
     u.contrib = u.contrib || {};
-    for (const k in f) { const v = (H.weights[k] || 0) * f[k]; if (v > 0) u.contrib[k] = (u.contrib[k] || 0) + v * gain * dt / 60; }
+    for (const k in f) { const v = w(k) * f[k]; if (v > 0) u.contrib[k] = (u.contrib[k] || 0) + v * gain * dt / 60; }
     const dec = H.decayPerMin * P.decay * dt / 60, base = H.baseTension;
     u.tension = u.tension > base ? Math.max(base, u.tension - dec) : Math.min(base, u.tension + dec);
     u.tension = U.clamp(u.tension, 0, 100);
@@ -334,7 +358,7 @@
     if (st.warn && st.msg && sim.t - u.lastWarn > H.warnRepeatSec) {
       CGF.record(u, 'Repeated radio warning', radio(u, st.msg));
       u.lastWarn = sim.t; sim.stats.warnings++;
-      if (!u.warnPending) { u.warnPending = true; u.warnTime = sim.t; u.ignoreLogged = false; }
+      if (!u.warnPending) { u.warnPending = true; u.warnTime = sim.t; u.ignoreLogged = false; CGF.emit('sim:warn', u); }
     }
   }
 
@@ -398,16 +422,29 @@
 
     sim.t += dt;
     if (!sim.outcome && !sim.objectiveDone && S.objective && U.dist(o, S.objective) < 1.5 * CGF.rangeScale()) finish('success', `Objective reached: ownship arrived at the ${S.objective.name || 'objective'}.`);
+    CGF.emit('sim:step', dt); // event emission, scripted crews and adaptation hook in here
   }
-  CGF.step = step;
 
-  // Advance by real elapsed seconds, in small fixed sim steps
+  // Fixed-step entry point (INTERFACES §10): advances exactly dt sim seconds, with no dependence on frame
+  // timing, and returns the simulation events (§4) raised during that step. Tests and runners call it directly.
+  const MAX_STEP = 2;
+  CGF.step = dt => {
+    step(dt);
+    return CGF.simEvents ? CGF.simEvents.drain() : [];
+  };
+
+  // Advance by real elapsed seconds, in fixed sim sub-steps. Capped, so a stalled tab cannot trigger a burst
+  // of catch-up steps; the sim simply runs slower than real time for that frame.
+  const MAX_SUBSTEPS = 60;
   CGF.tick = dtReal => {
     const sim = CGF.sim;
     if (!sim.running || sim.outcome) return;
-    let dts = dtReal * CGF.params.timeScale;
-    while (dts > 0 && !sim.outcome) { const h = Math.min(2, dts); step(h); dts -= h; }
+    let dts = dtReal * CGF.params.timeScale, n = 0;
+    while (dts > 0 && !sim.outcome && n++ < MAX_SUBSTEPS) { const h = Math.min(MAX_STEP, dts); CGF.step(h); dts -= h; }
   };
+
+  // Ends the run with an outcome, as reaching the objective or a failure state does (used for a timed end)
+  CGF.endRun = (kind, text) => finish(kind, text);
 
   function finish(kind, text) {
     const sim = CGF.sim;
@@ -441,17 +478,20 @@
         u.warnPending = false; u.tension = U.clamp(u.tension - CGF.harnessOf(u).ackRelief, 0, 100); sim.stats.acks++;
         CGF.log(`${sim.own.name} to ${u.name}: acknowledged, will comply.`, 'own');
         CGF.record(u, 'Received acknowledgement', `Tension eased by ${CGF.harnessOf(u).ackRelief}`, 'ownship complied');
+        CGF.emit('sim:hail-ack', u);
       }
     },
-    toggleFc() {
+    // target: optional unit (scripted crews name it); otherwise the selected contact or the nearest armed one
+    toggleFc(target) {
       const sim = CGF.sim, o = sim.own;
       if (CGF.mods().fcStuck) { CGF.log('Fire-control radar will not switch off (malfunction).', 'alert'); return; }
-      if (sim.fcTarget) { CGF.log(`Ownship: fire-control radar off (${sim.fcTarget.name}).`, 'own'); sim.fcTarget = null; return; }
+      if (sim.fcTarget) { CGF.log(`Ownship: fire-control radar off (${sim.fcTarget.name}).`, 'own'); CGF.emit('sim:fc', sim.fcTarget, false); sim.fcTarget = null; return; }
       const armed = CGF.cgfs().filter(u => CGF.harnessOf(u).armed);
-      const target = sim.selected && sim.selected.role === 'cgf' ? sim.selected : armed.sort((a, b) => U.dist(a, o) - U.dist(b, o))[0];
+      if (!target) target = sim.selected && sim.selected.role === 'cgf' ? sim.selected : armed.sort((a, b) => U.dist(a, o) - U.dist(b, o))[0];
       if (!target) return;
       sim.fcTarget = target;
       CGF.log(`Ownship: fire-control radar illuminating ${target.name}.`, 'alert');
+      CGF.emit('sim:fc', target, true);
     },
     orderHeading(delta) { const o = CGF.sim.own; o.ordHdg = U.norm360(o.ordHdg + delta); },
     orderHeadingTo(hdg) { CGF.sim.own.ordHdg = Math.round(U.norm360(hdg)); },
