@@ -3,7 +3,7 @@
 //   Report.build(sessionRecord, trainee_id) -> { trainee_id, session_id, facts, narrative }
 //   Report.narrate(facts)                   -> template narrative (numbers taken from facts only)
 //   Report.validateNarrative(text, facts)   -> [] or a list of numbers that are not in facts
-//   Report.finishSession(sessionRecord)     -> builds a report for every crew member, appends their
+//   Report.finishSession(sessionRecord)     -> builds a report for every trainee in the crew (AI partners are skipped), appends their
 //                                              history entries and returns the URL of the report page
 //
 // Code computes every figure. The narrative is a template; an LLM may later rephrase it, but any
@@ -36,6 +36,16 @@
     pilot: 'Pilot', weapon: 'Weapon systems officer', weapons: 'Weapons', sensors: 'Sensors', navigation: 'Navigation',
     commander: 'Commander', driver: 'Driver'
   };
+
+  // An AI partner (INTERFACES §3.2) is a crew entry with role "partner" and a partner_<seat> id. It is listed in the
+  // report but never assessed: no report, no history entry, and its events count towards nobody's facts.
+  const isPartnerId = id => /^partner_/.test(String(id == null ? '' : id));
+  const isPartner = c => !!c && (c.role === 'partner' || isPartnerId(c.trainee_id));
+  const partnersOf = record => (record.crew || []).filter(isPartner)
+    .map(c => ({ seat: c.seat, trainee_id: c.trainee_id, derived_from: (c.derived_from && c.derived_from.trainee_id) || null }));
+  const traineesOf = record => (record.crew || []).filter(c => !isPartner(c));
+  const partnerLine = p => `AI partner in the ${SEAT_LABELS[p.seat] ? SEAT_LABELS[p.seat].toLowerCase() : p.seat || 'unknown'} seat` +
+    (p.derived_from ? `, based on ${p.derived_from}` : '');
 
   const MIN_EVENTS = 2, STRONG_FROM = 0.7, WEAK_TO = 0.4;   // a session verdict needs 2+ events
   const round2 = v => Math.round(v * 100) / 100;
@@ -126,7 +136,8 @@
   function buildWith(record, trainee_id, profile) {
     const errs = checkRecord(record);
     if (errs.length) throw new Error(errs.join('; '));
-    if (!record.crew.some(c => c.trainee_id === trainee_id)) throw new Error(`trainee ${trainee_id} is not in the crew of ${record.session_id}`);
+    if (isPartnerId(trainee_id)) throw new Error(`${trainee_id} is an AI partner: partners get no report`);
+    if (!traineesOf(record).some(c => c.trainee_id === trainee_id)) throw new Error(`trainee ${trainee_id} is not in the crew of ${record.session_id}`);
     const f = facts(record, trainee_id, profile);
     const narrative = narrate(f);
     const bad = validateNarrative(narrative, f);
@@ -147,12 +158,12 @@
     '#record=' + encodeURIComponent(JSON.stringify(record));
 
   function finishSession(record) {
-    const reports = record.crew.map(c => build(record, c.trainee_id));
+    const reports = traineesOf(record).map(c => build(record, c.trainee_id));   // partners are listed, not reported
     const entries = reports.map(r => entryFor(record, r));
     if (CGF.History) entries.forEach(e => CGF.History.append(e));
     return { reports, entries, url: reportUrl(record) };
   }
 
   CGF.Report = { MIN_EVENTS, STRONG_FROM, WEAK_TO, COMPETENCIES, LABELS, EVENT_LABELS, SEAT_LABELS, build, buildWith, facts, narrate, validateNarrative,
-    entryFor, reportUrl, finishSession, profileOf, checkRecord, mean };
+    isPartner, isPartnerId, partnersOf, traineesOf, partnerLine, entryFor, reportUrl, finishSession, profileOf, checkRecord, mean };
 })();
