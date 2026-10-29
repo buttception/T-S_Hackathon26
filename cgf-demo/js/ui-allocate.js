@@ -125,10 +125,43 @@
     return scenarioIds.find(id => domainOf(id) === want) || null;
   }
 
+  // `partners[crew][seat]` is set only for a seat played by an AI partner (INTERFACES §3.2): the id of the trainee whose
+  // older runs it copies, or '' while that is still to be chosen. A partner seat has no trainee and no scripted agent.
   function emptyCrews(type) {
-    const crews = {}, agents = {};
-    for (const s of SLOTS) { crews[s] = {}; agents[s] = {}; seatsOf(type).forEach(seat => { crews[s][seat] = null; agents[s][seat] = ''; }); }
-    return { crews, agents };
+    const crews = {}, agents = {}, partners = {};
+    for (const s of SLOTS) { crews[s] = {}; agents[s] = {}; partners[s] = {}; seatsOf(type).forEach(seat => { crews[s][seat] = null; agents[s][seat] = ''; }); }
+    return { crews, agents, partners };
+  }
+  const roleOf = (sel, crew, seat) => (sel.partners && sel.partners[crew] && typeof sel.partners[crew][seat] === 'string' ? 'partner' : 'trainee');
+  const derivedOf = (sel, crew, seat) => (roleOf(sel, crew, seat) === 'partner' ? sel.partners[crew][seat] : null);
+  // A seat is filled by a trainee, or by a partner that already knows whose runs it copies
+  const seatFilled = (sel, crew, seat) => (roleOf(sel, crew, seat) === 'partner' ? !!derivedOf(sel, crew, seat) : !!sel.crews[crew][seat]);
+
+  // Make a seat an AI partner copying `derivedId` ('' = not chosen yet). The seat loses its trainee and scripted agent.
+  function setPartner(sel, crew, seat, derivedId) {
+    const next = clone(sel);
+    next.partners = next.partners || {}; next.partners[crew] = next.partners[crew] || {};
+    next.crews[crew][seat] = null; next.agents[crew][seat] = '';
+    next.partners[crew][seat] = derivedId || '';
+    return next;
+  }
+  function clearPartner(sel, crew, seat) {
+    const next = clone(sel);
+    if (next.partners && next.partners[crew]) delete next.partners[crew][seat];
+    return next;
+  }
+
+  const PARTNER_RATE_LABELS = {
+    hail_acknowledged: 'answers a hail', safe_passage: 'keeps a safe passing distance', left_territorial: 'leaves territorial waters',
+    fc_restraint: 'holds fire control back', pirate_speed_response: 'speeds up when raiders approach'
+  };
+  // What a partner will do, in words, from its agent_params (computed by Assess.partnerParams, never by the LLM)
+  function describePartner(params, name) {
+    if (!params) return '';
+    const b = params.basis || {}, base = b.source === 'history' ? `${b.sessions} saved session${b.sessions === 1 ? '' : 's'}`
+      : b.source === 'profile' ? 'the profile averages' : 'defaults (no data on them yet)';
+    const rates = Object.entries(params.rates || {}).map(([t, r]) => `${PARTNER_RATE_LABELS[t] || t} ${Math.round(r * 100)}% of the time`).join('; ');
+    return `Plays like ${name || 'them'}, from ${base}. ${rates}.`;
   }
 
   // Change the platform. Within a type (another model) the crews stay. Across types the seats differ, so only
@@ -137,9 +170,10 @@
     const next = clone(sel), fresh = emptyCrews(platform.type);
     for (const s of SLOTS) for (const seat of seatsOf(platform.type)) {
       if (sel.crews[s] && seat in sel.crews[s]) { fresh.crews[s][seat] = sel.crews[s][seat]; fresh.agents[s][seat] = sel.agents[s][seat] || ''; }
+      if (roleOf(sel, s, seat) === 'partner') fresh.partners[s][seat] = sel.partners[s][seat];
     }
     next.platform = { type: platform.type, model: platform.model };
-    next.crews = fresh.crews; next.agents = fresh.agents;
+    next.crews = fresh.crews; next.agents = fresh.agents; next.partners = fresh.partners;
     if (domainOf(next.opts.scenario) !== C.DOMAIN_BY_TYPE[platform.type]) {
       const d = defaultScenarioFor(platform.type, scenarioIds, domainOf);
       if (d) next.opts.scenario = d;
@@ -152,6 +186,7 @@
     const next = clone(sel);
     for (const s of SLOTS) for (const st of Object.keys(next.crews[s])) if (next.crews[s][st] === id) { next.crews[s][st] = null; next.agents[s][st] = ''; }
     next.crews[crew][seat] = id;
+    if (next.partners && next.partners[crew]) delete next.partners[crew][seat];   // seating a trainee makes the seat a trainee seat
     if (!next.agents[crew][seat]) next.agents[crew][seat] = defaultAgent || '';
     return next;
   }
@@ -162,7 +197,7 @@
     const i = order.findIndex(o => o.crew === from.crew && o.seat === from.seat);
     for (let k = 1; k <= order.length; k++) {
       const o = order[(i + k) % order.length];
-      if (!sel.crews[o.crew][o.seat]) return o;
+      if (!seatFilled(sel, o.crew, o.seat)) return o;
     }
     return from;
   }
@@ -171,14 +206,23 @@
   // Seat fields are `seat_<crew>_<seat>` and `agent_<crew>_<seat>`.
   function checkSelection(sel, ctx) {
     const e = {}, o = sel.opts, seats = seatsOf(sel.platform.type), seen = {};
-    for (const s of SLOTS) for (const seat of seats) {
-      const id = sel.crews[s][seat];
-      if (!id) e[`seat_${s}_${seat}`] = `Pick a trainee for crew ${s}, ${seat}.`;
-      else {
-        if (seen[id]) e[`seat_${s}_${seat}`] = `${id} is already in crew ${seen[id]}.`;
-        seen[id] = s;
-        if (!sel.agents[s][seat]) e[`agent_${s}_${seat}`] = 'Pick a scripted agent.';
+    for (const s of SLOTS) {
+      let trainees = 0;
+      for (const seat of seats) {
+        if (roleOf(sel, s, seat) === 'partner') {   // an AI partner only needs to know whose runs it copies
+          if (!derivedOf(sel, s, seat)) e[`seat_${s}_${seat}`] = `Pick whose runs the AI partner in ${seat} copies.`;
+          continue;
+        }
+        trainees++;
+        const id = sel.crews[s][seat];
+        if (!id) e[`seat_${s}_${seat}`] = `Pick a trainee for crew ${s}, ${seat}.`;
+        else {
+          if (seen[id]) e[`seat_${s}_${seat}`] = `${id} is already in crew ${seen[id]}.`;
+          seen[id] = s;
+          if (!sel.agents[s][seat]) e[`agent_${s}_${seat}`] = 'Pick a scripted agent.';
+        }
       }
+      if (!trainees) e[`crew_${s}`] = 'At least one seat must be a trainee.';
     }
     if (!C.SEATS_BY_TYPE[sel.platform.type]) e.platform = 'Pick a platform type.';
     else if (ctx.models && !ctx.models.some(m => m.id === sel.platform.model && m.type === sel.platform.type)) e.platform = 'Pick a platform model.';
@@ -194,8 +238,16 @@
 
   // The §3.1 Allocation: the run settings once, and one crew (slot A). The run page derives the §3 scenario config
   // with CGF.contracts.expandAllocation.
-  function buildAllocation(sel, envelope) {
-    const o = sel.opts;
+  // An AI partner seat becomes { seat, trainee_id: 'partner_<seat>', role, derived_from, agent_params }, with agent_params
+  // from `paramsFor({trainee_id})` (default Assess.partnerParams), so the page and the run see the same numbers.
+  function buildAllocation(sel, envelope, paramsFor) {
+    const o = sel.opts, params = paramsFor || (CGF.Assess && CGF.Assess.partnerParams);
+    const entry = (pane, seat) => {
+      if (roleOf(sel, pane, seat) !== 'partner') return { seat, trainee_id: sel.crews[pane][seat], agent_profile: sel.agents[pane][seat] };
+      if (typeof params !== 'function') throw new Error('buildAllocation: an AI partner needs Assess.partnerParams');
+      const from = { trainee_id: derivedOf(sel, pane, seat) };
+      return { seat, trainee_id: 'partner_' + seat, role: 'partner', derived_from: from, agent_params: params(clone(from)) };
+    };
     return {
       allocation_id: `alloc_${o.seed}_${sel.platform.type}`,
       created_at_session: null,   // no completed session id exists yet; the Lead sets this when sessions are recorded
@@ -205,7 +257,7 @@
       },
       slots: SLOTS.map(pane => ({
         pane,
-        crew: seatsOf(sel.platform.type).map(seat => ({ seat, trainee_id: sel.crews[pane][seat], agent_profile: sel.agents[pane][seat] }))
+        crew: seatsOf(sel.platform.type).map(seat => entry(pane, seat))
       }))
     };
   }
@@ -215,11 +267,14 @@
   function selectionFrom(allocation, opts) {
     try {
       if (C.validateAllocation(allocation, opts).length) return null;
-      const sh = allocation.shared, sel = { platform: clone(sh.platform), crews: {}, agents: {},
+      const sh = allocation.shared, sel = { platform: clone(sh.platform), crews: {}, agents: {}, partners: {},
         opts: { scenario: sh.scenario, seed: sh.seed, mode: sh.mode, duration_s: sh.duration_s, eval_interval_s: sh.eval_interval_s } };
       allocation.slots.forEach(slot => {
-        sel.crews[slot.pane] = {}; sel.agents[slot.pane] = {};
-        slot.crew.forEach(m => { sel.crews[slot.pane][m.seat] = m.trainee_id; sel.agents[slot.pane][m.seat] = m.agent_profile; });
+        sel.crews[slot.pane] = {}; sel.agents[slot.pane] = {}; sel.partners[slot.pane] = {};
+        slot.crew.forEach(m => {
+          if (m.role === 'partner') { sel.crews[slot.pane][m.seat] = null; sel.agents[slot.pane][m.seat] = ''; sel.partners[slot.pane][m.seat] = m.derived_from.trainee_id; }
+          else { sel.crews[slot.pane][m.seat] = m.trainee_id; sel.agents[slot.pane][m.seat] = m.agent_profile; }
+        });
       });
       return sel;
     } catch (e) { return null; }
@@ -230,7 +285,7 @@
   CGF.allocate = { STORE_KEY, SLOTS, DEFAULTS, DEFAULT_PLATFORM, LONG, mean, seatsOf, summarise, nameOf, describe,
     previewTarget, describePrediction, suggestCrew, nextSeed, domainOfIn,
     defaultScenarioFor, emptyCrews, withPlatform, seatTrainee, nextEmptySeat, checkSelection, buildAllocation,
-    selectionFrom, handoffUrl };
+    selectionFrom, handoffUrl, roleOf, derivedOf, seatFilled, setPartner, clearPartner, describePartner };
 
   // ------------------------------------------------------------ page
   if (!document.getElementById('allocApp')) return;   // loaded by the test page: functions only
@@ -354,23 +409,34 @@
     $('slots').innerHTML = SLOTS.map(c => {
       const people = {};
       const cards = seatsOf(st.platform.type).map((seat, i) => {
-        const id = st.crews[c][seat], sum = id && st.summaries[id], isActive = st.active.crew === c && st.active.seat === seat;
+        const sel = selection(), partner = roleOf(sel, c, seat) === 'partner', derived = partner ? derivedOf(sel, c, seat) : null;
+        const id = partner ? null : st.crews[c][seat], sum = id && st.summaries[id], isActive = st.active.crew === c && st.active.seat === seat;
         const focus = (info.seatFocus || {})[seat] || [], seatDef = model && model.seats[seat];
-        people[seat] = { name: id ? nameById(id) : '', active: isActive };
+        people[seat] = { name: partner ? 'AI partner' : id ? nameById(id) : '', active: isActive };
         const mini = sum ? focus.map(k => `<span title="${LONG[k]}: ${sum[k].prior ? 'no data' : sum[k].mean.toFixed(2)}">` +
           `<b class="${sum[k].prior ? 'bar--none' : barClass(sum[k].mean)}"></b>${LABELS[k]} ${sum[k].prior ? '—' : sum[k].mean.toFixed(2)}</span>`).join('') : '';
-        const e = errs[`agent_${c}_${seat}`] || (id && errs[`seat_${c}_${seat}`]);
+        const e = errs[`agent_${c}_${seat}`] || ((id || partner) && errs[`seat_${c}_${seat}`]);
         const pred = id ? describePrediction(predictFor(id, seat)) : '';
+        let params = null;   // the partner's parameters, from the same function the allocation uses
+        if (partner && derived && CGF.Assess) { try { params = CGF.Assess.partnerParams({ trainee_id: derived }); } catch (err) { params = null; } }
+        const who = partner
+          ? (derived ? `<b>AI partner</b> copying <b data-inspect="${esc(derived)}">${esc(nameById(derived))}</b>` : `<span class="muted">AI partner: ${isActive ? 'choose from the pool whose runs it copies' : 'click here, then choose whose runs it copies'}</span>`)
+          : id ? `<b data-inspect="${esc(id)}">${esc(nameById(id))}</b> <span class="muted small">${esc(id)}</span>`
+          : `<span class="muted">${isActive ? 'Choose a trainee from the pool' : 'Click here, then choose a trainee'}</span>`;
         return `<div class="seat ${isActive ? 'active' : ''}" data-crew="${c}" data-seat="${seat}">` +
           `<div class="seatHead"><b>${i + 1} · ${esc(seatDef ? seatDef.label : seat)}</b><span class="grow"></span>` +
-          (id ? `<button data-clear="${c}:${seat}" title="Clear this seat">Clear</button>` : '') + '</div>' +
-          `<div class="seatWho">${id ? `<b data-inspect="${esc(id)}">${esc(nameById(id))}</b> <span class="muted small">${esc(id)}</span>` : `<span class="muted">${isActive ? 'Choose a trainee from the pool' : 'Click here, then choose a trainee'}</span>`}</div>` +
+          (id || partner ? `<button data-clear="${c}:${seat}" title="Clear this seat">Clear</button>` : '') + '</div>' +
+          `<div class="seatWho">${who}</div>` +
           (sum ? `<div class="mini">${mini}</div><div class="small muted">${esc(describe(profileOf(id), focus).text)}</div>` : '') +
           (pred ? `<div class="small">${esc(pred)}</div>` : '') +
+          (params ? `<div class="small">${esc(describePartner(params, nameById(derived)))}</div>` : '') +
+          (partner ? '<div class="small muted">Partners are not adapted to and are not assessed.</div>' : '') +
           (seatDef ? `<details class="seatMore"><summary class="small muted">About this seat</summary><div class="seatText">${esc(seatDef.text)}</div></details>` : '') +
-          `<label class="field"><span>Scripted agent</span><select data-agent="${c}:${seat}"><option value="">Choose…</option>` +
-          agents.map(a => `<option value="${esc(a.path)}" ${st.agents[c][seat] === a.path ? 'selected' : ''}>${esc(a.label)}</option>`).join('') +
-          '</select></label>' + (e ? `<div class="err">${esc(e)}</div>` : '') + '</div>';
+          `<label class="field"><span>Seat played by</span><select data-role="${c}:${seat}"><option value="trainee" ${partner ? '' : 'selected'}>A trainee</option>` +
+          `<option value="partner" ${partner ? 'selected' : ''}>An AI partner</option></select></label>` +
+          (partner ? '' : `<label class="field"><span>Scripted agent</span><select data-agent="${c}:${seat}"><option value="">Choose…</option>` +
+            agents.map(a => `<option value="${esc(a.path)}" ${st.agents[c][seat] === a.path ? 'selected' : ''}>${esc(a.label)}</option>`).join('') + '</select></label>') +
+          (e ? `<div class="err">${esc(e)}</div>` : '') + '</div>';
       }).join('');
       const sims = (V.TYPES[st.platform.type] || { simulated: [] }).simulated.map(s => s[2]);
       return `<div class="crew" data-crew="${c}"><div class="crewHead">Crew <span class="muted small">${esc((modelInfo() || {}).name || '')}</span></div>` +
@@ -415,9 +481,11 @@
     const fixed = st.opts.mode === 'fixed';
     $('modeBadge').className = 'modeBadge ' + (fixed ? 'mode-fixed' : 'mode-adaptive');
     $('modeBadge').textContent = (fixed ? '■ ' : '↻ ') + (MODE_NAMES[st.opts.mode] || st.opts.mode) + (fixed ? ' · no adjustments' : '');
-    const seat = st.active, seats = seatsOf(st.platform.type), allFull = SLOTS.every(c => seats.every(s => st.crews[c][s]));
+    const seat = st.active, seats = seatsOf(st.platform.type), allFull = SLOTS.every(c => seats.every(s => seatFilled(selection(), c, s)));
+    const forPartner = seat && roleOf(selection(), seat.crew, seat.seat) === 'partner';
     $('poolFor').innerHTML = seat && seat.seat in (st.crews[seat.crew] || {})
-      ? `Choosing for <b>crew ${esc(seat.crew)}, ${esc(seatLabel(seat.seat))}</b>${allFull ? ' <span class="muted">(all seats filled; click a seat to change it)</span>' : ''}` : '';
+      ? (forPartner ? `Choosing whose runs the <b>AI partner in ${esc(seatLabel(seat.seat))}</b> copies` : `Choosing for <b>crew ${esc(seat.crew)}, ${esc(seatLabel(seat.seat))}</b>`) +
+        `${allFull ? ' <span class="muted">(all seats filled; click a seat to change it)</span>' : ''}` : '';
     const o = st.opts, sc = CGF.scenarios[o.scenario];
     $('runSummary').textContent = `${sc ? (sc.name || o.scenario) : o.scenario} · seed ${o.seed} · ${MODE_NAMES[o.mode] || o.mode} · ` +
       `${Number.isFinite(o.duration_s) ? Math.round(o.duration_s / 60) : '?'} min · evaluate every ${o.eval_interval_s} s`;
@@ -451,7 +519,7 @@
     return ok ? alloc : null;
   }
 
-  function apply(next) { Object.assign(st, { platform: next.platform, crews: next.crews, agents: next.agents, opts: next.opts }); }
+  function apply(next) { Object.assign(st, { platform: next.platform, crews: next.crews, agents: next.agents, partners: next.partners || emptyCrews(next.platform.type).partners, opts: next.opts }); }
   const defaultAgentFor = id => (F.defaultAgent || {})[id] || ((F.agentProfiles || [])[0] || {}).path || '';
 
   // "Suggest demo crew": the weakest trainee per seat on the seat's focus competencies (suggestCrew).
@@ -461,18 +529,19 @@
     if (!r) { st.status = 'No suitable crew: fewer trainees than seats.'; return render(); }
     const next = emptyCrews(st.platform.type);
     for (const [seat, id] of Object.entries(r.crews.A)) { next.crews.A[seat] = id; next.agents.A[seat] = defaultAgentFor(id); }
-    Object.assign(st, { crews: next.crews, agents: next.agents });
+    Object.assign(st, { crews: next.crews, agents: next.agents, partners: next.partners });   // a suggested crew is all trainees
     st.inspect = r.picks[r.picks.length - 1].id;
     st.active = { crew: 'A', seat: seatsOf(st.platform.type)[0] };
     st.status = 'Suggested: ' + r.picks.map(p => `${nameById(p.id)} in ${seatLabel(p.seat)}` + (p.k ? ` (${LONG[p.k]} ${p.mean.toFixed(2)})` : '')).join(', ') + '.';
     render();
   }
-  const selection = () => ({ platform: st.platform, crews: st.crews, agents: st.agents, opts: st.opts });
+  const selection = () => ({ platform: st.platform, crews: st.crews, agents: st.agents, partners: st.partners, opts: st.opts });
 
   function assign(id) {
     const { crew, seat } = st.active;
     if (!(seat in st.crews[crew])) return;
-    const next = seatTrainee(selection(), crew, seat, id, defaultAgentFor(id));
+    // A partner seat takes the clicked trainee as the person it copies; a trainee seat seats them
+    const next = roleOf(selection(), crew, seat) === 'partner' ? setPartner(selection(), crew, seat, id) : seatTrainee(selection(), crew, seat, id, defaultAgentFor(id));
     apply(next);
     st.inspect = id;
     st.active = nextEmptySeat(selection(), st.active);
@@ -535,7 +604,8 @@
       const clr = e.target.closest('[data-clear]');
       if (clr) {
         const [c, s] = clr.dataset.clear.split(':');
-        st.crews[c][s] = null; st.agents[c][s] = ''; st.active = { crew: c, seat: s };
+        st.crews[c][s] = null; st.agents[c][s] = ''; if (st.partners && st.partners[c]) delete st.partners[c][s];   // an emptied seat is a trainee seat again
+        st.active = { crew: c, seat: s };
         return render();
       }
       const dot = e.target.closest('.seatDot');   // a seat marker on the vehicle picks that seat
@@ -548,6 +618,13 @@
     $('slots').addEventListener('change', e => {
       const key = e.target.dataset.agent;
       if (key) { const [c, s] = key.split(':'); st.agents[c][s] = e.target.value; render(); }
+      const role = e.target.dataset.role;   // who plays the seat: a trainee, or an AI partner copying one
+      if (role) {
+        const [c, s] = role.split(':');
+        apply(e.target.value === 'partner' ? setPartner(selection(), c, s, '') : clearPartner(selection(), c, s));
+        st.active = { crew: c, seat: s }; st.status = '';
+        render();
+      }
     });
     $('optType').addEventListener('change', e => changePlatform(e.target.value));
     $('optModel').addEventListener('change', e => changePlatform(st.platform.type, e.target.value));

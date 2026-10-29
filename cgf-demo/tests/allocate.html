@@ -195,7 +195,67 @@
   });
   test('selectionFrom restores what buildAllocation built', () => {
     const s = sel(); s.opts.seed = 99; s.opts.mode = 'fixed';
-    eq(A.selectionFrom(build(s), ctx), s);
+    eq(A.selectionFrom(build(s), ctx), { platform: s.platform, crews: s.crews, agents: s.agents, partners: { A: {} }, opts: s.opts });   // no partner seats: an empty partners map
+  });
+
+  // ---- AI partner seats on the allocation page (INTERFACES §3.2)
+  const stubParams = from => ({ rates: { hail_acknowledged: 0.26, safe_passage: 0.75 }, reaction_delay_s: 20,
+    basis: { source: 'profile', sessions: 0, by_competency: { hail_discipline: 'profile' } } });
+  const buildP = s => A.buildAllocation(s, F.envelopeDefault, stubParams);
+  test('a partner seat is set, cleared, and replaced by seating a trainee', () => {
+    const s = A.setPartner(sel(), 'A', 'weapons', 'trainee_b');
+    eq([A.roleOf(s, 'A', 'weapons'), A.derivedOf(s, 'A', 'weapons'), s.crews.A.weapons, s.agents.A.weapons], ['partner', 'trainee_b', null, '']);
+    eq(A.roleOf(sel(), 'A', 'weapons'), 'trainee', 'a selection without partners has only trainee seats');
+    eq(A.roleOf(A.clearPartner(s, 'A', 'weapons'), 'A', 'weapons'), 'trainee');
+    const back = A.seatTrainee(s, 'A', 'weapons', 'trainee_c05', 'trainees/strong.js');
+    eq([A.roleOf(back, 'A', 'weapons'), back.crews.A.weapons], ['trainee', 'trainee_c05']);
+  });
+  test('a partner seat counts as filled only once it knows whose runs it copies, and nextEmptySeat respects that', () => {
+    const open = A.setPartner(sel(), 'A', 'weapons', '');
+    eq(A.seatFilled(open, 'A', 'weapons'), false);
+    eq(A.seatFilled(A.setPartner(sel(), 'A', 'weapons', 'trainee_b'), 'A', 'weapons'), true);
+    eq(A.nextEmptySeat(open, { crew: 'A', seat: 'navigation' }), { crew: 'A', seat: 'weapons' });
+  });
+  test('checkSelection: a partner needs a source, and at least one seat must be a trainee', () => {
+    ok('seat_A_weapons' in A.checkSelection(A.setPartner(sel(), 'A', 'weapons', ''), ctx), 'no source');
+    eq(A.checkSelection(A.setPartner(sel(), 'A', 'weapons', 'trainee_b'), ctx), {}, 'a partner with a source is ready');
+    let all = sel(); for (const seat of ['weapons', 'sensors', 'navigation']) all = A.setPartner(all, 'A', seat, 'trainee_b');
+    ok('crew_A' in A.checkSelection(all, ctx), 'all partners');
+  });
+  test('a partner seat does not count as the same trainee twice, and may copy a trainee who is also in the crew', () => {
+    const s = A.setPartner(sel(), 'A', 'weapons', 'trainee_c01');   // trainee_c01 is in the sensors seat
+    eq(A.checkSelection(s, ctx), {});
+  });
+  test('buildAllocation turns a partner seat into a valid partner crew entry, and the allocation validates', () => {
+    const a = buildP(A.setPartner(sel(), 'A', 'weapons', 'trainee_b')), m = a.slots[0].crew[0];
+    eq(m, { seat: 'weapons', trainee_id: 'partner_weapons', role: 'partner', derived_from: { trainee_id: 'trainee_b' }, agent_params: stubParams() });
+    eq(C.validateAllocation(a, { scenarios: ids, domainOf }), []);
+    eq(a.slots[0].crew[1].agent_profile, 'trainees/strong.js', 'trainee seats are unchanged');
+  });
+  test('buildAllocation without a partner needs no parameter function, and with one but none available says so', () => {
+    eq(C.validateAllocation(A.buildAllocation(sel(), F.envelopeDefault), { scenarios: ids, domainOf }), []);
+    let msg = ''; try { A.buildAllocation(A.setPartner(sel(), 'A', 'weapons', 'trainee_b'), F.envelopeDefault); } catch (e) { msg = e.message; }
+    ok(/Assess\.partnerParams/.test(msg), msg);
+  });
+  test('selectionFrom restores a partner seat from a saved allocation', () => {
+    const s = A.setPartner(sel(), 'A', 'sensors', 'trainee_b');
+    const back = A.selectionFrom(buildP(s), ctx);
+    eq([A.roleOf(back, 'A', 'sensors'), A.derivedOf(back, 'A', 'sensors'), back.crews.A.sensors], ['partner', 'trainee_b', null]);
+    eq(back.crews.A.weapons, 'trainee_a');
+  });
+  test('changing the platform keeps a partner seat whose seat id exists on the new platform', () => {
+    const s = A.setPartner(sel(), 'A', 'weapons', 'trainee_b');
+    const same = A.withPlatform(s, { type: 'warship', model: 'lcs-independence' }, ids, domainOf);
+    eq(A.derivedOf(same, 'A', 'weapons'), 'trainee_b');
+    const other = A.withPlatform(s, { type: 'tank', model: 'leopard2sg' }, ids, domainOf);
+    eq(Object.keys(other.partners.A), [], 'tank seats do not include weapons');
+  });
+  test('describePartner says in words where the numbers come from', () => {
+    const t = A.describePartner(stubParams(), 'Ben Ong');
+    ok(/^Plays like Ben Ong, from the profile averages\./.test(t), t);
+    ok(/answers a hail 26% of the time/.test(t) && /keeps a safe passing distance 75% of the time/.test(t), t);
+    ok(/from 2 saved sessions/.test(A.describePartner({ rates: {}, basis: { source: 'history', sessions: 2 } }, 'X')));
+    ok(/defaults \(no data on them yet\)/.test(A.describePartner({ rates: {}, basis: { source: 'default', sessions: 0 } }, 'X')));
   });
   test('selectionFrom returns null for bad input, including the older formats', () => {
     eq(A.selectionFrom(null, ctx), null); eq(A.selectionFrom('x', ctx), null); eq(A.selectionFrom([], ctx), null);
