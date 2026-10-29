@@ -8,6 +8,8 @@ An adaptive CGF trainer, built on the maritime CGF simulator in `cgf-demo/`. An 
 
 ## Lane boundaries
 
+The lanes exist so that no two people edit the same file, which is what makes direct pushes to `main` safe.
+
 There are four people, each with their own lane. Full detail, tasks and hand-offs are in `cgf-demo/docs/LANES.md`. **At the start of the session, work out whose session this is from the user's first message ("I am Glenda"). If it is not clear, ask before editing anything.** Work only inside that person's files. Paths are inside `cgf-demo/`.
 
 | Person | Lane | Files |

@@ -134,6 +134,8 @@ Tasks:
 
 ## Rules that stop collisions
 
+**Purpose of the lanes: no two people ever edit the same file.** That is what makes direct pushes to `main` safe. Every file has exactly one owner (tables above). A file with no owner belongs to the lane that creates it. If two lanes need to change one file, the owner makes the change on request, or the file is split so each lane owns a part.
+
 1. Never edit a file outside your lane. If you need a change there, write down the exact request (file, function, behaviour) and tell its owner.
 2. A new file belongs to the lane that creates it, and sits in that lane's folder or uses its prefix.
 3. Contracts (`contracts/`, `docs/INTERFACES.md`) change only through JL.
