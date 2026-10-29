@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Link tests</title>
+<style>
+  body { font: 14px/1.5 "Segoe UI", system-ui, sans-serif; background: #0b1420; color: #d6e2f0; padding: 16px; }
+  .pass { color: #4dd17a; } .fail { color: #ff7b54; } h1 { font-size: 16px; }
+  #summary { font-weight: 700; margin: 8px 0 12px; }
+  /* Chrome stops animation frames in cross-origin iframes that are off screen, and the runtime ticks on them.
+     The frames sit in the viewport, as the panes do on host.html. */
+  #frames { position: fixed; right: 0; top: 0; width: 700px; height: 420px; opacity: .9; }
+  iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 1px solid #24364d; background: #0b1420; }
+</style>
+</head>
+<body>
+<h1>Link tests (protocol, host helpers, and the real runtime in an iframe)</h1>
+<div id="summary">running…</div>
+<ul id="results"></ul>
+<div id="frames"></div>
+
+<script src="../js/util.js"></script>
+<script src="../contracts/contracts.js"></script>
+<script src="../contracts/link.js"></script>
+<script src="../fixtures/envelope-default.js"></script>
+<script src="../link/host.js"></script>
+<script>
+(async function () {
+  const C = CGF.contracts, L = CGF.link, H = CGF.hostLink, F = window.CGF_FIXTURES;
+  const results = [];
+  const record = (name, err) => { results.push([name, err]); render(); };
+  const test = (name, fn) => { try { fn(); record(name, null); } catch (e) { record(name, e.message); } };
+  const atest = async (name, fn) => { try { await fn(); record(name, null); } catch (e) { record(name, e.message); } };
+  const eq = (a, b, msg) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error((msg || 'not equal') + ': got ' + JSON.stringify(a) + ', want ' + JSON.stringify(b)); };
+  const ok = (c, msg) => { if (!c) throw new Error(msg || 'expected true'); };
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  function render() {
+    const failed = results.filter(r => r[1]);
+    const s = document.getElementById('summary');
+    s.textContent = `${results.length - failed.length} / ${results.length} passed`; s.className = failed.length ? 'fail' : 'pass';
+    document.getElementById('results').innerHTML = results.map(([n, e]) =>
+      `<li class="${e ? 'fail' : 'pass'}">${e ? 'FAIL' : 'PASS'} · ${n}${e ? ' — ' + e : ''}</li>`).join('');
+  }
+
+  const crew = (ids, seats) => seats.map((seat, i) => ({ seat, trainee_id: ids[i], agent_profile: 'trainees/strong.js' }));
+  const allocation = () => ({
+    allocation_id: 'alloc_t', created_at_session: null,
+    shared: { scenario: 'strait-transit', seed: 1, mode: 'adaptive', duration_s: 600, eval_interval_s: 30, envelope: clone(F.envelopeDefault),
+      platform: { type: 'warship', model: 'formidable' } },
+    slots: [{ pane: 'A', crew: crew(['trainee_a', 'trainee_c01', 'trainee_c02'], C.SEATS_BY_TYPE.warship) },
+            { pane: 'B', crew: crew(['trainee_b', 'trainee_c03', 'trainee_c04'], C.SEATS_BY_TYPE.warship) }]
+  });
+  const msg = (type, payload) => L.message(type, 'T', payload);
+
+  // ---- protocol
+  test('a well-formed message of every pane type validates', () => {
+    eq(L.validateMessage(msg('hello', { api: { ok: true, missing: [] } })), []);
+    eq(L.validateMessage(msg('ready', { scenario: 's', domain: 'sea', platform: {}, crew: [] })), []);
+    eq(L.validateMessage(msg('status', { t: 5, running: true, outcome: null, stats: {} })), []);
+    eq(L.validateMessage(msg('ended', { outcome: 'fail', text: 'x' })), []);
+    eq(L.validateMessage(msg('error', { message: 'x' })), []);
+  });
+  test('a well-formed message of every host type validates', () => {
+    eq(L.validateMessage(msg('init', { config: {} })), []);
+    for (const t of ['start', 'pause', 'restart']) eq(L.validateMessage(msg(t)), [], t);
+  });
+  test('the reserved loop messages validate but are not sent yet', () => {
+    eq(L.validateMessage(msg('events', { events: [] })), []);
+    eq(L.validateMessage(msg('apply', { adjustments: [] })), []);
+  });
+  test('malformed messages are rejected', () => {
+    ok(L.validateMessage(null).length, 'null'); ok(L.validateMessage('x').length, 'string'); ok(L.validateMessage([]).length, 'array');
+    ok(L.validateMessage({}).length, 'empty');
+    ok(L.validateMessage(Object.assign(msg('start'), { cgfLink: 2 })).length, 'wrong protocol version');
+    ok(L.validateMessage(Object.assign(msg('start'), { type: 'nope' })).length, 'unknown type');
+    ok(L.validateMessage(Object.assign(msg('start'), { pane: 'ab' })).length, 'bad pane');
+    ok(L.validateMessage(msg('init', {})).length, 'init without config');
+    ok(L.validateMessage(msg('status', { t: 'x', running: true, outcome: null, stats: {} })).length, 'status t');
+    ok(L.validateMessage(msg('status', { t: NaN, running: true, outcome: null, stats: {} })).length, 'status NaN');
+    ok(L.validateMessage(msg('hello', { api: [] })).length, 'api array');
+  });
+  test('direction table: hello is from the pane, init is from the host', () => {
+    eq([L.TYPES.hello.from, L.TYPES.init.from, L.TYPES.start.from, L.TYPES.status.from], ['pane', 'host', 'host', 'pane']);
+  });
+
+  // ---- host helpers
+  test('parseAllocation reads the link first', () => {
+    const a = allocation(), r = H.parseAllocation('?alloc=' + encodeURIComponent(JSON.stringify(a)), null);
+    eq(r.source, 'link'); eq(r.allocation.allocation_id, 'alloc_t'); eq(r.errors, []);
+  });
+  test('parseAllocation falls back to storage', () => {
+    const r = H.parseAllocation('', JSON.stringify(allocation()));
+    eq(r.source, 'storage'); ok(r.allocation);
+  });
+  test('parseAllocation prefers the link over storage', () => {
+    const stored = allocation(); stored.allocation_id = 'alloc_stored';
+    eq(H.parseAllocation('?alloc=' + encodeURIComponent(JSON.stringify(allocation())), JSON.stringify(stored)).allocation.allocation_id, 'alloc_t');
+  });
+  test('an invalid link falls through to a valid stored allocation', () => {
+    const r = H.parseAllocation('?alloc=%7Bnope', JSON.stringify(allocation()));
+    eq(r.source, 'storage'); ok(r.allocation);
+  });
+  test('parseAllocation reports nothing, bad JSON, and an invalid allocation', () => {
+    eq(H.parseAllocation('', null), { allocation: null, source: null, errors: [] });
+    ok(H.parseAllocation('?alloc=%7Bnope', null).errors.some(m => /not valid JSON/.test(m)));
+    const bad = allocation(); bad.slots.pop();
+    const r = H.parseAllocation('', JSON.stringify(bad));
+    eq(r.allocation, null); ok(r.errors.length);
+  });
+  test('parseAllocation rejects the older array-of-configs format', () => {
+    const r = H.parseAllocation('', JSON.stringify(C.expandAllocation(allocation())));
+    eq(r.allocation, null); ok(r.errors.length);
+  });
+  test('paneUrl points a pane at the runtime', () => eq(H.paneUrl('A'), 'runtime.html?pane=A'));
+  test('expandAllocation gives each pane its own crew', () => {
+    const [a, b] = C.expandAllocation(allocation());
+    eq([a.crew[0].trainee_id, b.crew[0].trainee_id], ['trainee_a', 'trainee_b']);
+  });
+
+  // ---- the real runtime, linked
+  function openFrame(src) {
+    const f = document.createElement('iframe'); f.src = src; document.getElementById('frames').appendChild(f);
+    const inbox = [], waiting = [];
+    window.addEventListener('message', ev => {
+      if (ev.source !== f.contentWindow) return;
+      const m = ev.data; if (!m || m.cgfLink !== 1) return;
+      inbox.push(m);
+      for (const w of waiting.slice()) if (w.match(m)) { waiting.splice(waiting.indexOf(w), 1); w.resolve(m); }
+    });
+    return {
+      frame: f, inbox,
+      send: (type, payload) => f.contentWindow.postMessage(L.message(type, 'T', payload), '*'),
+      next: (match, ms) => new Promise((resolve, reject) => {
+        waiting.push({ match, resolve });   // only messages that arrive after this call count
+        setTimeout(() => reject(new Error('timed out waiting for a message')), ms || 8000);
+      })
+    };
+  }
+
+  const linked = openFrame('../runtime.html?pane=T');
+  let hello;
+  await atest('the runtime says hello once it has booted, and reports its API as complete', async () => {
+    hello = await linked.next(m => m.type === 'hello', 20000);
+    eq(L.validateMessage(hello), []);
+    eq(hello.api, { ok: true, missing: [] }, 'api check');
+  });
+  await atest('hello is sent exactly once', async () => {
+    await sleep(1500);
+    eq(linked.inbox.filter(m => m.type === 'hello').length, 1);
+  });
+
+  const cfg = C.expandAllocation(allocation())[0];
+  await atest('an init for a scenario the runtime lacks is answered with an error', async () => {
+    const bad = clone(cfg); bad.scenario = 'no-such-scenario';
+    const p = linked.next(m => m.type === 'error'); linked.send('init', { config: bad });
+    ok(/not loaded/.test((await p).message));
+  });
+  await atest('an init whose platform does not match the scenario domain is answered with an error', async () => {
+    const bad = clone(cfg); bad.platform = { type: 'tank', model: 'leopard2sg' };
+    bad.crew = crew(['trainee_a', 'trainee_c01'], C.SEATS_BY_TYPE.tank);
+    const p = linked.next(m => m.type === 'error'); linked.send('init', { config: bad });
+    ok(/needs a land/.test((await p).message));
+  });
+  await atest('an invalid config is answered with an error', async () => {
+    const bad = clone(cfg); bad.crew.pop();
+    const p = linked.next(m => m.type === 'error'); linked.send('init', { config: bad });
+    ok(/seats/.test((await p).message));
+  });
+  await atest('start before init is answered with an error', async () => {
+    const fresh = openFrame('../runtime.html?pane=T');
+    await fresh.next(m => m.type === 'hello', 20000);
+    const p = fresh.next(m => m.type === 'error'); fresh.send('start');
+    ok(/send init first/.test((await p).message));
+  });
+  await atest('a valid init loads the scenario and answers ready with the crew', async () => {
+    const p = linked.next(m => m.type === 'ready'); linked.send('init', { config: cfg });
+    const r = await p;
+    eq(L.validateMessage(r), []); eq(r.scenario, 'strait-transit'); eq(r.domain, 'sea');
+    eq(r.platform, { type: 'warship', model: 'formidable' }); eq(r.crew.map(m => m.trainee_id), ['trainee_a', 'trainee_c01', 'trainee_c02']);
+  });
+  await atest('start makes the simulation run and status reports it', async () => {
+    const p = linked.next(m => m.type === 'status' && m.running === true); linked.send('start');
+    const s = await p; eq(L.validateMessage(s), []); eq(s.outcome, null);
+  });
+  await atest('sim time advances while it runs', async () => {
+    const p = linked.next(m => m.type === 'status' && m.running === true && m.t > 0, 10000);
+    ok((await p).t > 0);
+  });
+  await atest('pause stops the simulation', async () => {
+    const p = linked.next(m => m.type === 'status' && m.running === false); linked.send('pause'); await p;
+  });
+  await atest('restart reloads the scenario and answers ready again', async () => {
+    const p = linked.next(m => m.type === 'ready'); linked.send('restart');
+    eq((await p).scenario, 'strait-transit');
+    const s = await linked.next(m => m.type === 'status' && m.running === false && m.t === 0);
+    eq(s.t, 0);
+  });
+  await atest('a message for another pane letter is ignored', async () => {
+    const n = linked.inbox.length;
+    linked.frame.contentWindow.postMessage(L.message('start', 'Z'), '*');
+    await sleep(1200);
+    ok(!linked.inbox.slice(n).some(m => m.type === 'status' && m.running === true), 'ran for the wrong pane');
+  });
+  await atest('a message that is not a link message is ignored', async () => {
+    const n = linked.inbox.length;
+    linked.frame.contentWindow.postMessage({ type: 'start', pane: 'T' }, '*');
+    linked.frame.contentWindow.postMessage('start', '*');
+    await sleep(1200);
+    ok(!linked.inbox.slice(n).some(m => m.type === 'status' && m.running === true), 'ran on a malformed message');
+  });
+
+  // ---- the runtime on its own stays untouched
+  await atest('runtime.html without ?pane= sends nothing and stays inert', async () => {
+    const alone = openFrame('../runtime.html');
+    await sleep(3500);
+    eq(alone.inbox.length, 0);
+  });
+
+  document.getElementById('summary').dataset.done = '1';
+  render();
+})();
+</script>
+</body>
+</html>

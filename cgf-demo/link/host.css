@@ -1,0 +1,25 @@
+/* Host page for the side-by-side run. Builds on css/style.css variables; selectors are scoped to #hostApp. */
+#hostApp { display: flex; flex-direction: column; height: 100vh; }
+#hostApp header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 14px;
+  background: var(--panel); border-bottom: 1px solid var(--line); }
+#hostApp header h1 { margin: 0; }
+#hostApp a.btn { text-decoration: none; color: var(--text); }
+#hostApp main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px; }
+#hostApp .pane { display: flex; flex-direction: column; min-height: 0; min-width: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+#hostApp .info { background: var(--panel); padding: 6px 10px; border-bottom: 1px solid var(--line); }
+#hostApp iframe { flex: 1; width: 100%; border: 0; background: var(--bg); min-height: 0; }
+.paneTitle { display: flex; align-items: center; gap: 8px; }
+.crewLine { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 2px 0; font-size: 12px; }
+.chip { font-size: 11px; padding: 1px 7px; border-radius: 9px; background: var(--panel2); border: 1px solid var(--line); color: var(--muted); }
+.chip.run { color: #04121f; background: var(--accent); border-color: var(--accent); }
+.chip.good { color: #c9f7d0; background: #173b26; border-color: #4dd17a; }
+.chip.bad { color: #ffb4b4; background: #3d1717; border-color: #ff5c5c; }
+.warn { color: #ffd9a8; }
+#empty { padding: 24px 14px; }
+#empty[hidden], #stage[hidden] { display: none; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+@media (max-width: 900px) {
+  #hostApp { height: auto; }
+  #hostApp main { grid-template-columns: 1fr; }
+  #hostApp iframe { height: 80vh; }
+}

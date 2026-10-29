@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Side-by-side run</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="link/host.css">
+</head>
+<body>
+<div id="hostApp">
+  <header>
+    <h1>Side-by-side run</h1>
+    <span id="summary" class="grow"></span>
+    <button id="btnStart" class="primary" disabled>Start both</button>
+    <button id="btnPause" disabled>Pause both</button>
+    <button id="btnRestart" disabled>Restart both</button>
+    <a class="btn" href="allocate.html">Edit allocation</a>
+  </header>
+
+  <div id="empty" hidden>
+    <h2>No allocation to run</h2>
+    <p id="emptyWhy" class="muted"></p>
+    <p><a class="btn primary" href="allocate.html">Open the allocation page</a></p>
+  </div>
+
+  <main id="stage">
+    <section class="pane"><div id="infoA" class="info"></div><iframe id="frameA" title="Pane A"></iframe></section>
+    <section class="pane"><div id="infoB" class="info"></div><iframe id="frameB" title="Pane B"></iframe></section>
+  </main>
+</div>
+
+<script src="js/util.js"></script>
+<script src="contracts/contracts.js"></script>
+<script src="contracts/link.js"></script>
+<script src="link/host.js"></script>
+</body>
+</html>

@@ -263,7 +263,7 @@
       cErrs = C.validateAllocation(alloc, { scenarios: st.scenarioIds, domainOf: st.domainOf });
     }
     const ok = ready && !cErrs.length;
-    $('btnSave').disabled = $('btnExport').disabled = !ok;
+    $('btnStart').disabled = $('btnSave').disabled = $('btnExport').disabled = !ok;
     $('output').textContent = ok ? JSON.stringify(alloc, null, 2) : '';
     $('outputNote').innerHTML = ok ? `A valid allocation (INTERFACES §3.1): two panes, ${typeInfo().seats.length} seats each.`
       : cErrs.length ? cErrs.map(esc).join('<br>')
@@ -355,6 +355,11 @@
       const alloc = render(); if (!alloc) return;
       st.status = store.write(alloc) ? `Saved to this browser (${STORE_KEY}).` : 'Browser storage is blocked here. Use the link or Export JSON instead.';
       render();
+    };
+    $('btnStart').onclick = () => {   // the link always carries the allocation, so a blocked browser store cannot stop the run
+      const alloc = render(); if (!alloc) return;
+      store.write(alloc);
+      location.href = handoffUrl(alloc);
     };
     $('btnExport').onclick = () => {
       const alloc = render(); if (!alloc) return;
