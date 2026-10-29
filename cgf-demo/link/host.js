@@ -57,13 +57,9 @@
     return { allocation_id, records: Object.assign({}, same ? prev.records : {}, { [pane]: record }) };
   }
 
-  // The record as the report builder should see it: trainees only. An AI partner is not assessed and must not get a report
-  // or history entries of its own (INTERFACES §3.2); Glenda's builder makes one report per crew entry, so partners are
-  // left out until it lists them as "AI partner, based on ..." itself.
-  function forReport(record) {
-    if (!record || !Array.isArray(record.crew) || !record.crew.some(m => m && m.role === 'partner')) return record;
-    return Object.assign({}, record, { crew: record.crew.filter(m => !(m && m.role === 'partner')) });
-  }
+  // The record as the report builder sees it. Glenda's builder lists an AI partner in the crew table and gives it no
+  // report or history entry (INTERFACES §3.2), so the record goes through whole, partner entries included.
+  function forReport(record) { return record; }
 
   CGF.hostLink = { STORE_KEY, RUN_KEY, parseAllocation, paneUrl, checkRecord, mergeRun, forReport };
 
@@ -91,7 +87,18 @@
 
   const clock = t => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 
+  const MODE_NAMES = { adaptive: 'Adaptive practice', fixed: 'Fixed assessment' };
+
   function render() {
+    const cfg = (Object.values(panes)[0] || {}).config, badge = $('modeBadge');   // same names and classes as the allocation page
+    if (badge) {
+      badge.hidden = !cfg;
+      if (cfg) {
+        const fixed = cfg.mode === 'fixed';
+        badge.className = 'modeBadge ' + (fixed ? 'mode-fixed' : 'mode-adaptive');
+        badge.textContent = (fixed ? '■ ' : '↻ ') + (MODE_NAMES[cfg.mode] || cfg.mode) + (fixed ? ' · no adjustments' : '');
+      }
+    }
     for (const [pane, p] of Object.entries(panes)) {
       const el = $('info' + pane), st = p.status;
       const chip = p.state === 'error' ? `<span class="chip bad">error</span>`

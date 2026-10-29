@@ -11,9 +11,9 @@
   'use strict';
   const CGF = window.CGF, U = CGF.util, C = CGF.contracts;
 
-  // The runtime does not play AI partner seats yet (LANES D8, Devin). Until it does, an allocation with a partner can be
-  // built, saved and exported but not started, so nobody meets a broken run. Flip this when D8 lands.
-  const PARTNERS_RUN = false;
+  // The runtime plays AI partner seats (LANES D8, Devin, commit 178812d). Set this to false to hold Start back for an
+  // allocation with a partner, if the runtime ever stops playing them.
+  const PARTNERS_RUN = true;
 
   const STORE_KEY = 'cgf.allocation';         // localStorage: one config per crew
   const SLOTS = ['A'];                         // one crew per run (single crew since 2026-10-29)

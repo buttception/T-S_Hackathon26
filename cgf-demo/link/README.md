@@ -72,7 +72,7 @@ When an adaptive run reaches its duration, Devin's runtime emits the `session-re
 4. fires `cgf:session-record` on the host window (`detail: { pane, record, errors, run }`) for anything that wants to react, such as the competency update;
 5. offers "Export session records" to download the run as JSON;
 6. saves the record with `Runs.save` (`js/assess/runs.js`) and links `compare.html`, which sets a fixed-mode run beside an adaptive one on the same seed and crew;
-7. leaves AI partners out of the crew it gives the report builder (`hostLink.forReport`), so a partner never gets a report or history entries.
+7. gives the report builder the whole record (`hostLink.forReport`); the report lists AI partners in the crew table and gives them no report or history entries.
 
 A restart clears a pane's record on the page. The stored run is replaced when the next valid record for that pane arrives.
 

@@ -20,7 +20,7 @@ $ErrorActionPreference = 'Stop'
 if ($Pages) { $Pages = @($Pages | ForEach-Object { $_ -split ',' } | Where-Object { $_ }) }   # `-File ... -Pages a,b` arrives as one string
 $tests = Join-Path (Split-Path $PSScriptRoot -Parent) 'tests'
 $files = if ($Pages) { $Pages | ForEach-Object { Join-Path $tests ($_ -replace '\.html$', '' | ForEach-Object { "$_.html" }) } }
-         else { Get-ChildItem $tests -Filter *.html | Sort-Object Name | ForEach-Object { $_.FullName } }
+         else { Get-ChildItem $tests -Filter *.html -Recurse | Sort-Object FullName | ForEach-Object { $_.FullName } }
 
 $script:failed = 0; $port = $FirstPort; $summary = @()
 foreach ($file in $files) {
