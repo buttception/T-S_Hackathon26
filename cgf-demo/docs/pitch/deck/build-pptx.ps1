@@ -365,25 +365,54 @@ $b.TextFrame.TextRange.ParagraphFormat.Bullet.Visible = -1; $b.TextFrame.TextRan
 Footer $s "NO COMPATIBILITY CLAIMED WITH ANY NAMED SIMULATOR OR STANDARD" $MUTED
 Notes $s "Beyond the core loop, what else needs to be done? Left column is what runs today and was tested. Right column is the honest list of what is not built: competency signals for air and land, crew-level adaptation, an adapter to a real simulator over HLA or DIS, a trial with real cohorts, approval for a local model on the event laptops, and the division's figures. The engine changes a small explicit set of CGF settings, which is what makes the adapter feasible."
 
-# ---------------------------------------------------------------- business
-$s = NewSlide $PANEL 'What fewer sessions to proficiency are worth in S$' 36 62 864 60 $STRONG
-Eyebrow $s "Business case" $ACCENT
-[void](Box $s 48 140 330 330 $RAISED $BORDER)
-[void](T $s 66 156 296 20 "ASSUMED ${dot} REPLACE WITH DIVISION FIGURES" 12 $CAUTION $true $MONO)
-$a = T $s 66 184 296 270 "200 trainees a year`r30 sessions to proficiency`r= 6,000 sessions a year`r`rValue of an avoided session = simulator running cost + instructor time`r`rr = share of sessions avoided by targeted practice, never yet measured" 15 $TEXT
-$a.TextFrame.TextRange.ParagraphFormat.SpaceAfter = 4
+$mdot = [char]0x00B7   # $dot is reused as a shape variable earlier in this script
+# ---------------------------------------------------------------- business: savings
+# All S$ inputs are ASSUMPTIONS or PLACEHOLDERS. Arithmetic is reproduced by ..\savings-calc.py; change both together.
+$s = NewSlide $PANEL 'What fewer sessions to proficiency could be worth' 36 62 864 60 $STRONG
+Eyebrow $s "Business case ${mdot} savings" $ACCENT
+[void](Box $s 48 130 360 344 $RAISED $BORDER)
+[void](T $s 66 144 330 18 "PLACEHOLDERS ${mdot} REPLACE WITH DIVISION FIGURES" 11 $CAUTION $true $MONO)
+$a = T $s 66 168 326 150 "N  200 trainees a year`rS0  30 sessions to proficiency`rC_session  S`$1,500 per session`rh  2 instructor hours per session`rC_instr  S`$250 per hour`rr  5 / 10 / 15%  (ASSUMED, never measured)" 14 $TEXT $false $MONO
+$a.TextFrame.TextRange.ParagraphFormat.SpaceAfter = 3
+$f = T $s 66 326 326 140 "Value of an avoided session`r= 1,500 + 2 $mul 250 = S`$2,000 (mid)`r`rAnnual saving = N $mul S0 $mul r $mul value`rAt r = 10%: 200 $mul 30 $mul 0.10 = 600 sessions avoided`r= 1,200 instructor hours; time to proficiency 30 $arr 27 sessions" 14 $MUTED
+$f.TextFrame.TextRange.Paragraphs(1).Font.Color.RGB = (C $STRONG); $f.TextFrame.TextRange.Paragraphs(1).Font.Bold = -1
 $rows = @(@('Avoided sessions', 'S$1,000 each', 'S$2,000 each', 'S$3,000 each'), @("r = 5%  (300)", 'S$0.3M', 'S$0.6M', 'S$0.9M'), @("r = 10%  (600)", 'S$0.6M', 'S$1.2M', 'S$1.8M'), @("r = 15%  (900)", 'S$0.9M', 'S$1.8M', 'S$2.7M'))
-$ts = $s.Shapes.AddTable($rows.Count, 4, 402, 140, 510, 240)
-$tbl = $ts.Table; $tbl.Columns.Item(1).Width = 168; for ($c = 2; $c -le 4; $c++) { $tbl.Columns.Item($c).Width = 114 }
+$ts = $s.Shapes.AddTable($rows.Count, 4, 432, 130, 480, 230)
+$tbl = $ts.Table; $tbl.Columns.Item(1).Width = 150; for ($c = 2; $c -le 4; $c++) { $tbl.Columns.Item($c).Width = 110 }
 StyleTable $tbl @($RAISED, $PANEL) $SUNK
 for ($r = 1; $r -le $rows.Count; $r++) {
-  $tbl.Rows.Item($r).Height = $(if ($r -eq 1) { 44 } else { 62 })
-  for ($c = 1; $c -le 4; $c++) { CellText $tbl $r $c $rows[$r - 1][$c - 1] $(if ($r -eq 1) { 13 } elseif ($c -eq 1) { 15 } else { 20 }) $(if ($r -eq 1 -or $c -eq 1) { $STRONG } else { $AITEXT }) ($r -eq 1 -or $c -eq 1 -or $c -gt 1) }
+  $tbl.Rows.Item($r).Height = $(if ($r -eq 1) { 42 } else { 56 })
+  for ($c = 1; $c -le 4; $c++) { CellText $tbl $r $c $rows[$r - 1][$c - 1] $(if ($r -eq 1) { 12 } elseif ($c -eq 1) { 14 } else { 19 }) $(if ($r -eq 1 -or $c -eq 1) { $STRONG } else { $AITEXT }) ($r -eq 1 -or $c -eq 1 -or $c -gt 1) }
 }
-$ts.Name = 'Savings sensitivity table'; $ts.AlternativeText = 'Annual saving in Singapore dollars for three avoided-session shares and three session values'
-[void](T $s 402 400 510 70 "Read as: if targeted practice avoids 10% of sessions and each avoided session is worth S`$2,000, the saving is S`$1.2M a year. Saving = sessions a year $mul r $mul value per session." 15 $MUTED)
-Footer $s "ILLUSTRATIVE ESTIMATE  ${dot}  r IS A HYPOTHESIS, NOT A RESULT" $MUTED
-Notes $s "The audience will want the value in Singapore dollars. This is a sensitivity grid built on stated assumptions, not a claim. The pool of 6,000 sessions a year (200 trainees times 30 sessions) and the value of S1,000 to S3,000 per avoided session are placeholders until the division supplies its own numbers; replace them and the grid follows from saving equals sessions times r times value. r, the share of sessions avoided, has never been measured: it is the hypothesis a trial would test. Say that out loud."
+$ts.Name = 'Savings sensitivity table'; $ts.AlternativeText = 'Illustrative annual saving in Singapore dollars for three avoided-session shares and three session values'
+[void](T $s 432 376 480 96 "The saving comes from three drivers: fewer simulator sessions (S`$1,500 each), fewer instructor hours (2 per session), and a shorter time to proficiency. Remedial retraining is not modelled, so it is upside. Every figure here is illustrative: the division${ap}s numbers replace the placeholders and the grid follows." 14 $MUTED)
+Footer $s "ILLUSTRATIVE ESTIMATE  ${mdot}  r IS A HYPOTHESIS, NOT A RESULT" $MUTED
+Notes $s "Value in Singapore dollars, as a sensitivity grid on stated assumptions, not a claim. Every input on the left is a placeholder until the division supplies its own: 200 trainees a year, 30 sessions to proficiency, S1,500 per simulator session, 2 instructor hours per session at S250 an hour. That makes an avoided session worth S2,000; the grid also shows S1,000 and S3,000. r, the share of sessions avoided by targeted practice, has never been measured; it is the hypothesis a trial would test. Say that out loud. Formula: annual saving equals trainees times sessions to proficiency times r times value per session. Detail is in pitch/savings-model.md."
+
+# ---------------------------------------------------------------- business: development effort and payback
+# Effort figures come from git history at commit dc0e438 (run ..\savings-calc.py); conventional comparison and day rate are ASSUMPTIONS.
+$s = NewSlide $BG 'What it took to build, and the payback' 36 62 864 60 $STRONG
+Eyebrow $s "Business case ${mdot} development effort" $ACCENT
+[void](Box $s 48 130 420 150 $RAISED $BORDER)
+[void](T $s 66 142 384 18 "MEASURED FROM GIT HISTORY" 11 $MUTED $false $MONO)
+[void](T $s 66 162 384 28 "2.1 to 4 person-days" 24 $STRONG $true)
+[void](T $s 66 196 384 80 "123 commits, 4 contributors, one day (6.2 h from first to last commit), 17,059 net lines (20,514 added, 3,455 deleted). AI-assisted, on a hackathon timeline." 13 $TEXT)
+[void](Box $s 492 130 420 150 $AIDEEP $AILINE)
+[void](T $s 510 142 384 18 "ASSUMPTION ${mdot} CONVENTIONAL BUILD" 11 $CAUTION $true $MONO)
+[void](T $s 510 162 384 28 "252 to 629 person-days" 24 'F3ECFF' $true)
+[void](T $s 510 196 384 80 "12,577 code and test lines at 50 to 20 lines per person-day (assumed, crude), at S`$800 a day (placeholder) = S`$0.20M to S`$0.50M." 13 $AITEXT)
+$rows = @(@('Payback, mid value S$2,000', 'r = 5%', 'r = 10%', 'r = 15%'), @('Prototype as built (4 pd, S$3,200)', '< 1 month', '< 1 month', '< 1 month'), @('Conventional, fast (252 pd, S$0.20M)', '4.0 months', '2.0 months', '1.3 months'), @('Conventional, slow (629 pd, S$0.50M)', '10.1 months', '5.0 months', '3.4 months'))
+$ts = $s.Shapes.AddTable($rows.Count, 4, 48, 296, 864, 150)
+$tbl = $ts.Table; $tbl.Columns.Item(1).Width = 400; for ($c = 2; $c -le 4; $c++) { $tbl.Columns.Item($c).Width = 154.67 }
+StyleTable $tbl @($RAISED, $PANEL) $SUNK
+for ($r = 1; $r -le $rows.Count; $r++) {
+  $tbl.Rows.Item($r).Height = $(if ($r -eq 1) { 34 } else { 38 })
+  for ($c = 1; $c -le 4; $c++) { CellText $tbl $r $c $rows[$r - 1][$c - 1] $(if ($r -eq 1) { 12 } elseif ($c -eq 1) { 14 } else { 16 }) $(if ($r -eq 1 -or $c -eq 1) { $STRONG } else { $AITEXT }) ($r -eq 1 -or $c -eq 1 -or $c -gt 1) }
+}
+$ts.Name = 'Payback table'; $ts.AlternativeText = 'Illustrative payback in months for the prototype and two conventional-build estimates at three avoided-session shares'
+[void](T $s 48 456 864 40 "Payback = 12 $mul development cost $([char]0x00F7) annual saving. It excludes the HLA/DIS adapter, a trial with real cohorts and approvals, and starts only once a trial has shown r." 13 $MUTED)
+Footer $s "EFFORT FROM GIT ${mdot} COMPARISON AND RATES ARE ASSUMPTIONS ${mdot} ILLUSTRATIVE" $MUTED
+Notes $s "How much effort did this take, and how fast could it pay back? Measured from the repository: 123 commits by four contributors, JL, Devin, Eevee and Glenda, inside one working day, about six hours from first to last commit. Person-days: at most 4, which is one day times four people, and about 2.1 if each person is counted only from their first to their last commit. It was AI-assisted and built on a hackathon timeline, so do not read it as a normal productivity rate. The right-hand card is an assumption: what the same code might cost if built conventionally at 20 to 50 lines per person-day and S800 a day. Both are placeholders. The table divides that cost by the illustrative saving from the previous slide. Be clear that the prototype is not a deployable system: the simulator adapter, a trial with real cohorts and approvals are not counted, and savings start only after a trial shows that r is real."
 
 # ---------------------------------------------------------------- 13 close
 $s = NewSlide $AIBG "Exercises each trainee${ap}s weak spot, inside limits the instructor sets, and explains every step." 40 150 800 190 'F3ECFF'
