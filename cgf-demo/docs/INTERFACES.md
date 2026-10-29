@@ -89,15 +89,15 @@ Validation: `crew` length and `seat` ids match the type; `trainee_id` is a lower
 
 ### 3.1 Allocation (wrapper)
 
-Changed 2026-10-29 (JL): one crew per run. `slots` and the pane letters are gone. **The contracts, page, host and tests still describe two panes until task J8 is done; this section is the target.**
+Changed 2026-10-29 (JL), built: **one crew per run.** The wrapper keeps `shared` and `slots`, with exactly one slot, pane `A`. Panes A and B no longer exist as a pair; the letter `A` is only the name of the one runtime instance.
 
-The trainee allocation page outputs one `Allocation`. The run page reads it and derives one scenario config (section 3).
+The trainee allocation page outputs one `Allocation`. The run page reads it and derives the scenario config (section 3).
 
 ```json
 {
   "allocation_id": "alloc_01",
-  "created_at_session": "s_20261030_01",
-  "run": {
+  "created_at_session": null,
+  "shared": {
     "scenario": "strait-transit",
     "seed": 1234,
     "mode": "adaptive",
@@ -106,12 +106,12 @@ The trainee allocation page outputs one `Allocation`. The run page reads it and 
     "envelope": "<envelope object from section 2>",
     "platform": {"type": "warship", "model": "formidable"}
   },
-  "crew": [
-    {"seat": "weapons",    "role": "partner", "trainee_id": "partner_weapons", "agent_profile": "trainees/derived.js",
-     "derived_from": {"trainee_id": "trainee_c17", "session_ids": ["s_20261029_03"]},
-     "agent_params": {"rates": {"hail": 0.9, "radar_response": 0.8}, "reaction_delay_s": 12, "basis": {"source": "history", "sessions": 1}}},
-    {"seat": "sensors",    "role": "trainee", "trainee_id": "trainee_c08", "agent_profile": "trainees/strong.js"},
-    {"seat": "navigation", "role": "trainee", "trainee_id": "trainee_b",   "agent_profile": "trainees/weak_hail_discipline.js"}
+  "slots": [
+    {"pane": "A", "crew": [
+      {"seat": "weapons",    "trainee_id": "trainee_c17", "agent_profile": "trainees/strong.js"},
+      {"seat": "sensors",    "trainee_id": "trainee_c08", "agent_profile": "trainees/strong.js"},
+      {"seat": "navigation", "trainee_id": "trainee_b",   "agent_profile": "trainees/weak_hail_discipline.js"}
+    ]}
   ]
 }
 ```
@@ -120,19 +120,23 @@ The trainee allocation page outputs one `Allocation`. The run page reads it and 
 |---|---|
 | `allocation_id` | Unique id for this run |
 | `created_at_session` | Id of the most recent completed session when the allocation was made, or `null` |
-| `run` | The settings of section 3 that apply to the whole run: `scenario`, `seed`, `mode`, `duration_s`, `eval_interval_s`, `envelope`, `platform` (renamed from `shared`) |
-| `crew` | One entry per seat (section 3), each a trainee or a partner |
+| `shared` | The run settings of section 3: `scenario`, `seed`, `mode`, `duration_s`, `eval_interval_s`, `envelope`, `platform` |
+| `slots` | Exactly one entry, `pane: "A"`, holding the `crew` (section 3) |
 
 Validation:
+- `slots` has exactly 1 entry, with `pane` `A`.
 - `crew` fills every seat of the platform type, in seat order.
-- At least one seat has `role: "trainee"`. Partners may fill any other seat.
-- No `trainee_id` appears twice. A partner's `derived_from.trainee_id` may equal a trainee in the crew (the trainee's earlier self); it does not count as a second appearance.
+- No trainee appears twice.
 - `agent_profile` is required and non-null in every seat. A human-driven seat is out of scope for G1.
-- `run` passes the section 3 checks: integer `seed`, `duration_s > 0`, `eval_interval_s < duration_s`, `mode` in the Mode enumeration, a valid envelope, a valid `platform`, and a scenario whose domain matches the platform type.
+- `shared` passes the section 3 checks: integer `seed`, `duration_s > 0`, `eval_interval_s < duration_s`, `mode` in the Mode enumeration, a valid envelope, a valid `platform`, and a scenario whose domain matches the platform type.
 
-Derivation: `expandAllocation(allocation) -> ScenarioConfig` returns the one section 3 config: the `run` fields plus `crew`, with `scenario_id` equal to `allocation_id`. The function is pure and lives in `contracts/`. `validateAllocation(allocation, opts)` checks the structure first and then validates the derived config.
+Derivation: `expandAllocation(allocation) -> ScenarioConfig[]` returns an array with the one section 3 config (`scenario_id` is `<allocation_id>_A`). It is an array so the host page, which loops over configs, needs no change. The function is pure and lives in `contracts/`. `validateAllocation(allocation, opts)` checks the structure first and then validates the derived config.
+
+The allocation page's "Suggest demo crew" fills each seat, in seat order, with the unused trainee whose measured competency on that seat's focus is lowest (the most to gain). A seat with no measured competency gets the first unused trainee.
 
 Handoff: the page writes the `Allocation` to `localStorage` under `cgf.allocation` (the Lead confirms the key). The URL-encoded fallback carries the same object.
+
+**If AI partners are confirmed (tentative, section 3.2):** a crew entry gains `role`, and `derived_from` and `agent_params` for partners. The wrapper does not change.
 
 ### 3.2 AI partners (TENTATIVE, proposed 2026-10-29)
 
@@ -378,9 +382,9 @@ Owner: Glenda (report lane). The report is built from the session record (§9.1)
 
 ## 11. Cross-instance messages (host page to runtime)
 
-Changed 2026-10-29: one runtime iframe, not two. The URL marker stays `runtime.html?pane=run` and the `pane` field in messages is always `"run"`; drop both in a later cleanup (task J8).
+Changed 2026-10-29: one runtime iframe, not two. The URL marker stays `runtime.html?pane=A` and the `pane` field in messages is `"A"`.
 
-The runtime is an iframe of `runtime.html?pane=run` (the page was `index.html` until 2026-10-29). Under `file://` the panes are cross-origin, so the host and the panes talk only through `postMessage`. As built (2026-10-29), the messages are defined and validated in `cgf-demo/contracts/link.js`, and every message is `{cgfLink: 1, type, pane, ...payload}`. Origins are opaque under `file://`, so the host accepts a message only if `event.source` is that pane's iframe window, and the pane only if it comes from `window.parent`.
+The runtime is an iframe of `runtime.html?pane=A` (the page was `index.html` until 2026-10-29). Under `file://` the panes are cross-origin, so the host and the panes talk only through `postMessage`. As built (2026-10-29), the messages are defined and validated in `cgf-demo/contracts/link.js`, and every message is `{cgfLink: 1, type, pane, ...payload}`. Origins are opaque under `file://`, so the host accepts a message only if `event.source` is that pane's iframe window, and the pane only if it comes from `window.parent`.
 
 | Message | Direction | Payload |
 |---|---|---|

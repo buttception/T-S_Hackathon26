@@ -1,6 +1,6 @@
 // Trainee allocation page (allocate.html): choose the player platform (fighter, warship or tank), put a trainee
-// in every seat of two crews (crew A in pane A, crew B in pane B) and set the shared run options. It outputs one
-// Allocation (docs/INTERFACES.md §3.1), which the run page expands into one scenario config per pane.
+// in every seat of one crew and set the run options. It outputs one
+// Allocation (docs/INTERFACES.md §3.1), which the run page expands into the scenario config.
 // Starting the run is linked later; this page only produces a valid allocation.
 //
 // A seat is a trainee station. The seats come from the platform type, so the page adapts to the player role:
@@ -12,7 +12,7 @@
   const CGF = window.CGF, U = CGF.util, C = CGF.contracts;
 
   const STORE_KEY = 'cgf.allocation';         // localStorage: one config per crew
-  const SLOTS = ['A', 'B'];                    // the crews, one per pane
+  const SLOTS = ['A'];                         // one crew per run (single crew since 2026-10-29)
   const DEFAULTS = { scenario: 'strait-transit', seed: 1234, mode: 'adaptive', duration_s: 2400, eval_interval_s: 30 };   // 2400 s: the ownship meets its first hails about 15 min in (Devin, decision B)
   const DEFAULT_PLATFORM = { type: 'warship', model: 'formidable' };
   const LABELS = {
@@ -88,69 +88,30 @@
     return `Likely first target: ${LONG[r.competency] || r.competency}${mean}.${why}${sets}${tag}`;
   }
 
-  // Compare crew A with crew B seat by seat. Per seat it reports the biggest gap between the two trainees on the
-  // competencies that seat exercises, and it warns when the comparison would be unfair or show nothing.
-  function compareCrews(sel, summaries, sessionsOf, seatFocus) {
-    const seats = [], warnings = [];
-    for (const seat of seatsOf(sel.platform.type)) {
-      const a = sel.crews.A[seat], b = sel.crews.B[seat];
-      if (!a || !b) continue;
-      const gaps = ((seatFocus && seatFocus[seat]) || []).filter(k => summaries[a][k].enough && summaries[b][k].enough)
-        .map(k => ({ k, a: summaries[a][k].mean, b: summaries[b][k].mean, gap: summaries[a][k].mean - summaries[b][k].mean }))
-        .sort((x, y) => Math.abs(y.gap) - Math.abs(x.gap));
-      seats.push({ seat, a, b, top: gaps[0] || null });
-    }
-    const ids = c => Object.values(sel.crews[c]).filter(Boolean);
-    const avg = c => ids(c).length ? ids(c).reduce((t, id) => t + sessionsOf(id), 0) / ids(c).length : null;
-    const ea = avg('A'), eb = avg('B');
-    if (ea !== null && eb !== null && Math.abs(ea - eb) >= 3)
-      warnings.push(`Crew A averages ${ea.toFixed(1)} sessions and crew B ${eb.toFixed(1)}, so the comparison favours the more experienced crew.`);
-    if (seats.length && seats.every(s => !s.top)) warnings.push('No seat has a measured competency for both trainees yet, so there is nothing to compare.');
-    else if (seats.length && !seats.some(s => s.top && Math.abs(s.top.gap) >= 0.2))
-      warnings.push('No seat differs by 0.20 or more on its measured competencies, so the side-by-side may not show a divergence.');
-    return { seats, warnings, experience: { A: ea, B: eb } };
-  }
-
-  // Fill both crews. One seat gets the sharpest contrast: the strongest and weakest trainee on `prefer` (or, when that
-  // competency is in no seat of this platform, on any seat competency), at most 2 sessions apart, strong one in crew A.
-  // Every other seat gets the two remaining trainees closest in level and experience. Deterministic. Null if no pair.
-  function suggestCrews(profiles, summaries, type, seatFocus, prefer) {
-    const seats = seatsOf(type), ids = profiles.map(p => p.trainee_id), sess = {};
-    profiles.forEach(p => { sess[p.trainee_id] = p.sessions_completed; });
-    const wanted = prefer && seats.some(s => (seatFocus[s] || []).includes(prefer)) ? prefer : null;
-    let best = null;
-    for (const seat of seats) for (const k of (seatFocus[seat] || [])) {
-      if (wanted && k !== wanted) continue;
-      for (const hi of ids) for (const lo of ids) {
-        if (hi === lo || Math.abs(sess[hi] - sess[lo]) > 2) continue;
-        const h = summaries[hi][k], l = summaries[lo][k];
-        if (!h.enough || !l.enough) continue;
-        const gap = h.mean - l.mean;
-        if (gap > 0 && (!best || gap > best.gap + 1e-12)) best = { seat, k, hi, lo, gap };
+  // Fill the crew for a demo. Each seat, in seat order, gets the unused trainee with the weakest measured competency in
+  // that seat's focus (the most to gain), or the weakest on `prefer` when that competency is a focus of the seat.
+  // A seat with no measured competency gets the first unused trainee. Ties go to the lower trainee id, so the result is
+  // deterministic. Null only if there are fewer trainees than seats.
+  function suggestCrew(profiles, summaries, type, seatFocus, prefer) {
+    const ids = profiles.map(p => p.trainee_id).sort(), used = new Set(), crew = {}, picks = [];
+    for (const seat of seatsOf(type)) {
+      const focus = (seatFocus && seatFocus[seat]) || [], keys = prefer && focus.includes(prefer) ? [prefer] : focus;
+      let best = null;
+      for (const id of ids) {
+        if (used.has(id)) continue;
+        for (const k of keys) {
+          const sm = summaries[id] && summaries[id][k];
+          if (sm && sm.enough && (!best || sm.mean < best.mean - 1e-12)) best = { seat, id, k, mean: sm.mean };
+        }
       }
-    }
-    if (!best) return null;
-    const crews = { A: {}, B: {} }, used = new Set([best.hi, best.lo]);
-    crews.A[best.seat] = best.hi; crews.B[best.seat] = best.lo;
-    const level = (id, seat) => {
-      const m = ((seatFocus[seat]) || []).map(k => summaries[id][k]).filter(s => s.enough).map(s => s.mean);
-      return m.length ? m.reduce((x, y) => x + y, 0) / m.length : 0.5;
-    };
-    const hasEvidence = (id, seat) => ((seatFocus[seat]) || []).some(k => summaries[id][k].enough);
-    for (const seat of seats) {
-      if (seat === best.seat) continue;
-      const pool = ids.filter(id => !used.has(id));
-      let pick = null;
-      for (let i = 0; i < pool.length; i++) for (let j = i + 1; j < pool.length; j++) {
-        // Prefer trainees with enough evidence on the seat's competencies, then a similar level, then similar experience
-        const cost = Math.abs(level(pool[i], seat) - level(pool[j], seat)) + 0.02 * Math.abs(sess[pool[i]] - sess[pool[j]]) +
-          (hasEvidence(pool[i], seat) ? 0 : 1) + (hasEvidence(pool[j], seat) ? 0 : 1);
-        if (!pick || cost < pick.cost - 1e-12) pick = { a: pool[i], b: pool[j], cost };
+      if (!best) {   // nothing measured for this seat (sensors, for now): the first unused trainee, so the crew is still complete
+        const id = ids.find(x => !used.has(x));
+        if (!id) return null;
+        best = { seat, id, k: null, mean: null };
       }
-      if (!pick) return null;
-      crews.A[seat] = pick.a; crews.B[seat] = pick.b; used.add(pick.a); used.add(pick.b);
+      crew[seat] = best.id; used.add(best.id); picks.push(best);
     }
-    return { crews, contrast: best };
+    return { crews: { A: crew }, picks };
   }
 
   // Next seed from the current one (31-bit LCG): repeatable, no Math.random
@@ -195,7 +156,7 @@
     return next;
   }
 
-  // Next empty seat after the given one (crew A first, then crew B), or the same seat when all are full
+  // Next empty seat after the given one, or the same seat when all are full
   function nextEmptySeat(sel, from) {
     const order = SLOTS.flatMap(c => seatsOf(sel.platform.type).map(s => ({ crew: c, seat: s })));
     const i = order.findIndex(o => o.crew === from.crew && o.seat === from.seat);
@@ -231,8 +192,8 @@
     return e;
   }
 
-  // The §3.1 Allocation: the settings both panes share once, and one crew per pane (A, B). The run page derives the
-  // §3 scenario config of each pane with CGF.contracts.expandAllocation.
+  // The §3.1 Allocation: the run settings once, and one crew (slot A). The run page derives the §3 scenario config
+  // with CGF.contracts.expandAllocation.
   function buildAllocation(sel, envelope) {
     const o = sel.opts;
     return {
@@ -267,7 +228,7 @@
   const handoffUrl = allocation => 'host.html?alloc=' + encodeURIComponent(JSON.stringify(allocation));
 
   CGF.allocate = { STORE_KEY, SLOTS, DEFAULTS, DEFAULT_PLATFORM, LONG, mean, seatsOf, summarise, nameOf, describe,
-    previewTarget, describePrediction, compareCrews, suggestCrews, nextSeed, domainOfIn,
+    previewTarget, describePrediction, suggestCrew, nextSeed, domainOfIn,
     defaultScenarioFor, emptyCrews, withPlatform, seatTrainee, nextEmptySeat, checkSelection, buildAllocation,
     selectionFrom, handoffUrl };
 
@@ -388,22 +349,6 @@
   }
 
   // A one-line comparison of the two crews, seat by seat, and any warning that the comparison would be unfair.
-  function renderCompare() {
-    const el = $('compare'), seats = seatsOf(st.platform.type);
-    if (!seats.every(s => st.crews.A[s] && st.crews.B[s])) {
-      el.innerHTML = '<span class="muted small">Fill every seat in both crews to compare them.</span>';
-      return;
-    }
-    const cmp = compareCrews(selection(), st.summaries, id => profileOf(id).sessions_completed, typeInfo().seatFocus);
-    const lines = cmp.seats.map(s => {
-      const t = s.top;
-      return `<div class="small"><b>${esc(seatLabel(s.seat))}</b>: ${esc(nameById(s.a))} vs ${esc(nameById(s.b))} · ` + (t
-        ? `biggest gap ${esc(LONG[t.k])} ${t.a.toFixed(2)} vs ${t.b.toFixed(2)}` : '<span class="muted">no measured competency in common</span>') + '</div>';
-    }).join('');
-    el.innerHTML = '<b class="small">Crew A vs crew B</b>' + lines +
-      cmp.warnings.map(w => `<div class="small muted">⚠ ${esc(w)}</div>`).join('');
-  }
-
   function renderCrews(errs) {
     const agents = F.agentProfiles || [], model = modelInfo(), info = typeInfo(), V = CGF.vehicles;
     $('slots').innerHTML = SLOTS.map(c => {
@@ -428,7 +373,7 @@
           '</select></label>' + (e ? `<div class="err">${esc(e)}</div>` : '') + '</div>';
       }).join('');
       const sims = (V.TYPES[st.platform.type] || { simulated: [] }).simulated.map(s => s[2]);
-      return `<div class="crew" data-crew="${c}"><div class="crewHead">Crew ${c} <span class="muted small">pane ${c} · ${esc((modelInfo() || {}).name || '')}</span></div>` +
+      return `<div class="crew" data-crew="${c}"><div class="crewHead">Crew <span class="muted small">${esc((modelInfo() || {}).name || '')}</span></div>` +
         `${V.svg(st.platform.type, people, c)}` +
         (sims.length ? `<div class="small muted">Dashed markers are simulated: ${esc(sims.join(', '))}.</div>` : '') + `${cards}</div>`;
     }).join('');
@@ -483,7 +428,7 @@
 
   function render() {
     const errs = checkSelection(st, ctx()), ready = !Object.keys(errs).length;
-    renderPlatform(errs); renderScenarios(errs); renderRoster(); renderCrews(errs); renderCompare();
+    renderPlatform(errs); renderScenarios(errs); renderRoster(); renderCrews(errs);
     if (document.activeElement !== $('noteBox')) renderDetail();   // never rebuild the note box while it is being typed in
     const envErrs = C.validateEnvelope(st.envelope);
     $('err_envelope').innerHTML = envErrs.map(esc).join('<br>');
@@ -497,7 +442,7 @@
     const ok = ready && !cErrs.length;
     $('btnStart').disabled = $('btnSave').disabled = $('btnExport').disabled = !ok;
     $('output').textContent = ok ? JSON.stringify(alloc, null, 2) : '';
-    $('outputNote').innerHTML = ok ? `A valid allocation (INTERFACES §3.1): two panes, ${typeInfo().seats.length} seats each.`
+    $('outputNote').innerHTML = ok ? `A valid allocation (INTERFACES §3.1): one crew, ${typeInfo().seats.length} seats.`
       : cErrs.length ? cErrs.map(esc).join('<br>')
       : empty ? `<span class="muted">${empty} seat${empty > 1 ? 's' : ''} still to fill.</span>`
       : '<span class="muted">Fix the marked fields to build the allocation.</span>';
@@ -509,18 +454,17 @@
   function apply(next) { Object.assign(st, { platform: next.platform, crews: next.crews, agents: next.agents, opts: next.opts }); }
   const defaultAgentFor = id => (F.defaultAgent || {})[id] || ((F.agentProfiles || [])[0] || {}).path || '';
 
-  // "Suggest demo pair": the sharpest contrast on one competency in one seat, the other seats matched (suggestCrews).
+  // "Suggest demo crew": the weakest trainee per seat on the seat's focus competencies (suggestCrew).
   function suggest() {
     const prefer = st.weakAt || F.demoCompetency || null;
-    const r = suggestCrews(st.profiles, st.summaries, st.platform.type, typeInfo().seatFocus || {}, prefer);
-    if (!r) { st.status = 'No suitable pair: no two trainees within 2 sessions of each other differ on a measured competency of this platform.'; return render(); }
+    const r = suggestCrew(st.profiles, st.summaries, st.platform.type, typeInfo().seatFocus || {}, prefer);
+    if (!r) { st.status = 'No suitable crew: fewer trainees than seats.'; return render(); }
     const next = emptyCrews(st.platform.type);
-    for (const c of SLOTS) for (const [seat, id] of Object.entries(r.crews[c])) { next.crews[c][seat] = id; next.agents[c][seat] = defaultAgentFor(id); }
+    for (const [seat, id] of Object.entries(r.crews.A)) { next.crews.A[seat] = id; next.agents.A[seat] = defaultAgentFor(id); }
     Object.assign(st, { crews: next.crews, agents: next.agents });
-    st.inspect = r.contrast.lo;
+    st.inspect = r.picks[r.picks.length - 1].id;
     st.active = { crew: 'A', seat: seatsOf(st.platform.type)[0] };
-    st.status = `Suggested: ${nameById(r.contrast.hi)} (crew A) and ${nameById(r.contrast.lo)} (crew B) in the ${seatLabel(r.contrast.seat)} seat, ` +
-      `${LONG[r.contrast.k]} ${r.contrast.gap.toFixed(2)} apart. The other seats are matched on level and experience.`;
+    st.status = 'Suggested: ' + r.picks.map(p => `${nameById(p.id)} in ${seatLabel(p.seat)}` + (p.k ? ` (${LONG[p.k]} ${p.mean.toFixed(2)})` : '')).join(', ') + '.';
     render();
   }
   const selection = () => ({ platform: st.platform, crews: st.crews, agents: st.agents, opts: st.opts });
@@ -607,11 +551,6 @@
     });
     $('optType').addEventListener('change', e => changePlatform(e.target.value));
     $('optModel').addEventListener('change', e => changePlatform(st.platform.type, e.target.value));
-    $('btnSwap').onclick = () => {   // swap whole crews, seat agents included
-      [st.crews.A, st.crews.B] = [st.crews.B, st.crews.A];
-      [st.agents.A, st.agents.B] = [st.agents.B, st.agents.A];
-      render();
-    };
     $('weakAt').onchange = e => { st.weakAt = e.target.value; render(); };
     $('showAll').onchange = e => { st.showAll = e.target.checked; render(); };
     for (const id of ['optScenario', 'optSeed', 'optMode', 'optDuration', 'optInterval'])

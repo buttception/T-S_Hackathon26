@@ -8,7 +8,7 @@
 
 ## Resume here
 
-> **Plan change (2026-10-29, JL):** one crew, one runtime. Panes A and B are removed; AI partners can fill seats, built from older runs (INTERFACES §3.1, §3.2; PLAN §2b; tasks J7, J8, D8). Code still builds two panes until J8 is done.
+> **Plan change (2026-10-29, JL):** one crew, one runtime. Panes A and B are removed; AI partners can fill seats, built from older runs (INTERFACES §3.1, §3.2; PLAN §2b; tasks J7, J8, D8). J8 (single crew) is done.
 
 - **Location**:
   - Code: public GitHub repo `buttception/T-S_Hackathon26`, folder `cgf-demo/`.

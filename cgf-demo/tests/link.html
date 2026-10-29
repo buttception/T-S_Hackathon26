@@ -49,8 +49,7 @@
     allocation_id: 'alloc_t', created_at_session: null,
     shared: { scenario: 'strait-transit', seed: 1, mode: 'adaptive', duration_s: 600, eval_interval_s: 30, envelope: clone(F.envelopeDefault),
       platform: { type: 'warship', model: 'formidable' } },
-    slots: [{ pane: 'A', crew: crew(['trainee_a', 'trainee_c01', 'trainee_c02'], C.SEATS_BY_TYPE.warship) },
-            { pane: 'B', crew: crew(['trainee_b', 'trainee_c03', 'trainee_c04'], C.SEATS_BY_TYPE.warship) }]
+    slots: [{ pane: 'A', crew: crew(['trainee_a', 'trainee_c01', 'trainee_c02'], C.SEATS_BY_TYPE.warship) }]
   });
   const msg = (type, payload) => L.message(type, 'T', payload);
 
@@ -121,9 +120,10 @@
     eq(r.allocation, null); ok(r.errors.length);
   });
   test('paneUrl points a pane at the runtime', () => eq(H.paneUrl('A'), 'runtime.html?pane=A'));
-  test('expandAllocation gives each pane its own crew', () => {
-    const [a, b] = C.expandAllocation(allocation());
-    eq([a.crew[0].trainee_id, b.crew[0].trainee_id], ['trainee_a', 'trainee_b']);
+  test('expandAllocation gives the one crew', () => {
+    const c = C.expandAllocation(allocation());
+    eq(c.length, 1);
+    eq(c[0].crew[0].trainee_id, 'trainee_a');
   });
 
   // ---- session records on the host (INTERFACES §9.1)

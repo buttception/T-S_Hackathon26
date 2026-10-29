@@ -38,14 +38,14 @@ Tasks:
 
 | ID | Task | Acceptance |
 |---|---|---|
-| J1 | Allocation page and link to the runtime | Built for two panes; **to change** to one crew (J8) |
+| J1 | Allocation page and link to the runtime | Built; one crew since J8 |
 | J2 | Pass each seat's trainee, profile and envelope to Devin through the `link-init` event, as the config in INTERFACES §3 | Devin's code reads the config; no other channel |
-| J3 | Decide the envelope scale and the rule for a crew's weakest competency (open) | Written into INTERFACES §3 and §11 |
+| J3 | **Done 2026-10-29.** Envelope scale decided (raised default, `calm_down_rate` and `detection` added); the crew rule is replaced by per-seat targets (INTERFACES §5.1) | Written into `fixtures/envelope-default.js` and INTERFACES §5.1 |
 | J4 | **Done 2026-10-29** (`js/assess/assess.js`, `tests/assess.html`, 12 tests). Competency update (old E1, E2): Beta posterior per competency from the session record and report facts; profile persistence in `localStorage` and seeded fixtures | A fixture session for the weak trainee lowers `hail_discipline`; the profile round-trips |
 | J5 | **Done 2026-10-29** (the page reads `Assess.profiles()`). Allocation page reads the saved profile, so the bars move after a run | Bars change after a run |
 | J6 | Cohort data and heatmap data (old E8, C8; first to cut) | Matrix for the seeded cohort |
 | J7 | **TENTATIVE: AI partners** (added 2026-10-29): the allocation page lets the instructor mark a seat as `partner` and pick `derived_from` (a trainee and optional sessions); `Assess.partnerParams(derived_from) -> agent_params` computes the partner's success rates per event type from `History.entries`, else from profile means, else a default (INTERFACES §3.2) | A partner seat validates and gets `agent_params`; the same inputs give the same params |
-| J8 | **Single crew** (added 2026-10-29): `Allocation` loses `slots` and `pane`; `expandAllocation` returns one config; `host.html` hosts one runtime; `link/` messages drop the pane letter (INTERFACES §3.1, §11); tests updated | Allocation, host and link tests pass for one crew; no reference to pane A or B remains except the `?pane=run` marker |
+| J8 | **Done 2026-10-29: single crew.** `PANES` and `SLOTS` are `['A']`; compare and swap crews removed; `suggestCrew` replaces `suggestCrews`; tests updated (allocate 88, link 31, assess 12 pass in headless Chrome). The allocation keeps `shared` and one slot (INTERFACES §3.1) | Allocation, host and link tests pass for one crew |
 
 ### Devin: simulation runtime and CGF behaviour
 

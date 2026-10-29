@@ -19,7 +19,9 @@
 
   const LABELS = {
     hail_discipline: 'Hail discipline', collision_avoidance: 'Collision avoidance', territorial_awareness: 'Territorial awareness',
-    weapons_discipline: 'Weapons discipline', piracy_response: 'Piracy response'
+    weapons_discipline: 'Weapons discipline', speed_management: 'Speed management', threat_evaluation: 'Threat evaluation',
+    contact_detection: 'Contact detection', picture_reporting: 'Picture reporting', escalation_control: 'Escalation control',
+    piracy_response: 'Piracy response'
   };
   // §4 event types, for the key-moments list
   const EVENT_LABELS = {
