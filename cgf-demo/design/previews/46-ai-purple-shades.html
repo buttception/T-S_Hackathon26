@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI purple shades</title>
+<link rel="stylesheet" href="../../css/tokens.css">
+<style>
+  /* Preview only (Eevee, 2026-10-30). Each column overrides the three AI tokens; every other colour is the live token.
+     Component rules copy allocate.css, style.css and report.css so the purple is seen where it is really used. */
+  body { margin: 0; padding: 24px 16px; background: var(--surface-bg); color: var(--text);
+    font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  h1 { font-size: 18px; color: var(--text-strong); margin: 0 0 4px; }
+  .lead { color: var(--text-muted); margin: 0 0 20px; max-width: 70ch; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+  .col { background: var(--surface-panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px;
+    background-image: radial-gradient(400px 260px at 0% 110%, var(--glow), transparent 60%); }
+  .col h2 { font-size: 14px; margin: 0; color: var(--text-strong); }
+  .hex { font: 12px ui-monospace, Menlo, monospace; color: var(--text-muted); }
+  .sw { display: flex; gap: 6px; margin: 8px 0 4px; }
+  .sw i { flex: 1; height: 28px; border-radius: 4px; border: 1px solid var(--border); }
+  .ratios { font-size: 11px; color: var(--text-muted); margin-bottom: 10px; }
+  .lbl { font-size: 11px; color: var(--text-muted); margin: 12px 0 4px; text-transform: uppercase; letter-spacing: .05em; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  .modeBadge { padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .04em;
+    border: 2px solid var(--source-ai); background: var(--source-ai-bg); color: var(--source-ai-text); }
+  .modeBadge.fixed { background: var(--mode-fixed); border-color: var(--mode-fixed); color: var(--surface-bg); }
+  .bars { display: grid; grid-template-columns: 90px 1fr; gap: 6px 8px; align-items: center; font-size: 12px; }
+  .bar { height: 8px; background: var(--data-track); border-radius: 4px; overflow: hidden; }
+  .bar b { display: block; height: 100%; background: var(--data-fill); }
+  .bar--focus { outline: 2px solid var(--source-ai); outline-offset: 1px; }
+  .focusMark { margin-left: 4px; font-size: 10px; color: var(--source-ai); }
+  .preview { border: 1px solid var(--source-ai); background: var(--source-ai-bg); border-radius: 6px; padding: 8px; font-size: 12px; }
+  .cmd { width: 100%; box-sizing: border-box; padding: 6px 8px; border-radius: 4px; background: var(--surface-raised);
+    border: 1px solid var(--source-ai); box-shadow: 0 0 0 2px var(--source-ai-bg); color: var(--source-ai-text); font: inherit; }
+  .harness { color: var(--source-ai-text); background: var(--source-ai-bg); border-radius: 3px; padding: 0 5px; }
+  .rp-phase { border-left: 3px solid var(--source-ai); padding: 6px 12px; background: var(--surface-sunken); border-radius: 0 6px 6px 0; }
+  .rp-phase b { color: var(--source-ai-text); }
+  .focusCell { display: inline-block; padding: 2px 8px; color: var(--text-strong); box-shadow: inset 0 0 0 1px var(--source-ai); border-radius: 4px; }
+  svg { display: block; width: 100%; height: 56px; background: var(--surface-sunken); border-radius: 4px; }
+  .btn { padding: 5px 12px; border-radius: 4px; border: 0; font-weight: 600; color: var(--text-on-accent);
+    background: linear-gradient(var(--ui-accent), var(--ui-accent-fill-end)); }
+  .crit { padding: 2px 8px; border-radius: 4px; background: var(--status-critical-bg); color: var(--status-critical-text);
+    border: 1px solid var(--status-critical); font-size: 12px; }
+  .friend { color: var(--force-friend-light); font-size: 12px; }
+</style>
+</head>
+<body>
+<h1>AI purple: current and three alternatives</h1>
+<p class="lead">Purple marks anything the AI did. Each column shows the same parts in one shade, next to the Ion blue button,
+  the magenta critical chip and the friendly-force cyan it must not be confused with. The ratios show contrast against the panel, the raised surface and the purple's own tint, plus the tint text. Every value passes WCAG AA (4.5:1 for text).</p>
+<div class="grid" id="grid"></div>
+<script>
+  // Preview only. Ratios were computed with the WCAG formula in the design scratch script; nothing here is used at runtime.
+  var shades = [
+    { name: 'Current: violet', ai: '#b98fff', bg: '#24183f', text: '#ebdfff', glow: 'rgba(185,143,255,.10)', r: '6.9 · 6.3 · 6.6 · 12.9', hue: 262,
+      note: 'Bright, a little milky. The baseline.' },
+    { name: 'A: Neon violet', ai: '#a46bff', bg: '#221245', text: '#e6d9ff', glow: 'rgba(164,107,255,.12)', r: '5.0 · 4.6 · 4.9 · 12.7', hue: 263,
+      note: 'More saturated and sci-fi. Lowest contrast (4.6:1 on raised): fine for text, but less punch from a projector.' },
+    { name: 'B: Orchid', ai: '#d08aff', bg: '#2c1540', text: '#f3e0ff', glow: 'rgba(208,138,255,.10)', r: '7.1 · 6.5 · 6.8 · 13.1', hue: 276,
+      note: 'Warmer and pinker, so it sits further from Ion blue, but closer to the magenta critical colour.' },
+    { name: 'C: Lavender', ai: '#b3a6ff', bg: '#1e1c45', text: '#e6e2ff', glow: 'rgba(179,166,255,.10)', r: '8.0 · 7.3 · 7.5 · 12.8', hue: 249,
+      note: 'Softest and highest contrast, but it is the most blue-tinted, so it could blur into Ion blue.' }
+  ];
+  var grid = document.getElementById('grid');
+  shades.forEach(function (s) {
+    var el = document.createElement('section');
+    el.className = 'col';
+    el.style.cssText = '--source-ai:' + s.ai + ';--source-ai-bg:' + s.bg + ';--source-ai-text:' + s.text + ';--glow:' + s.glow;
+    el.innerHTML =
+      '<h2>' + s.name + '</h2><div class="hex">' + s.ai + ' · tint ' + s.bg + ' · text ' + s.text + ' · hue ' + s.hue + '°</div>' +
+      '<div class="sw"><i style="background:' + s.ai + '"></i><i style="background:' + s.bg + '"></i><i style="background:' + s.text + '"></i></div>' +
+      '<div class="ratios">Contrast: panel · raised · tint · tint text = ' + s.r + ' : 1</div>' +
+      '<div>' + s.note + '</div>' +
+      '<div class="lbl">Mode (allocate)</div><div class="row"><span class="modeBadge">ADAPTIVE</span><span class="modeBadge fixed">FIXED</span></div>' +
+      '<div class="lbl">Focus competency (allocate)</div><div class="bars">' +
+        '<span>Hail discipline<span class="focusMark">◆ focus</span></span><div class="bar bar--focus"><b style="width:38%"></b></div>' +
+        '<span>Lookout</span><div class="bar"><b style="width:72%"></b></div></div>' +
+      '<div class="lbl">LLM command (runtime)</div><input class="cmd" value="ease off the fishing boats">' +
+      '<div class="preview" style="margin-top:6px">Preview: contact density <b>−1</b>, inside envelope. <span class="harness">AI</span></div>' +
+      '<div class="lbl">Report</div><div class="rp-phase"><b>▲ Pressure up</b> at 04:10: 7 of 11 hails ignored</div>' +
+      '<div style="margin-top:6px">Competency: <span class="focusCell">Hail discipline · focus</span></div>' +
+      '<svg viewBox="0 0 200 56" preserveAspectRatio="none" aria-label="CGF pressure line">' +
+        '<polyline points="0,44 40,40 70,30 100,30 130,18 160,22 200,12" fill="none" stroke="' + s.ai + '" stroke-width="2"/>' +
+        '<polyline points="0,30 40,34 70,28 100,36 130,32 160,26 200,30" fill="none" stroke="var(--data-fill)" stroke-width="1.5" stroke-dasharray="4 3"/></svg>' +
+      '<div class="lbl">Must stay distinct from</div><div class="row"><button class="btn">Start run</button><span class="crit">✕ Link lost</span><span class="friend">● Friendly</span></div>';
+    grid.appendChild(el);
+  });
+</script>
+</body>
+</html>
