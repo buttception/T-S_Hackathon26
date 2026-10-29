@@ -126,7 +126,7 @@ Tasks:
 |---|---|---|---|
 | JL to Devin | Run config: platform, crew (each seat `trainee` or `partner`, with `agent_params` for partners), per-seat profile, scenario, seed, mode, envelope | INTERFACES §3, §3.2, §11 (`link-init`) | Built for two panes; single crew and partners proposed |
 | Glenda to JL | `History.entries(trainee_id) -> entry[]`, so `Assess.partnerParams` can read past runs | INTERFACES §9.1 | Proposed |
-| Devin to Glenda and JL | **Session record** at the end of a run: events (§4), adjustments (§7), outcome, seed, config | INTERFACES §9.1 | Proposed, needs Devin's agreement |
+| Devin to Glenda and JL | **Session record** at the end of a run: events (§4), adjustments (§7), outcome, seed, config | INTERFACES §9.1, §11 (`record`) | Built 2026-10-29. Devin's runtime emits it, the pane forwards it, the host validates it, stores `cgf.lastRun` and calls `Report.finishSession`. Competency update (JL) not built |
 | Glenda to JL | **Report** facts per session | INTERFACES §9 | Proposed |
 | Glenda to JL and Devin | Trainee history summary | INTERFACES §9.1 | Proposed |
 | JL to everyone | Updated profile | INTERFACES §5 | Exists |

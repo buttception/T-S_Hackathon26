@@ -305,7 +305,7 @@ Owner: Glenda (report lane). The report is built from the session record (§9.1)
 
 ### 9.1 Session record and history entry (proposed 2026-10-29, to confirm with Devin and Glenda)
 
-**Session record**: emitted by the runtime (Devin) when a run ends, passed by the host page to the report and the competency update.
+**Session record**: emitted by the runtime (Devin) when a run ends, passed by the host page to the report and the competency update. **Built 2026-10-29:** the pane sends it to the host as the `record` message (§11); the host validates it with `CGF.contracts.validateSessionRecord` plus a match against the pane's config, stores valid records under `cgf.lastRun`, calls `Report.finishSession` and shows an "Open report" link per pane. It also fires a `cgf:session-record` event on the host window (`detail: {pane, record, errors, run}`) for the competency update to hook into, and an "Export session records" button downloads the run as JSON.
 
 ```json
 {
@@ -388,6 +388,7 @@ The runtime is an iframe of `runtime.html?pane=run` (the page was `index.html` u
 | `start`, `pause`, `restart` | host to pane | none. `restart` reloads the scenario from the same config |
 | `status` | pane to host | `t`, `running`, `outcome`, `stats` (warnings, ignored, acks, maxTension). Sent when something changes |
 | `ended` | pane to host | `outcome` (`success` or `fail`), `text` |
+| `record` | pane to host | `record`: the §9.1 session record, sent once when an adaptive run ends. Devin's runtime emits it as the `session-record` event and `link/pane.js` forwards it. The host checks it (`hostLink.checkRecord`: valid under §9.1, adjusted values inside the allocation's envelope, and the same pane, scenario, seed, mode, platform and crew as the config the pane was given), keeps only valid records under `localStorage` `cgf.lastRun` as `{allocation_id, records: {A, B}}`, and calls Glenda's `Report.finishSession` to build the reports, append the history entries and get the report page URL |
 | `error` | pane to host | `message` |
 | `events` | pane to host | Event array. **Reserved** for the adaptation loop, not sent yet |
 | `apply` | host to pane | Adjustment array. **Reserved**, not sent yet |

@@ -7,7 +7,8 @@
 // (CGF.on('link-init', config => ...)) instead of editing this file.
 //
 // Protocol: contracts/link.js. Host -> pane: init, start, pause, restart. Pane -> host: hello, ready, status,
-// ended, error.
+// ended, record, error. `record` carries the session record (INTERFACES §9.1) that the runtime emits as the
+// 'session-record' event when an adaptive run ends; this file forwards it and does not look inside it.
 (function () {
   'use strict';
   const CGF = window.CGF;
@@ -111,6 +112,7 @@
     window.addEventListener('message', onMessage);
     CGF.on('reset', () => { if (config && CGF.sim && !CGF.sim.link) CGF.sim.link = { pane, config, seed: config.seed, adaptation: config.mode, envelope: config.envelope }; });
     CGF.on('outcome', (kind, text) => { if (kind) send('ended', { outcome: kind, text: String(text || '') }); });
+    CGF.on('session-record', r => { if (r && typeof r === 'object' && !Array.isArray(r)) send('record', { record: r }); });
     setInterval(status, 500);
     send('hello', { api: apiReport() });          // exactly once
   }

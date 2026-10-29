@@ -234,7 +234,7 @@
     const errs = extraKeys(r, RECORD_KEYS, 'record');
     for (const k of RECORD_KEYS) if (!(k in r)) errs.push(`record.${k}: required`);
     if (!isStr(r.session_id)) errs.push('record.session_id: required');
-    if (r.pane !== null && !PANES.includes(r.pane)) errs.push('record.pane: A, B, or null for a local run');
+    if (r.pane !== null && !(typeof r.pane === 'string' && /^[A-Z]$/.test(r.pane))) errs.push('record.pane: one capital letter (A or B on the host page), or null for a local run');
     if (!isStr(r.scenario)) errs.push('record.scenario: required');
     if (!Number.isInteger(r.seed) || r.seed < 0) errs.push('record.seed: integer >= 0 required');
     if (!MODES.includes(r.mode)) errs.push(`record.mode: one of ${MODES.join(', ')}`);
