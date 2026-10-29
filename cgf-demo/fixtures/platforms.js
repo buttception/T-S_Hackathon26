@@ -61,22 +61,22 @@
       id: 'formidable', type: 'warship', name: 'Formidable-class frigate', operator: 'Republic of Singapore Navy',
       realCrew: '70 or more',
       source: 'https://www.mindef.gov.sg/news-and-events/latest-releases/21jul18_fs/',
-      note: 'The sources did not describe watch positions. The three seats are stations defined for this exercise, mapped to the systems the sources list.',
+      note: 'No public Formidable-class watch bill was found, so the three seats are generic navy watch roles (US Navy practice: https://man.fas.org/dod-101/navy/docs/swos/stu2/STU01.html, https://en.wikipedia.org/wiki/Officer_of_the_deck), shown with the ship systems the MINDEF fact sheet lists. Real RSN billet titles may differ.',
       seats: {
-        weapons:    { label: 'Weapons', text: 'Weapon assignment through the combat management system: Aster missiles on the Sylver launcher, Harpoon anti-ship missiles and the 76 mm gun.' },
-        sensors:    { label: 'Sensors', text: 'Surveillance with the Herakles multi-function radar: air and surface picture and threat evaluation.' },
-        navigation: { label: 'Navigation', text: 'Ship handling and the navigation radar (Scanter 2001), course and speed.' }
+        weapons:    { label: 'Tactical Action Officer (weapons)', text: 'The commanding officer\'s representative for weapons employment and ship defence; does the primary threat evaluation in the combat information centre. Weapons: Aster missiles on the Sylver launcher, Harpoon and the 76 mm gun.' },
+        sensors:    { label: 'Operations specialist (air and surface picture)', text: 'Combat information centre watchstander who owns a section of the tactical picture, here the air and surface picture, from the Herakles multi-function radar and the combat management system.' },
+        navigation: { label: 'Officer of the Deck (bridge)', text: 'In charge of navigation and safety of the ship on the bridge: orders courses and speed, and watches the navigation radar (Scanter 2001). The helmsman who steers is simulated.' }
       }
     },
     {
       id: 'lcs-independence', type: 'warship', name: 'Independence-class LCS', operator: 'US Navy (littoral combat ship; not the RSN littoral mission vessel)',
       realCrew: 'A lean crew, far smaller than a traditional ship',
       source: 'https://en.wikipedia.org/wiki/Independence-class_littoral_combat_ship',
-      note: 'The sources did not describe watch positions. The three seats are stations defined for this exercise, mapped to the systems the sources list.',
+      note: 'This is a US Navy class, so the seats use US Navy watch roles (https://man.fas.org/dod-101/navy/docs/swos/stu2/STU01.html, https://en.wikipedia.org/wiki/Officer_of_the_deck). The LCS manning concept differs from a traditional ship, so treat the split as a simplification for the exercise.',
       seats: {
-        weapons:    { label: 'Weapons', text: 'Weapon employment through the ICMS combat management system.' },
-        sensors:    { label: 'Sensors', text: 'Air and surface search with the SPS-77 Sea GIRAFFE radar, worked from the combat space (ICC-1).' },
-        navigation: { label: 'Navigation', text: 'Bridge watch: ship handling and the Sperry BridgeMaster E navigation radar.' }
+        weapons:    { label: 'Tactical Action Officer (weapons)', text: 'The commanding officer\'s representative for weapons employment and ship defence; does the primary threat evaluation. Weapons employment runs through the ICMS combat management system.' },
+        sensors:    { label: 'Operations specialist (air and surface picture)', text: 'Combat space watchstander who owns a section of the tactical picture, here the air and surface picture, from the SPS-77 Sea GIRAFFE radar.' },
+        navigation: { label: 'Officer of the Deck (bridge)', text: 'In charge of navigation and safety of the ship on the bridge: orders courses and speed, with the Sperry BridgeMaster E navigation radar. The helmsman who steers is simulated.' }
       }
     },
     {
