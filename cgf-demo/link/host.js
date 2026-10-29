@@ -124,6 +124,10 @@
         if (CGF.Report && typeof CGF.Report.finishSession === 'function') {   // Glenda's lane: reports, history entries, page URL
           try { p.reportUrl = CGF.Report.finishSession(msg.record).url; } catch (e) { p.reportError = 'The report could not be built: ' + e.message; }
         }
+        // The competency update runs after the report (INTERFACES §9): report, then Assess.update, then History.attachAssessment
+        if (!p.reportError && CGF.Assess && typeof CGF.Assess.update === 'function') {
+          try { CGF.Assess.update(msg.record); p.assessed = true; } catch (e) { p.assessError = 'The competency update failed: ' + e.message; }
+        }
       }
       // A hook for whatever consumes the records (the report, the competency update): no polling of localStorage needed
       window.dispatchEvent(new CustomEvent('cgf:session-record', { detail: { pane, record: msg.record, errors: p.recordErrors, run } }));

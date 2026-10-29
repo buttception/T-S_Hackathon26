@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Assess tests</title>
+<style>
+  body { font: 14px/1.5 "Segoe UI", system-ui, sans-serif; background: #0b1420; color: #d6e2f0; padding: 16px; }
+  .pass { color: #4dd17a; } .fail { color: #ff7b54; } h1 { font-size: 16px; }
+  #summary { font-weight: 700; margin: 8px 0 12px; }
+</style>
+</head>
+<body>
+<h1>Assess tests (competency update, profile persistence, cohort)</h1>
+<div id="summary">running…</div>
+<ul id="results"></ul>
+
+<script src="../js/util.js"></script>
+<script src="../contracts/contracts.js"></script>
+<script src="../fixtures/profiles/roster.js"></script>
+<script src="../js/assess/assess.js"></script>
+<script>
+(function () {
+  const C = CGF.contracts, A = CGF.Assess, F = window.CGF_FIXTURES;
+  const results = [];
+  const test = (name, fn) => { try { reset(); fn(); results.push([name, null]); } catch (e) { results.push([name, e.message]); } };
+  const eq = (a, b, msg) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error((msg || 'not equal') + ': got ' + JSON.stringify(a) + ', want ' + JSON.stringify(b)); };
+  const ok = (c, msg) => { if (!c) throw new Error(msg || 'expected true'); };
+  const clone = o => JSON.parse(JSON.stringify(o));
+
+  function reset() {
+    Object.keys(localStorage).filter(k => k.startsWith('cgf.profile.') || k === 'cgf.assessed').forEach(k => localStorage.removeItem(k));
+    CGF.History = undefined;
+  }
+
+  const ev = (n, trainee, seat, type, competency, outcome) => ({ event_id: 'e_' + n, t: n * 10, session_id: 's_t1', trainee_id: trainee, seat,
+    type, competency, outcome, unit_id: 'ship_2', detail: {} });
+  const hailFail = (n, id) => ev(n, id, 'navigation', 'hail_ignored', 'hail_discipline', 'fail');
+  const hailOk = (n, id) => ev(n, id, 'navigation', 'hail_acknowledged', 'hail_discipline', 'success');
+  const record = (events, sid) => ({ session_id: sid || 's_t1', pane: null, scenario: 'strait-transit', seed: 1, mode: 'adaptive', platform: 'warship',
+    crew: [{ seat: 'weapons', trainee_id: 'trainee_a' }, { seat: 'sensors', trainee_id: 'trainee_c01' }, { seat: 'navigation', trainee_id: 'trainee_b' }],
+    outcome: 'success', duration_s: 900, events, adjustments: [] });
+  const hail = p => p.competencies.hail_discipline;
+
+  test('the seeded roster has the demo trainees and a cohort', () => {
+    ok(A.profiles().length >= 22, 'profiles: ' + A.profiles().length);
+    ok(A.profile('trainee_b').trainee_id === 'trainee_b');
+  });
+
+  test('an unknown trainee gets an empty profile that passes the contract', () => {
+    const p = A.profile('trainee_new');
+    eq(C.validateProfile(p), []);
+    eq(p.sessions_completed, 0);
+  });
+
+  test('failed hail events lower hail_discipline for the trainee who caused them, and only for them', () => {
+    const before = A.means(A.profile('trainee_b')).hail_discipline, otherBefore = clone(A.profile('trainee_a'));
+    const out = A.update(record([1, 2, 3, 4, 5].map(n => hailFail(n, 'trainee_b'))));
+    ok(A.means(out.trainee_b).hail_discipline < before, 'mean fell');
+    eq(hail(out.trainee_b).beta, hail(A.profile('trainee_b')).beta);
+    eq(out.trainee_a.competencies, otherBefore.competencies, 'trainee_a unchanged');
+  });
+
+  test('successes raise alpha, failures raise beta, by one per event', () => {
+    const b0 = clone(hail(A.profile('trainee_b')));
+    A.update(record([hailOk(1, 'trainee_b'), hailOk(2, 'trainee_b'), hailFail(3, 'trainee_b')]));
+    const b1 = hail(A.profile('trainee_b'));
+    eq([b1.alpha - b0.alpha, b1.beta - b0.beta], [2, 1]);
+  });
+
+  test('sessions_completed and updated_at_session move, and the profile passes the contract', () => {
+    const n0 = A.profile('trainee_b').sessions_completed;
+    const out = A.update(record([hailFail(1, 'trainee_b')], 's_t9'));
+    eq(out.trainee_b.sessions_completed, n0 + 1);
+    eq(out.trainee_b.updated_at_session, 's_t9');
+    eq(C.validateProfile(out.trainee_b), []);
+  });
+
+  test('the profile round-trips through storage', () => {
+    A.update(record([hailFail(1, 'trainee_b')]));
+    const raw = JSON.parse(localStorage.getItem('cgf.profile.trainee_b'));
+    eq(raw, A.profile('trainee_b'));
+    ok(A.profiles().some(p => p.trainee_id === 'trainee_b' && p.updated_at_session === 's_t1'));
+  });
+
+  test('applying the same session twice changes nothing the second time', () => {
+    const r = record([1, 2].map(n => hailFail(n, 'trainee_b')));
+    A.update(r);
+    const once = clone(A.profile('trainee_b'));
+    A.update(r);
+    eq(A.profile('trainee_b'), once);
+  });
+
+  test('events with no competency, an unknown competency or another outcome are ignored', () => {
+    const before = clone(A.profile('trainee_b'));
+    A.update(record([ev(1, 'trainee_b', null, 'tension_peak', null, null), ev(2, 'trainee_b', 'navigation', 'x', 'made_up', 'fail'),
+      ev(3, 'trainee_b', 'navigation', 'hail_ignored', 'hail_discipline', 'none')]));
+    eq(A.profile('trainee_b').competencies, before.competencies);
+  });
+
+  test('a competency the profile did not hold starts from the prior', () => {
+    const e = ev(1, 'trainee_new', 'navigation', 'hail_ignored', 'hail_discipline', 'fail');
+    const r = record([e]); r.crew[2].trainee_id = 'trainee_new';
+    const out = A.update(r);
+    eq(hail(out.trainee_new), { alpha: 1, beta: 2 });
+  });
+
+  test('the history store gets the new means for every crew member, and a missing entry does not stop the update', () => {
+    const calls = [];
+    CGF.History = { attachAssessment: (id, sid, m) => calls.push([id, sid, m]) };
+    A.update(record([hailFail(1, 'trainee_b')]));
+    eq(calls.map(c => c[0]).sort(), ['trainee_a', 'trainee_b', 'trainee_c01']);
+    eq(calls[0][1], 's_t1');
+    eq(calls.find(c => c[0] === 'trainee_b')[2], A.means(A.profile('trainee_b')));
+    CGF.History = { attachAssessment: () => { throw new Error('no stored history entry'); } };
+    A.update(record([hailFail(1, 'trainee_b')], 's_t2'));
+    eq(A.profile('trainee_b').updated_at_session, 's_t2');
+  });
+
+  test('a record without crew and events is refused', () => {
+    let msg = ''; try { A.update({ session_id: 's' }); } catch (e) { msg = e.message; }
+    ok(/session record/.test(msg), msg);
+  });
+
+  test('cohort returns a trainee by competency matrix for the seeded roster, and follows an update', () => {
+    const m0 = A.cohort();
+    eq(Object.keys(m0).length, A.profiles().length);
+    ok(typeof m0.trainee_b.hail_discipline === 'number');
+    A.update(record([1, 2, 3, 4, 5, 6].map(n => hailFail(n, 'trainee_b'))));
+    ok(A.cohort().trainee_b.hail_discipline < m0.trainee_b.hail_discipline, 'cohort follows the update');
+  });
+
+  reset();
+  const failed = results.filter(r => r[1]);
+  const s = document.getElementById('summary');
+  s.textContent = `${results.length - failed.length} / ${results.length} passed`; s.className = failed.length ? 'fail' : 'pass';
+  document.getElementById('results').innerHTML = results.map(([n, e]) =>
+    `<li class="${e ? 'fail' : 'pass'}">${e ? 'FAIL' : 'PASS'} · ${n}${e ? ' — ' + e : ''}</li>`).join('');
+})();
+</script>
+</body>
+</html>

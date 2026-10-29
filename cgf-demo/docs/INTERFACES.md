@@ -357,7 +357,7 @@ Owner: Glenda (report lane). The report is built from the session record (§9.1)
 | Entries for a trainee | Glenda | `History.entries(trainee_id) -> entry[]` (proposed 2026-10-29, for AI partners) |
 | Partner parameters | JL | `Assess.partnerParams(derived_from) -> agent_params` (section 3.2) |
 | Recent context | Glenda | `History.context(trainee_id, n) -> {weak[], strong[], sessions}` |
-| Update competency | JL | `Assess.update(sessionRecord, report) -> Profile` |
+| Update competency | JL (`js/assess/assess.js`, built) | `Assess.update(sessionRecord, reports?) -> {trainee_id: Profile}`. One entry per crew member. Evidence is the record's events (+1 alpha per success, +1 beta per fail, per competency); the reports are accepted to fix the order and are not read. Applied once per session and trainee (`cgf.assessed`). Also `Assess.profile(id)`, `Assess.profiles()` (seeded, overridden by stored), `Assess.means(profile)` |
 
 ## 10. Module calls
 

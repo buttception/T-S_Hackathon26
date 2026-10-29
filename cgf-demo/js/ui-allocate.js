@@ -660,7 +660,7 @@
     st.domainOf = domainOfIn(CGF.scenarios);
 
     const bad = [];
-    st.profiles = (F.profiles || []).filter(p => { const e = C.validateProfile(p); if (e.length) bad.push(...e); return !e.length; });
+    st.profiles = (CGF.Assess ? CGF.Assess.profiles() : (F.profiles || [])).filter(p => { const e = C.validateProfile(p); if (e.length) bad.push(...e); return !e.length; });
     if (bad.length) console.error('roster fixture:', bad);
     st.profiles.forEach(p => { st.summaries[p.trainee_id] = summarise(p); });
     const envErrs = C.validateEnvelope(F.envelopeDefault);
