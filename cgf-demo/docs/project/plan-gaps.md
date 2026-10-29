@@ -79,6 +79,34 @@ Gaps #7 and #8 (identical panes, two panes from `file://`) now read as: one runt
 | 38 | The report and `Assess.update` must skip partners; the validators do not know `role` or `derived_from` yet | JL, Glenda |
 | 39 | Demo proof of adaptation is now a run-after-run comparison. Needs a saved run-1 session and a fixed-mode run on the same seed as a baseline, or the divergence is hard to show | JL |
 
+## D4. Status after the clean-up pass (2026-10-29, JL)
+
+**Cleared**
+
+| Gap | How |
+|---|---|
+| #3, #4 (contracts, invariants) | Event, adjustment and session-record validators (`6fd6bd0`). `tests/g1.html` (9 tests, browser) checks invariants 1, 2 and 3 on the real runtime. Devin's `node --test tests/runtime/` needs Node, which this machine lacks, so only the browser tests run here |
+| #7, #8 (panes, iframes) | One runtime, one pane (J8). `tests/link.html` loads the runtime in an iframe from `file://` and 30 of 31 pass; the 31st ("sim time advances") is flaky in headless Chrome because Chrome pauses animation frames in off-screen iframes |
+| #12 (two stores) | Profile: `cgf.profile.<id>` (JL, `Assess`). History: `cgf.history.<id>` (Glenda). Linked only by `History.attachAssessment`. No overlap |
+| #14, #15 (envelope scale, crew rule) | Default envelope raised (`6fd6bd0`) and `calm_down_rate` and `detection` added (runtime defaults 1 and 20). The crew-weakest rule is replaced by per-seat targets (INTERFACES §5.1) |
+| #16 (order) | The host runs report, then `Assess.update`, then `History.attachAssessment`, in that order (`link/host.js`) |
+| #27 (line endings) | `.gitattributes` and `.gitignore` added |
+| J4, J5, J8 | `Assess.update`, `Assess.cohort`, the allocation page reads saved profiles, single crew. `tests/assess.html` 12, `tests/allocate.html` 88, `tests/g1.html` 9 |
+| Decision D (record to host) | `8239de9` |
+| G0 integration runner | `tests/g1.html` is the runner: run, report, update, run again on the same seed |
+
+**Still open**
+
+| Gap | Owner |
+|---|---|
+| #13 event length and start time; #18 pre-written code rule; #19 IT checks (Node, local LLM, Claude Code) | JL, outside the repo |
+| #20 second owner for the deck and fallback video; #21 savings figures; #22 run-of-show; #23 HLA/DIS slides; #24, #25 fallback and replay | JL |
+| #17 triage of Eevee's `design/requests.md` | JL |
+| #29 to #33 CGFs that cooperate (D6, D7) and the `team` cause in the contracts | JL (contract), Devin |
+| J6 cohort heatmap view (the data exists: `Assess.cohort()`); first on the cut list | JL |
+| Tentative: AI partners (#34 to #39 apply only if confirmed) | JL |
+| Devin's node tests unrun on this machine | Devin, or install Node |
+
 ## E. Housekeeping found while reading
 
 - The vault copy of `overview.md` says "Nothing is built yet" in Status, while the same page lists the allocation page and link as built. The repo copy is the source of truth; sync the vault copy.

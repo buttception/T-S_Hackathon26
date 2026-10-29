@@ -6,7 +6,7 @@ How the allocation page, the host page and the runtime connect, and how to chang
 allocate.html  --Allocation-->  host.html  --postMessage-->  runtime.html?pane=A     (iframe)
 (pick trainees, partners)       (one runtime)
 
-Since 2026-10-29 there is one crew and one runtime; the code still builds two panes until task J8 (docs/LANES.md).
+Since 2026-10-29 there is one crew and one runtime; (J8 done).
 ```
 
 The runtime does not know the allocation exists. The only thing that connects it is `link/pane.js`, loaded by one `<script>` tag at the end of `runtime.html`. The tag does nothing unless the page is an iframe opened with `?pane=<letter>`, so `runtime.html` on its own behaves exactly as before.

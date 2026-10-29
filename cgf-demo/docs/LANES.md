@@ -40,7 +40,7 @@ Tasks:
 |---|---|---|
 | J1 | Allocation page and link to the runtime | Built; one crew since J8 |
 | J2 | Pass each seat's trainee, profile and envelope to Devin through the `link-init` event, as the config in INTERFACES §3 | Devin's code reads the config; no other channel |
-| J3 | Decide the envelope scale and the rule for a crew's weakest competency (open) | Written into INTERFACES §3 and §11 |
+| J3 | **Done 2026-10-29.** Envelope scale decided (raised default, `calm_down_rate` and `detection` added); the crew rule is replaced by per-seat targets (INTERFACES §5.1) | Written into `fixtures/envelope-default.js` and INTERFACES §5.1 |
 | J4 | **Done 2026-10-29** (`js/assess/assess.js`, `tests/assess.html`, 12 tests). Competency update (old E1, E2): Beta posterior per competency from the session record and report facts; profile persistence in `localStorage` and seeded fixtures | A fixture session for the weak trainee lowers `hail_discipline`; the profile round-trips |
 | J5 | **Done 2026-10-29** (the page reads `Assess.profiles()`). Allocation page reads the saved profile, so the bars move after a run | Bars change after a run |
 | J6 | Cohort data and heatmap data (old E8, C8; first to cut) | Matrix for the seeded cohort |

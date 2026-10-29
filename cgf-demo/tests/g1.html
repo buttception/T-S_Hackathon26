@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>G1 loop test</title>
+<style>
+  body { font: 14px/1.5 "Segoe UI", system-ui, sans-serif; background: #0b1420; color: #d6e2f0; padding: 16px; }
+  .pass { color: #4dd17a; } .fail { color: #ff7b54; } h1 { font-size: 16px; }
+  #summary { font-weight: 700; margin: 8px 0 12px; }
+  pre { color: #8aa0b8; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>G1 loop (JL): one crew, real runtime, report, competency update, second run. docs/PLAN.md section 6</h1>
+<div id="summary">running…</div>
+<ul id="results"></ul>
+<pre id="facts"></pre>
+
+<!-- The runtime without its page: the same scripts tests/runtime/harness.js loads, then the report, history and assess lanes -->
+<script src="../js/util.js"></script>
+<script src="../js/engine.js"></script>
+<script src="../js/behaviours.js"></script>
+<script src="../js/factors.js"></script>
+<script src="../js/malfunctions.js"></script>
+<script src="../plugins/greyzone-tactics.js"></script>
+<script src="../harnesses/hostile-state.js"></script>
+<script src="../harnesses/non-hostile-state.js"></script>
+<script src="../harnesses/grey-zone.js"></script>
+<script src="../harnesses/raiders.js"></script>
+<script src="../harnesses/civil-traffic.js"></script>
+<script src="../scenarios/strait-transit.js"></script>
+<script src="../contracts/contracts.js"></script>
+<script src="../fixtures/platforms.js"></script>
+<script src="../fixtures/profiles/roster.js"></script>
+<script src="../fixtures/envelope-default.js"></script>
+<script src="../js/sim/rng.js"></script>
+<script src="../js/sim/events.js"></script>
+<script src="../js/sim/apply.js"></script>
+<script src="../js/sim/crew-agent.js"></script>
+<script src="../trainees/strong.js"></script>
+<script src="../trainees/weak_hail_discipline.js"></script>
+<script src="../js/adapt/predict.js"></script>
+<script src="../js/adapt/clamp.js"></script>
+<script src="../js/adapt/policy-rules.js"></script>
+<script src="../js/adapt/adapt.js"></script>
+<script src="../js/adapt/runtime.js"></script>
+<script src="../js/report/report.js"></script>
+<script src="../fixtures/history/demo.js"></script>
+<script src="../js/history/history.js"></script>
+<script src="../js/assess/assess.js"></script>
+<script>
+(function () {
+  const C = CGF.contracts, F = window.CGF_FIXTURES;
+  const results = [], facts = [];
+  const test = (name, fn) => { try { fn(); results.push([name, null]); } catch (e) { results.push([name, e.message]); } };
+  const ok = (c, msg) => { if (!c) throw new Error(msg || 'expected true'); };
+  const eq = (a, b, msg) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error((msg || 'not equal') + ': got ' + JSON.stringify(a) + ', want ' + JSON.stringify(b)); };
+
+  Object.keys(localStorage).filter(k => k.startsWith('cgf.profile.') || k === 'cgf.assessed').forEach(k => localStorage.removeItem(k));
+
+  const config = over => Object.assign({
+    scenario_id: 'g1_A', scenario: 'strait-transit', seed: 1234, mode: 'adaptive', duration_s: 2400, eval_interval_s: 30,
+    envelope: JSON.parse(JSON.stringify(F.envelopeDefault)), platform: { type: 'warship', model: 'formidable' },
+    crew: [
+      { seat: 'weapons', trainee_id: 'trainee_c05', agent_profile: 'trainees/strong.js' },
+      { seat: 'sensors', trainee_id: 'trainee_c08', agent_profile: 'trainees/strong.js' },
+      { seat: 'navigation', trainee_id: 'trainee_b', agent_profile: 'trainees/weak_hail_discipline.js' }
+    ]
+  }, over || {});
+
+  // One full session in the shared runtime. Returns { record, cycles }.
+  function run(cfg, sid) {
+    CGF.loadScenario(cfg.scenario);
+    const errs = CGF.adaptRuntime.begin(cfg, { session_id: sid });
+    if (errs.length) throw new Error('begin: ' + errs.join('; '));
+    CGF.sim.running = true;
+    let record = null; const cycles = [];
+    const offR = CGF.on('session-record', r => { record = r; }), offC = CGF.on('adapt:cycle', c => cycles.push(c));
+    let guard = 0;
+    while (!record && CGF.sim.t < cfg.duration_s + 10 && guard++ < 5000) CGF.step(2);
+    if (typeof offR === 'function') offR(); if (typeof offC === 'function') offC();
+    return { record, cycles };
+  }
+
+  const cfg = config();
+  const r1 = run(cfg, 's_g1_1');
+  const navAdj = r1.record ? r1.record.adjustments.filter(a => a.seat === 'navigation') : [];
+
+  test('run 1 ends with a session record that passes the contract, envelope included', () => {
+    ok(r1.record, 'no session record');
+    eq(C.validateSessionRecord(r1.record, { envelope: cfg.envelope }), []);
+  });
+  test('the weak-hail navigation seat is adjusted toward hail_discipline within two evaluation cycles', () => {
+    ok(navAdj.length > 0, 'no navigation adjustment');
+    eq(navAdj[0].target_competency, 'hail_discipline');
+    ok(navAdj[0].t <= 2 * cfg.eval_interval_s + cfg.eval_interval_s, 'first adjustment at t=' + navAdj[0].t);
+  });
+  test('every adjustment stays inside the envelope (invariant 1)', () => {
+    for (const a of r1.record.adjustments) {
+      const env = cfg.envelope[a.setting];
+      if (env) ok(a.new >= env.min - 1e-9 && a.new <= env.max + 1e-9, a.setting + ' = ' + a.new);
+    }
+  });
+  test('fixed mode makes no adjustments (invariant 2)', () => {
+    const fixed = run(config({ mode: 'fixed', scenario_id: 'g1_fixed' }), 's_g1_fixed');
+    ok(fixed.record, 'no record');
+    eq(fixed.record.adjustments.length, 0);
+  });
+  test('the same seed gives identical events (invariant 3)', () => {
+    const again = run(config(), 's_g1_1');
+    eq(JSON.stringify(again.record.events), JSON.stringify(r1.record.events));
+  });
+
+  // The loop that closes: report, then competency update, then the next run starts from the new profile
+  const before = JSON.parse(JSON.stringify(CGF.Assess.profile('trainee_b')));
+  let fin = null, after = null;
+  test('the report is built for every crew member and the history gets an entry', () => {
+    fin = CGF.Report.finishSession(r1.record);
+    eq(fin.reports.length, 3);
+    ok(CGF.History.find('trainee_b', 's_g1_1'), 'history entry');
+  });
+  test('Assess.update moves the profile of the trainee who caused the events and attaches the means to history', () => {
+    const out = CGF.Assess.update(r1.record, fin && fin.reports);
+    after = out.trainee_b;
+    ok(after.sessions_completed === before.sessions_completed + 1, 'sessions_completed');
+    ok(after.updated_at_session === 's_g1_1');
+    ok(JSON.stringify(after.competencies) !== JSON.stringify(before.competencies), 'competencies unchanged');
+    const entry = CGF.History.find('trainee_b', 's_g1_1');
+    ok(entry && entry.competency_means_end && typeof entry.competency_means_end.hail_discipline === 'number', 'means attached');
+    eq(C.validateProfile(after), []);
+  });
+  test('the allocation page would now show the new profile (Assess.profiles returns it)', () => {
+    eq(CGF.Assess.profiles().find(p => p.trainee_id === 'trainee_b'), after);
+  });
+  let r2 = null;
+  test('run 2 on the same seed starts from the updated profile and ends with a valid record', () => {
+    r2 = run(config({ scenario_id: 'g1_A2' }), 's_g1_2');
+    ok(r2.record, 'no record');
+    eq(C.validateSessionRecord(r2.record, { envelope: cfg.envelope }), []);
+    const first = r2.cycles[0] && r2.cycles[0].live.seats.find(s => s.seat === 'navigation');
+    ok(first, 'no live state');
+    const stored = CGF.Assess.profile('trainee_b').competencies.hail_discipline, seedP = before.competencies.hail_discipline;
+    facts.push(`trainee_b hail_discipline: seeded ${seedP.alpha}/${seedP.beta} (mean ${(seedP.alpha / (seedP.alpha + seedP.beta)).toFixed(3)}), ` +
+      `after run 1 ${stored.alpha}/${stored.beta} (mean ${(stored.alpha / (stored.alpha + stored.beta)).toFixed(3)})`);
+    facts.push(`run 1: ${r1.record.events.length} events, ${r1.record.adjustments.length} adjustments, ${navAdj.length} on navigation, first at t=${navAdj[0] && navAdj[0].t}, outcome ${r1.record.outcome}`);
+    facts.push(`run 2 first cycle, navigation: target ${first.target}, working hail mean ${first.workingProfile.hail_discipline}`);
+    const wp = first.workingProfile.hail_discipline, st = stored.alpha / (stored.alpha + stored.beta);
+    ok(Math.abs(wp - st) < 0.06, 'run 2 working hail mean ' + wp + ' vs stored ' + st.toFixed(3));
+  });
+
+  const failed = results.filter(r => r[1]);
+  const s = document.getElementById('summary');
+  s.textContent = `${results.length - failed.length} / ${results.length} passed`; s.className = failed.length ? 'fail' : 'pass';
+  document.getElementById('results').innerHTML = results.map(([n, e]) =>
+    `<li class="${e ? 'fail' : 'pass'}">${e ? 'FAIL' : 'PASS'} · ${n}${e ? ' — ' + e : ''}</li>`).join('');
+  document.getElementById('facts').textContent = facts.join('\n');
+})();
+</script>
+</body>
+</html>
