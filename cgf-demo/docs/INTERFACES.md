@@ -81,19 +81,23 @@ Validation: `min <= base <= max`, and the range sits inside the setting's hard r
 
 `duration_s` and `eval_interval_s` are sim seconds, not real seconds. The defaults are 2400 (40 minutes) and 30. The ownship in `strait-transit` starts about 16 nm from the red force, so its first hails come about 15 minutes in, and 1200 s gave only one or two hail events (Devin, decision B; JL chose 2400 on 2026-10-29). In the G1 demo the hail-discipline trainee sits in the navigation seat, where hail discipline belongs (`seatFocus`).
 
-**Platform and crew (changed 2026-10-29, replaces the single `trainee` field).** The player role decides how many trainees a pane has. `platform.type` is one of the platform types in section 1. `platform.model` is an id from the platform catalog (`fixtures/platforms.js`: fighters `f15e`, `fa18f`; warships `formidable`, `lcs-independence`; tanks `leopard2sg`, `m1a2sepv3`). `crew` has exactly one entry per seat of that type, in the seat order of section 1. A seat is a trainee station, not the vehicle's whole crew: a real tank has four crew and a frigate 70 or more, and the stations nobody fills are simulated. The scenario's domain must match the platform type.
+**Platform and crew (changed 2026-10-29, replaces the single `trainee` field).** The player role decides how many seats the crew has. `platform.type` is one of the platform types in section 1. `platform.model` is an id from the platform catalog (`fixtures/platforms.js`: fighters `f15e`, `fa18f`; warships `formidable`, `lcs-independence`; tanks `leopard2sg`, `m1a2sepv3`). `crew` has exactly one entry per seat of that type, in the seat order of section 1. A seat is a trainee station, not the vehicle's whole crew: a real tank has four crew and a frigate 70 or more, and the stations nobody fills are simulated. The scenario's domain must match the platform type.
+
+Each crew entry may carry `role`: `trainee` (default) or `partner` (section 3.2).
 
 Validation: `crew` length and `seat` ids match the type; `trainee_id` is a lower-case id; `agent_profile` is required; no trainee fills two seats; the scenario's domain matches the platform type.
 
 ### 3.1 Allocation (wrapper)
 
-The trainee allocation page outputs one `Allocation`. It pairs the two panes of a side-by-side run and holds the settings they share once. The run page reads the `Allocation`, then derives one scenario config (section 3) per slot.
+Changed 2026-10-29 (JL): one crew per run. `slots` and the pane letters are gone. **The contracts, page, host and tests still describe two panes until task J8 is done; this section is the target.**
+
+The trainee allocation page outputs one `Allocation`. The run page reads it and derives one scenario config (section 3).
 
 ```json
 {
   "allocation_id": "alloc_01",
   "created_at_session": "s_20261030_01",
-  "shared": {
+  "run": {
     "scenario": "strait-transit",
     "seed": 1234,
     "mode": "adaptive",
@@ -102,38 +106,51 @@ The trainee allocation page outputs one `Allocation`. It pairs the two panes of 
     "envelope": "<envelope object from section 2>",
     "platform": {"type": "warship", "model": "formidable"}
   },
-  "slots": [
-    {"pane": "A", "crew": [
-      {"seat": "weapons",    "trainee_id": "trainee_c07", "agent_profile": "trainees/strong.js"},
-      {"seat": "sensors",    "trainee_id": "trainee_c01", "agent_profile": "trainees/strong.js"},
-      {"seat": "navigation", "trainee_id": "trainee_a",   "agent_profile": "trainees/strong.js"}
-    ]},
-    {"pane": "B", "crew": [
-      {"seat": "weapons",    "trainee_id": "trainee_c17", "agent_profile": "trainees/strong.js"},
-      {"seat": "sensors",    "trainee_id": "trainee_c08", "agent_profile": "trainees/strong.js"},
-      {"seat": "navigation", "trainee_id": "trainee_b",   "agent_profile": "trainees/weak_hail_discipline.js"}
-    ]}
+  "crew": [
+    {"seat": "weapons",    "role": "partner", "trainee_id": "partner_weapons", "agent_profile": "trainees/derived.js",
+     "derived_from": {"trainee_id": "trainee_c17", "session_ids": ["s_20261029_03"]},
+     "agent_params": {"rates": {"hail": 0.9, "radar_response": 0.8}, "reaction_delay_s": 12, "basis": {"source": "history", "sessions": 1}}},
+    {"seat": "sensors",    "role": "trainee", "trainee_id": "trainee_c08", "agent_profile": "trainees/strong.js"},
+    {"seat": "navigation", "role": "trainee", "trainee_id": "trainee_b",   "agent_profile": "trainees/weak_hail_discipline.js"}
   ]
 }
 ```
 
 | Field | Meaning |
 |---|---|
-| `allocation_id` | Unique id for this pairing |
-| `created_at_session` | Id of the most recent completed session when the allocation was made, or `null` if there is none |
-| `shared` | Fields both panes must have in common: `scenario`, `seed`, `mode`, `duration_s`, `eval_interval_s`, `envelope` and `platform`, with the meanings of section 3. Both panes play the same platform, so the comparison is like for like |
-| `slots` | One entry per pane, each holding that pane's `crew` (section 3) |
+| `allocation_id` | Unique id for this run |
+| `created_at_session` | Id of the most recent completed session when the allocation was made, or `null` |
+| `run` | The settings of section 3 that apply to the whole run: `scenario`, `seed`, `mode`, `duration_s`, `eval_interval_s`, `envelope`, `platform` (renamed from `shared`) |
+| `crew` | One entry per seat (section 3), each a trainee or a partner |
 
 Validation:
-- `slots` has exactly 2 entries, with `pane` values `A` and `B` in that order.
-- Each `crew` fills every seat of the platform type, in seat order.
-- No trainee appears twice: not in two seats of one crew, and not in both panes.
+- `crew` fills every seat of the platform type, in seat order.
+- At least one seat has `role: "trainee"`. Partners may fill any other seat.
+- No `trainee_id` appears twice. A partner's `derived_from.trainee_id` may equal a trainee in the crew (the trainee's earlier self); it does not count as a second appearance.
 - `agent_profile` is required and non-null in every seat. A human-driven seat is out of scope for G1.
-- `shared` passes the same checks as section 3: integer `seed`, `duration_s > 0`, `eval_interval_s < duration_s`, `mode` in the Mode enumeration, a valid envelope, a valid `platform`, and a scenario whose domain matches the platform type.
+- `run` passes the section 3 checks: integer `seed`, `duration_s > 0`, `eval_interval_s < duration_s`, `mode` in the Mode enumeration, a valid envelope, a valid `platform`, and a scenario whose domain matches the platform type.
 
-Derivation: `expandAllocation(allocation) -> ScenarioConfig[]` returns the two section 3 configs in pane order. Each takes `shared`, sets `crew` from its slot, and sets `scenario_id` to `<allocation_id>_<pane>`. The function is pure and lives in `contracts/`, so the page, the runner and the tests all use the same one. The derived configs always pass the section 3 validator. As built, `validateAllocation(allocation, opts)` checks the structure first and then validates every derived config, so both functions are in `cgf-demo/contracts/contracts.js`.
+Derivation: `expandAllocation(allocation) -> ScenarioConfig` returns the one section 3 config: the `run` fields plus `crew`, with `scenario_id` equal to `allocation_id`. The function is pure and lives in `contracts/`. `validateAllocation(allocation, opts)` checks the structure first and then validates the derived config.
 
 Handoff: the page writes the `Allocation` to `localStorage` under `cgf.allocation` (the Lead confirms the key). The URL-encoded fallback carries the same object.
+
+### 3.2 AI partners (proposed 2026-10-29, to confirm with Devin and Glenda)
+
+A `partner` seat is an AI crewmate. It lets one trainee practise with a full crew, with crewmates who behave as a person did in older runs.
+
+| Field | Meaning |
+|---|---|
+| `role` | `"partner"` |
+| `trainee_id` | The partner's own id in this run, such as `partner_<seat>`. It appears in events as the seat's actor |
+| `derived_from` | `{trainee_id, session_ids?}`: whose older runs shape the partner. `session_ids` is optional (default: all of that trainee's sessions) |
+| `agent_params` | `{rates, reaction_delay_s, basis}`. `rates` maps an event type of section 4 to a success rate from 0 to 1. `basis.source` is `history`, `profile` or `default`, and `basis.sessions` is how many session records were used. Computed by `Assess.partnerParams(derived_from)` (JL), never by the LLM |
+
+Rules:
+- Partners are not adapted to. They have no working copy and no target (section 5.1), and no adjustment may name a partner seat as its cause.
+- Partners are not assessed. `Assess.update` and `History.append` skip them. The report lists them as "AI partner, based on <trainee_id>".
+- Partners are deterministic: the same `agent_params` and `seed` give the same actions (invariant 3).
+- Sources, in order: past session records via `History.entries(trainee_id)`; else the profile means (section 5); else a default `strong`-like set. The allocation page shows which source was used.
+- Partners do not change the scenario outcome rules. Adjustments still change CGF settings only (invariant 8).
 
 ## 4. Simulation event (sim to engine)
 
@@ -293,7 +310,6 @@ Owner: Glenda (report lane). The report is built from the session record (§9.1)
 ```json
 {
   "session_id": "s_20261030_01",
-  "pane": "B",
   "scenario": "strait-transit",
   "seed": 42,
   "mode": "adaptive",
@@ -310,7 +326,7 @@ Owner: Glenda (report lane). The report is built from the session record (§9.1)
 }
 ```
 
-`events` are §4 events, and each carries a `seat`. `adjustments` are §7 records. `mode` is `adaptive` or `fixed`. `platform` is the platform **type** string (`warship`), not the `{type, model}` object of §3. `crew` has one entry per seat of that type, in seat order, with `seat` and `trainee_id` (no `agent_profile`). `pane` is `A`, `B`, or `null` for a local run.
+`events` are §4 events, and each carries a `seat`. `adjustments` are §7 records. `mode` is `adaptive` or `fixed`. `platform` is the platform **type** string (`warship`), not the `{type, model}` object of §3. `crew` has one entry per seat of that type, in seat order, with `seat`, `role` and `trainee_id` (no `agent_profile`). `pane` is `A`, `B`, or `null` for a local run.
 
 `CGF.contracts.validateSessionRecord(record, {envelope})` checks all of this, including that every event and adjustment carries the record's `session_id`, that every event's trainee sits in the seat it names, and, when an envelope is given, that every adjusted value is inside it. It was checked against full sessions from Devin's runtime (adaptive, fixed and the earlier challenge mode): no errors.
 
@@ -336,6 +352,8 @@ Owner: Glenda (report lane). The report is built from the session record (§9.1)
 | Build report | Glenda | `Report.build(sessionRecord, trainee_id) -> Report` |
 | Append history | Glenda | `History.append(entry) -> void` |
 | Attach assessment | Glenda | `History.attachAssessment(trainee_id, session_id, means) -> void` |
+| Entries for a trainee | Glenda | `History.entries(trainee_id) -> entry[]` (proposed 2026-10-29, for AI partners) |
+| Partner parameters | JL | `Assess.partnerParams(derived_from) -> agent_params` (section 3.2) |
 | Recent context | Glenda | `History.context(trainee_id, n) -> {weak[], strong[], sessions}` |
 | Update competency | JL | `Assess.update(sessionRecord, report) -> Profile` |
 
@@ -356,9 +374,11 @@ Owner: Glenda (report lane). The report is built from the session record (§9.1)
 
 `CGF.tick(dtReal)` remains for the live UI and calls `CGF.step` in fixed sub-steps. Tests and the runner call `CGF.step` directly. The Lead defines `Snapshot` in `contracts/` at G0: unit id, force, position, heading, speed, tension, harness state.
 
-## 11. Cross-instance messages (host page to pane)
+## 11. Cross-instance messages (host page to runtime)
 
-Each pane is an iframe of `runtime.html?pane=<letter>` (the page was `index.html` until 2026-10-29). Under `file://` the panes are cross-origin, so the host and the panes talk only through `postMessage`. As built (2026-10-29), the messages are defined and validated in `cgf-demo/contracts/link.js`, and every message is `{cgfLink: 1, type, pane, ...payload}`. Origins are opaque under `file://`, so the host accepts a message only if `event.source` is that pane's iframe window, and the pane only if it comes from `window.parent`.
+Changed 2026-10-29: one runtime iframe, not two. The URL marker stays `runtime.html?pane=run` and the `pane` field in messages is always `"run"`; drop both in a later cleanup (task J8).
+
+The runtime is an iframe of `runtime.html?pane=run` (the page was `index.html` until 2026-10-29). Under `file://` the panes are cross-origin, so the host and the panes talk only through `postMessage`. As built (2026-10-29), the messages are defined and validated in `cgf-demo/contracts/link.js`, and every message is `{cgfLink: 1, type, pane, ...payload}`. Origins are opaque under `file://`, so the host accepts a message only if `event.source` is that pane's iframe window, and the pane only if it comes from `window.parent`.
 
 | Message | Direction | Payload |
 |---|---|---|
@@ -375,7 +395,7 @@ Each pane is an iframe of `runtime.html?pane=<letter>` (the page was `index.html
 
 The pane does not change `CGF.params` or any harness on `init`. It records the allocation's envelope on `CGF.sim.link.envelope` and fires a `link-init` event; the adaptation code subscribes to that event.
 
-The Engine runs in the host page. With crews there is one working profile per seat, not per pane. Targets are chosen per seat (section 5.1).
+The Engine runs in the host page. With crews there is one working profile per trainee seat, not per pane, and none for partner seats. Targets are chosen per seat (section 5.1).
 
 Ownership and the runtime API the link depends on: `cgf-demo/link/README.md` in the repo.
 

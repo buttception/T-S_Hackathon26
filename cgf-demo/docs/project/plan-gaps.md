@@ -66,6 +66,19 @@ Devin's CGFs must (1) work together and share information, (2) react to the trai
 | 32 | **Demo beat is missing.** PLAN §8 shows history and live behaviour, not two CGFs cooperating. Add one beat or the feature earns no marks. | JL |
 | 33 | **Competency link.** Which competencies cooperation exercises (for example `hail_discipline` ignored, so the whole force escalates) is not mapped. | JL and Devin |
 
+## D3. Plan change 2026-10-29: one crew, AI partners
+
+Gaps #7 and #8 (identical panes, two panes from `file://`) now read as: one runtime must diverge between run 1 and run 2, and one iframe must load from `file://`. New gaps:
+
+| # | Gap | Owner |
+|---|---|---|
+| 34 | Code still builds two panes: `contracts.js`, `ui-allocate.js`, `host.html`, `link/`, and `tests/allocate.html` and `tests/link.html` (J8) | JL |
+| 35 | No `History.entries`, so partners have no source of older runs; `Assess.partnerParams` does not exist (J7) | Glenda, JL |
+| 36 | Partner agents are not built; `crew-agent.js` takes a profile path only (D8). Devin must also confirm the policy skips partner seats | Devin |
+| 37 | A partner with no history falls back to profile means, then a default. The seeded history in `fixtures/history/` must include at least one trainee with session records, or the demo never shows `basis.source = history` | Glenda |
+| 38 | The report and `Assess.update` must skip partners; the validators do not know `role` or `derived_from` yet | JL, Glenda |
+| 39 | Demo proof of adaptation is now a run-after-run comparison. Needs a saved run-1 session and a fixed-mode run on the same seed as a baseline, or the divergence is hard to show | JL |
+
 ## E. Housekeeping found while reading
 
 - The vault copy of `overview.md` says "Nothing is built yet" in Status, while the same page lists the allocation page and link as built. The repo copy is the source of truth; sync the vault copy.

@@ -4,7 +4,7 @@ Rules for every Claude Code session in this repository. Read `cgf-demo/docs/PLAN
 
 ## Project
 
-An adaptive CGF trainer, built on the maritime CGF simulator in `cgf-demo/`. An adaptation engine estimates each trainee's competencies from simulation events, keeps a profile across sessions, and adjusts CGF settings, inside an instructor-set envelope, to exercise the weakest competency. The profile (experience) decides which competency to target. The live signal (current behaviour) decides how hard to push. A web console shows two instances side by side, explains each adjustment to the instructor, accepts plain-language steering, and produces an end-of-training report that feeds the trainee's history. The flow is: allocation (JL), then runtime and CGF adaptation (Devin), then report and history (Glenda), then competency update (JL); Eevee designs how it all looks.
+An adaptive CGF trainer, built on the maritime CGF simulator in `cgf-demo/`. An adaptation engine estimates each trainee's competencies from simulation events, keeps a profile across sessions, and adjusts CGF settings, inside an instructor-set envelope, to exercise the weakest competency. The profile (experience) decides which competency to target. The live signal (current behaviour) decides how hard to push. A web console runs one crew (trainees, plus AI partners built from older runs), explains each adjustment to the instructor, accepts plain-language steering, and produces an end-of-training report that feeds the trainee's history. The flow is: allocation (JL), then runtime and CGF adaptation (Devin), then report and history (Glenda), then competency update (JL); Eevee designs how it all looks.
 
 ## Lane boundaries
 
