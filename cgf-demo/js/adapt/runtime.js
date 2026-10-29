@@ -20,6 +20,8 @@
     aggression:              { min: 0.6, max: 2.0, base: 1.0 },
     sensitivity:             { min: 0.6, max: 2.0, base: 1.0 },
     reaction_delay_s:        { min: 5,   max: 60,  base: 30 },
+    calm_down_rate:          { min: 0.5, max: 2.0, base: 1.0 },    // runtime default 1 (CGF.params.decay); same as fixtures/envelope-default.js
+    detection:               { min: 10,  max: 30,  base: 20 },     // runtime default 20 nm (CGF.params.detection)
     'weight.ignoredWarning': { min: 0.5, max: 2.5, base: 1.0 },
     'weight.cpa':            { min: 0.5, max: 2.0, base: 1.0 },
     'weight.team':           { min: 0.3, max: 2.0, base: 1.0 }    // teamwork of the opposition (js/sim/team.js)

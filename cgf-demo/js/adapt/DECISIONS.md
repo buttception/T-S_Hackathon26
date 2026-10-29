@@ -48,6 +48,7 @@ was changed.
 | 24 | Maps are twice as large. Scripted crews start at a forward position per scenario (`nav.start` in `trainees/*.js`) and follow a route along Red's zone, so the first hail comes about 6 minutes in. Any scripted crew opens the range from a unit that locks fire-control radar on it; a CGF holds its ground when the ownship is leaving | Hails arrive early enough for short runs, and weak crews no longer stall at weapons-ready |
 | 25 | Simulation speed control (×15 to ×480, keys `+`/`-`); demo steps set `speed` and `focus` so demos run fast through quiet stretches and slow down at the moments that matter. New 7-minute demo `demos/vision.js`; setup guide `RUNNING.md` | Devin's request |
 | 26 | Pushed directly to `main` | JL's decision (CLAUDE.md, 2026-10-29) |
+| 27 | **R9 (JL):** the trainee must not see the adaptation working: posture, the tension chart and "Why is it reacting?" are on the Instructor tab; trainee contacts show no tension. The local envelope in `js/adapt/runtime.js` also lists `calm_down_rate` (1) and `detection` (20 nm), as `fixtures/envelope-default.js` does | `docs/project/requests-for-devin-r3-r9.md` |
 
 ## Needs a decision from JL
 
