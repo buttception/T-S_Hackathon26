@@ -24,7 +24,7 @@ Status: open, agreed, done, declined.
 | R16 | JL | `cohort.html` heatmap legend | The legend says "Darker cells mean a higher mean", but the scale runs dark = low, light = high. Change it to "Lighter cells mean a higher mean" | Review of 5e37aad (P2) | done (c0905e4) |
 | R17 | Glenda | `js/ui-report.js` | Split `rp-good` / `rp-bad` by meaning: `rp-outcome--success` / `--fail` for session outcomes, `rp-level--strength` / `--developing` / `--focus` / `--thin` / `--none` for competency levels, `rp-dir--up` / `--down` for CGF direction, `rp-error` for page errors. `css/report.css` tells them apart by context until then | Report review: one "bad" class meant failure, a weak skill and the AI pushing harder (P3, P4, Ethical AI) | done: classes by meaning (ea6ef4c, Glenda); report.css moved to them (Eevee). Glenda may now drop rp-good / rp-bad / rp-mid / rp-thin / rp-none |
 | R18 | Glenda | `js/ui-report.js`, `js/report/charts.js` | Wording: "Needs work" / "Needs most work" / "weak" become "Focus area"; show the session date instead of the raw id (`s_20261030_01`) in headings; break the narrative's run of figures into short lines or a small table | Report review (P2, Ethical AI) | open |
-| R19 | Glenda | `js/ui-report.js` print button | Open every `<details>` (competency table, history, key moments) before `window.print()` and restore them after, so the PDF holds the whole report | Report review: collapsed sections do not print (P1) | open |
+| R19 | Glenda | `js/ui-report.js` print button | Open every `<details>` (competency table, history, key moments) before `window.print()` and restore them after, so the PDF holds the whole report | Report review: collapsed sections do not print (P1) | done (ea6ef4c, Glenda); verified on print; headless --print-to-pdf still misses closed sections |
 | R20 | Glenda | `js/ui-report.js` Trainee events table, Result column | Give single-event results their own classes (for example `rp-result--met` / `rp-result--missed`) and words ("met" / "missed" instead of "success" / "fail"). They now reuse `rp-outcome--success` / `--fail`, the session-outcome classes, so restyling outcomes would turn every missed hail into a failure chip. `report.css` keeps them plain until then | R17 review: one event is evidence about a competency, not a failed session (P3, Ethical AI) | open |
 | R21 | Glenda | `js/report/charts.js` chart roles | Split the `miss` role in two: `miss` for a missed event (success-rate chart) and `focus` for the focus area (competencies chart). Today both read `--rp-chart-miss`, so the focus area shows as an orange ring while the competency table outlines it in violet | R17 review (P3) | open |
 
@@ -75,9 +75,7 @@ Code terms or judgemental words shown to instructors and trainees.
 | R9 | JL decides, then Devin | Trainees can see the CGF's reasoning during a run |
 
 ### 7. Broken output (P1)
-| ID | Owner | Problem |
-|---|---|---|
-| R19 | Glenda | Collapsed sections are missing from the printed report |
+None open. R19 is done; known gap: headless `--print-to-pdf` does not fire `beforeprint`, so automated PDFs still miss closed sections.
 
 ## Eevee's own design backlog
 Not requests: styling work in the Eevee lane, from JL's triage and the audit.
