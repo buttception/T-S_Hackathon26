@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reset saved runs</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+  body { max-width: 640px; margin: 40px auto; padding: 0 16px; }
+  h1 { font-size: 22px; }
+  ul { padding-left: 20px; }
+  code { font-family: ui-monospace, Consolas, monospace; }
+  #result { margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>Reset saved runs</h1>
+<p>Opening this page clears the saved runs and history kept in this browser, so the demo starts clean. The seeded demo history comes back by itself. Trainee profiles and the saved allocation are not touched.</p>
+<p>Clears: <code>cgf.runs</code>, <code>cgf.lastRun</code> and every <code>cgf.history.*</code>. Keeps: <code>cgf.profile.*</code>, <code>cgf.allocation</code>, <code>cgf.assessed</code>.</p>
+<div id="result" role="status">Working…</div>
+<script>
+(function () {
+  'use strict';
+  const out = document.getElementById('result');
+  const stale = k => k === 'cgf.runs' || k === 'cgf.lastRun' || k.indexOf('cgf.history.') === 0;
+  try {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
+    const gone = keys.filter(stale);
+    gone.forEach(k => localStorage.removeItem(k));
+    const kept = keys.filter(k => k.indexOf('cgf.') === 0 && !stale(k));
+    out.innerHTML = '<p><b>' + (gone.length ? 'Cleared ' + gone.length + ' saved item' + (gone.length === 1 ? '' : 's') : 'Nothing to clear') + '.</b></p>' +
+      (gone.length ? '<ul>' + gone.map(k => '<li><code>' + k + '</code></li>').join('') + '</ul>' : '') +
+      '<p>Kept ' + kept.length + ' item' + (kept.length === 1 ? '' : 's') + (kept.length ? ': ' + kept.map(k => '<code>' + k + '</code>').join(', ') : '') + '.</p>' +
+      '<p><a href="allocate.html">Back to the allocation page</a></p>';
+  } catch (e) {
+    out.textContent = 'This browser blocks local storage for this page, so there is nothing saved to clear.';
+  }
+})();
+</script>
+</body>
+</html>
