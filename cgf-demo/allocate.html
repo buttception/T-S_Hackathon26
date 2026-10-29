@@ -6,66 +6,86 @@
 <title>Trainee Allocation</title>
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/allocate.css">
+<!-- Page layout (stage, pool, sticky hand-off). Loaded after allocate.css so Eevee's file is untouched; she can fold it in. -->
+<link rel="stylesheet" href="css/allocate-layout.css">
 </head>
 <body>
+<!-- Layout follows the instructor's workflow (design/PRINCIPLES.md): the platform and the crews are the stage, the trainee
+     pool is a side column used to fill them, and Start run stays in view at the bottom. -->
 <div id="allocApp">
   <header>
-    <h1>Trainee allocation <small>· choose the player role, seat a trainee in every position, then hand off the run configs</small></h1>
+    <h1>Trainee allocation <small>· choose the platform, seat a trainee in every position, then start the run</small></h1>
+    <span id="modeBadge" class="modeBadge"></span>
     <a class="btn" href="runtime.html">Open simulator</a>
   </header>
 
   <main>
-    <section id="rosterPane" style="min-width:0"><!-- lets the wide roster scroll inside its own column; Eevee can move this into allocate.css -->
-      <div class="row">
-        <select id="weakAt"></select>
-        <span class="muted small grow" id="rosterCount"></span>
-        <span class="muted small">Bars: competency mean. Faded: not enough evidence. Click a column to sort.</span>
+    <section id="stage">
+      <div id="platformBar">
+        <label class="field"><span>Platform type</span><select id="optType"></select></label>
+        <label class="field"><span>Platform</span><select id="optModel"></select></label>
+        <div id="platformInfo" class="platformInfo"></div>
+        <div class="err" id="err_platform"></div>
       </div>
-      <div class="tableWrap"><table id="roster"></table></div>
-      <div id="detail" class="platformInfo"></div>
-    </section>
 
-    <aside id="setupPane">
-      <h2>Player role</h2>
-      <label class="field"><span>Platform type</span><select id="optType"></select></label>
-      <label class="field"><span>Platform</span><select id="optModel"></select></label>
-      <div class="err" id="err_platform"></div>
-      <div id="platformInfo" class="platformInfo"></div>
-
-      <h2>Crews <span class="muted small">(one per pane)</span></h2>
       <div id="slots"></div>
       <div id="compare" class="platformInfo"></div>
-      <div class="row"><button id="btnSuggest" title="Fill both crews: the sharpest contrast on one competency in one seat, the other seats matched on level and experience">Suggest demo pair</button><button id="btnSwap">Swap crews A and B</button><button id="btnReset">Reset</button></div>
-
-      <h2>Run options (shared by both panes)</h2>
-      <label class="field"><span>Scenario</span><select id="optScenario"></select></label>
-      <div class="err" id="err_scenario"></div>
-      <label class="field"><span>Seed</span>
-        <span class="row"><input type="number" id="optSeed" min="0" step="1"><button id="btnReroll" title="Derive a new seed from this one">New seed</button></span></label>
-      <div class="err" id="err_seed"></div>
-      <label class="field"><span>Mode</span>
-        <select id="optMode"><option value="adaptive">Adaptive (practice)</option><option value="fixed">Fixed (assessment, no adjustments)</option></select></label>
-      <label class="field"><span>Duration (sim s)</span><input type="number" id="optDuration" min="1" step="1"></label>
-      <div class="err" id="err_duration_s"></div>
-      <label class="field"><span>Evaluate every (sim s)</span><input type="number" id="optInterval" min="1" step="1"></label>
-      <div class="err" id="err_eval_interval_s"></div>
-
-      <h2>Envelope <span class="muted small">(the limits the AI may not leave)</span></h2>
-      <table class="env"><thead><tr><th>Setting</th><th>Min</th><th>Base</th><th>Max</th></tr></thead><tbody id="envelope"></tbody></table>
-      <div class="err" id="err_envelope"></div>
-      <div class="row"><button id="btnEnvReset">Reset envelope</button></div>
-
-      <h2>Hand off</h2>
-      <div id="outputNote" class="small"></div>
       <div class="row">
-        <button id="btnStart" class="primary" disabled title="Save the allocation and open the side-by-side run">Start run</button>
-        <button id="btnSave">Save allocation</button>
-        <button id="btnExport">Export JSON</button>
+        <button id="btnSuggest" title="Fill both crews: the sharpest contrast on one competency in one seat, the other seats matched on level and experience">Suggest demo pair</button>
+        <button id="btnSwap">Swap crews A and B</button>
+        <button id="btnReset">Reset</button>
       </div>
-      <label class="field"><span>Run link</span>
-        <span class="row"><input type="text" id="handoffUrl" readonly><button id="btnCopy">Copy</button></span></label>
-      <div class="muted small" id="status"></div>
-      <details><summary class="small muted">Config preview</summary><pre id="output"></pre></details>
+
+      <details id="runBox">
+        <summary><b>Run options</b> <span id="runSummary" class="muted small"></span></summary>
+        <label class="field"><span>Scenario</span><select id="optScenario"></select></label>
+        <div class="err" id="err_scenario"></div>
+        <label class="field"><span>Seed</span>
+          <span class="row"><input type="number" id="optSeed" min="0" step="1"><button id="btnReroll" title="Derive a new seed from this one">New seed</button></span></label>
+        <div class="err" id="err_seed"></div>
+        <label class="field"><span>Mode</span>
+          <select id="optMode"><option value="adaptive">Adaptive practice</option><option value="fixed">Fixed assessment (no adjustments)</option></select></label>
+        <label class="field"><span>Duration (sim s)</span><input type="number" id="optDuration" min="1" step="1"></label>
+        <div class="err" id="err_duration_s"></div>
+        <label class="field"><span>Evaluate every (sim s)</span><input type="number" id="optInterval" min="1" step="1"></label>
+        <div class="err" id="err_eval_interval_s"></div>
+      </details>
+
+      <details id="envBox">
+        <summary><b>Adaptation limits</b> <span class="muted small">(envelope: the AI may not leave these)</span> <span id="envSummary" class="muted small"></span></summary>
+        <table class="env"><thead><tr><th>Setting</th><th>Min</th><th>Base</th><th>Max</th></tr></thead><tbody id="envelope"></tbody></table>
+        <div class="err" id="err_envelope"></div>
+        <div class="row"><button id="btnEnvReset">Reset limits</button></div>
+      </details>
+
+      <div id="handoff">
+        <div class="row">
+          <span id="outputNote" class="small grow"></span>
+          <button id="btnStart" class="primary" disabled title="Save the allocation and open the side-by-side run">Start run</button>
+          <button id="btnSave">Save allocation</button>
+          <button id="btnExport">Export JSON</button>
+        </div>
+        <div class="muted small" id="status"></div>
+        <details>
+          <summary class="small muted">Share link and config preview</summary>
+          <label class="field"><span>Run link</span>
+            <span class="row"><input type="text" id="handoffUrl" readonly><button id="btnCopy">Copy</button></span></label>
+          <pre id="output"></pre>
+        </details>
+      </div>
+    </section>
+
+    <aside id="pool">
+      <h2>Trainee pool</h2>
+      <div id="poolFor" class="small"></div>
+      <div class="row">
+        <select id="weakAt"></select>
+        <label class="small"><input type="checkbox" id="showAll"> Show all competencies</label>
+      </div>
+      <div class="muted small" id="rosterCount"></div>
+      <div class="muted small">Bars show the competency mean; faded bars have thin evidence. ◆ marks a trainee's focus area. Click a column to sort, a row to seat.</div>
+      <div class="tableWrap"><table id="roster"></table></div>
+      <div id="detail" class="platformInfo"></div>
     </aside>
   </main>
 </div>
@@ -76,6 +96,7 @@
 <script src="fixtures/envelope-default.js"></script>
 <script src="fixtures/platforms.js"></script>
 <script src="fixtures/profiles/roster.js"></script>
+<script src="js/adapt/predict.js"></script><!-- Devin's Adapt.predictTarget: the same rule the live policy uses -->
 <script src="js/ui-allocate-vehicles.js"></script>
 <script src="js/ui-allocate.js"></script>
 </body>

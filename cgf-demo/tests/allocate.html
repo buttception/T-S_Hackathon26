@@ -19,6 +19,7 @@
 <script src="../fixtures/envelope-default.js"></script>
 <script src="../fixtures/platforms.js"></script>
 <script src="../fixtures/profiles/roster.js"></script>
+<script src="../js/adapt/predict.js"></script>
 <script src="../js/ui-allocate-vehicles.js"></script>
 <script src="../js/ui-allocate.js"></script>
 <script>
@@ -405,13 +406,14 @@
     const d = A.describe(prof('trainee_b'));
     eq(d.weak.map(r => r.k), ['hail_discipline']);
     ok(d.strong.some(r => r.k === 'collision_avoidance'));
-    ok(/^Weak: hail discipline \(0\.26, evidence 19\)\./.test(d.text), d.text);
+    ok(/^Focus areas: hail discipline \(0\.26, evidence 19\)\./.test(d.text), d.text);
+    ok(/Strengths: /.test(d.text) && !/[Ww]eak/.test(d.text), 'respectful wording: ' + d.text);
     ok(/No evidence yet: .*threat evaluation/.test(d.text), d.text);
   });
   test('describe can be limited to a seat\'s competencies', () => {
     const d = A.describe(prof('trainee_b'), focusOf('warship').navigation);
     ok(!/threat evaluation/.test(d.text), d.text);
-    ok(/Weak: hail discipline/.test(d.text));
+    ok(/Focus areas: hail discipline/.test(d.text));
   });
   test('describe says so when nothing is measured', () => {
     const empty = { trainee_id: 'e', sessions_completed: 0, competencies: {}, updated_at_session: null };
@@ -430,6 +432,17 @@
     eq(A.previewTarget(prof('trainee_b'), ['hail_discipline'], 'fixed').reason, 'fixed_mode');
     const empty = { trainee_id: 'e', sessions_completed: 0, competencies: {}, updated_at_session: null };
     eq(A.previewTarget(empty, ['hail_discipline'], 'adaptive'), { competency: null, reason: 'no_evidence' });
+  });
+  test('the page preview agrees with Devin\'s Adapt.predictTarget for every trainee in every seat, in both modes', () => {
+    ok(window.Adapt && typeof Adapt.predictTarget === 'function', 'Adapt.predictTarget is loaded');
+    let n = 0;
+    for (const [type, info] of Object.entries(F.platformTypes)) for (const seat of info.seats) for (const p of F.profiles) for (const mode of ['adaptive', 'fixed']) {
+      const a = A.previewTarget(p, info.seatFocus[seat], mode);
+      const b = Adapt.predictTarget({ profile: clone(p), seat, competencies: info.seatFocus[seat], mode });
+      eq([a.competency, a.reason], [b.competency, b.reason], `${type}/${seat}/${p.trainee_id}/${mode}`);
+      n++;
+    }
+    ok(n > 200, 'checked ' + n);
   });
   test('describePrediction labels a preview and leaves an Adapt answer unlabelled', () => {
     const r = { competency: 'hail_discipline', mean: 0.26, reason: 'weakest_in_seat' };

@@ -56,8 +56,9 @@
     const thin = rows.filter(r => !r.prior && !r.enough);
     const none = rows.filter(r => r.prior);
     const fmt = r => `${LONG[r.k]} (${r.mean.toFixed(2)}, evidence ${Math.round(r.n)})`;
-    const parts = [weak.length ? `Weak: ${weak.map(fmt).join(', ')}.` : enough.length ? 'No clear weakness.' : 'Nothing measured yet.'];
-    if (strong.length) parts.push(`Strong: ${strong.map(fmt).join(', ')}.`);
+    // "Focus area" and "strength", not "weak" and "strong": the page describes where practice helps, not how good a person is
+    const parts = [weak.length ? `Focus areas: ${weak.map(fmt).join(', ')}.` : enough.length ? 'No clear focus area.' : 'Nothing measured yet.'];
+    if (strong.length) parts.push(`Strengths: ${strong.map(fmt).join(', ')}.`);
     if (thin.length) parts.push(`Thin evidence: ${thin.map(r => LONG[r.k]).join(', ')}.`);
     if (none.length) parts.push(`No evidence yet: ${none.map(r => LONG[r.k]).join(', ')}.`);
     return { weak, strong, thin, none, text: parts.join(' ') };
@@ -279,7 +280,7 @@
   const st = {
     profiles: [], summaries: {}, envelope: null, scenarioIds: [], domainOf: () => 'sea', models: F.platformModels || [],
     platform: clone(DEFAULT_PLATFORM), crews: {}, agents: {}, active: { crew: 'A', seat: 'weapons' },
-    opts: Object.assign({}, DEFAULTS), sortKey: 'trainee_id', sortDir: 1, weakAt: '', status: '', inspect: null
+    opts: Object.assign({}, DEFAULTS), sortKey: 'trainee_id', sortDir: 1, weakAt: '', status: '', inspect: null, showAll: false
   };
   const typeInfo = () => (F.platformTypes || {})[st.platform.type] || { seats: [], seatFocus: {} };
   const modelInfo = () => st.models.find(m => m.id === st.platform.model) || null;
@@ -312,17 +313,30 @@
     return Object.assign({ source: 'preview' }, previewTarget(input.profile, input.competencies, input.mode));
   }
 
-  function barColor(m) { return m < 0.4 ? '#ff7b54' : m < 0.6 ? '#ffd166' : '#4dd17a'; }
+  // Bars carry a class, not a colour: Eevee styles them (design/requests.md R1), one neutral hue scaled by value,
+  // with a marker on the focus area, so red and green stay reserved for force identity and status.
+  const barClass = m => m < 0.4 ? 'bar--low' : m < 0.6 ? 'bar--mid' : 'bar--high';
+  // The competency a profile points to as its focus area: the lowest mean among those with enough evidence
+  function focusKeyOf(sum) {
+    let best = null;
+    for (const k of C.COMPETENCIES) if (sum[k].enough && (best === null || sum[k].mean < sum[best].mean)) best = k;
+    return best;
+  }
   const activeFocus = () => (typeInfo().seatFocus || {})[st.active.seat] || [];
+  const shownKeys = () => st.showAll || !activeFocus().length ? C.COMPETENCIES : activeFocus();   // R6: the seat's three by default
   const seatLabel = seat => { const m = modelInfo(); return (m && m.seats[seat] && m.seats[seat].label) || seat; };
   const seatOf = id => { for (const c of SLOTS) for (const s of seatsOf(st.platform.type)) if (st.crews[c][s] === id) return { crew: c, seat: s }; return null; };
 
-  function compCell(s, focus) {
+  const FOCUS_MARK = '<span class="focusMark" title="Focus area: the lowest competency with enough evidence">◆</span>';
+  function barHtml(s, isFocusArea) {
+    const cls = `bar${s.prior ? ' prior' : s.enough ? '' : ' thin'}${isFocusArea ? ' bar--focus' : ''}`;
+    return `<span class="${cls}"><i class="${s.prior ? '' : barClass(s.mean)}" style="width:${(s.mean * 100).toFixed(0)}%"></i></span>`;
+  }
+  function compCell(s, focus, isFocusArea) {
     const title = s.prior ? 'No data: prior alpha 1, beta 1'
       : `mean ${s.mean.toFixed(2)} · alpha ${s.alpha}, beta ${s.beta} · evidence ${s.n}${s.enough ? '' : ' (not enough, needs ' + C.EVIDENCE_MIN + ')'}`;
-    const cls = s.prior ? 'bar prior' : s.enough ? 'bar' : 'bar thin';
-    return `<td class="${focus ? 'focus' : 'dim'}" title="${esc(title)}"><div class="${cls}"><i style="width:${(s.mean * 100).toFixed(0)}%;background:${barColor(s.mean)}"></i></div>` +
-      `<span class="val">${s.prior ? '—' : s.mean.toFixed(2)}</span></td>`;
+    return `<td class="${focus ? 'focus' : 'dim'}" title="${esc(title)}">${barHtml(s, isFocusArea)}` +
+      `<span class="val">${s.prior ? '—' : s.mean.toFixed(2)}</span>${isFocusArea ? FOCUS_MARK : ''}</td>`;
   }
 
   function sortedRows() {
@@ -333,37 +347,39 @@
     return rows.sort((a, b) => { const x = key(a), y = key(b); return (x < y ? -1 : x > y ? 1 : 0) * st.sortDir; });
   }
 
+  // The trainee pool: by default only the competencies the selected seat exercises (R6); "Show all" adds the rest.
   function renderRoster() {
-    const focus = activeFocus();
-    const head = [['trainee_id', 'Trainee'], ['sessions', 'Sessions'], ...C.COMPETENCIES.map(k => [k, LABELS[k]])]
+    const focus = activeFocus(), keys = shownKeys();
+    if (st.sortKey !== 'trainee_id' && st.sortKey !== 'sessions' && !keys.includes(st.sortKey)) st.sortKey = 'trainee_id';
+    const head = [['trainee_id', 'Trainee'], ['sessions', 'Sess.'], ...keys.map(k => [k, LABELS[k]])]
       .map(([k, l]) => `<th data-sort="${k}" class="${st.sortKey === k ? 'sorted' : ''} ${focus.includes(k) ? 'focus' : ''}">${l}${st.sortKey === k ? (st.sortDir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('');
     const rows = sortedRows();
     const body = rows.map(p => {
-      const sum = st.summaries[p.trainee_id], at = seatOf(p.trainee_id);
+      const sum = st.summaries[p.trainee_id], at = seatOf(p.trainee_id), fk = focusKeyOf(sum);
       return `<tr data-id="${esc(p.trainee_id)}" class="${at ? 'taken' : ''}">` +
-        `<td class="id" title="${esc(p.trainee_id)}">${at ? `<span class="slotTag" title="Crew ${at.crew}, ${esc(seatLabel(at.seat))}">${at.crew}·${esc(at.seat)}</span>` : ''}` +
+        `<td class="id" title="${esc(p.trainee_id)}">${at ? `<span class="slotTag" title="Crew ${at.crew}, ${esc(seatLabel(at.seat))}">${at.crew}</span>` : ''}` +
         `${esc(nameOf(p))}${notes.get(p.trainee_id) ? ' <span class="muted" title="You have a note on this trainee">✎</span>' : ''}</td>` +
-        `<td class="num">${p.sessions_completed}</td>` + C.COMPETENCIES.map(k => compCell(sum[k], focus.includes(k))).join('') + '</tr>';
+        `<td class="num">${p.sessions_completed}</td>` + keys.map(k => compCell(sum[k], focus.includes(k), k === fk)).join('') + '</tr>';
     }).join('');
     $('roster').innerHTML = `<thead><tr>${head}</tr></thead><tbody>${body ||
-      `<tr><td colspan="${2 + C.COMPETENCIES.length}" class="muted">No trainee matches this filter.</td></tr>`}</tbody>`;
-    $('rosterCount').textContent = `${rows.length} of ${st.profiles.length} trainees · highlighted columns matter for the ${esc(seatLabel(st.active.seat))} seat`;
+      `<tr><td colspan="${2 + keys.length}" class="muted">No trainee matches this filter.</td></tr>`}</tbody>`;
+    $('rosterCount').textContent = `${rows.length} of ${st.profiles.length} trainees` +
+      (st.showAll ? '' : ` · showing the ${esc(seatLabel(st.active.seat))} seat's competencies`);
   }
 
   // The selected trainee in full: every competency, a plain-language summary, and a private note.
   function renderDetail() {
     const el = $('detail'), p = st.inspect && profileOf(st.inspect);
     if (!p) {
-      el.innerHTML = '<span class="muted small">Point at a trainee in the roster to see their competencies, strengths, weaknesses and your notes. Click to seat them.</span>';
+      el.innerHTML = '<span class="muted small">Point at a trainee in the pool to see their competencies, strengths, focus areas and your notes. Click to seat them.</span>';
       return;
     }
-    const sum = st.summaries[p.trainee_id], d = describe(p), focus = activeFocus(), at = seatOf(p.trainee_id);
+    const sum = st.summaries[p.trainee_id], d = describe(p), focus = activeFocus(), at = seatOf(p.trainee_id), fk = focusKeyOf(sum);
     const bars = C.COMPETENCIES.map(k => {
-      const s = sum[k], cls = s.prior ? 'bar prior' : s.enough ? 'bar' : 'bar thin';
-      return `<div class="small ${focus.includes(k) ? '' : 'dim'}"><span style="display:inline-block;width:130px">${esc(LONG[k])}</span>` +
-        `<span class="${cls}"><i style="width:${(s.mean * 100).toFixed(0)}%;background:${barColor(s.mean)}"></i></span>` +
-        `<span class="val">${s.prior ? '—' : s.mean.toFixed(2)}</span>` +
-        `<span class="muted">${s.prior ? 'no evidence' : 'evidence ' + Math.round(s.n) + (s.enough ? '' : ' (thin)')}</span></div>`;
+      const s = sum[k];
+      return `<div class="small compRow ${focus.includes(k) ? '' : 'dim'}"><span class="compName">${esc(LONG[k])}</span>` +
+        `${barHtml(s, k === fk)}<span class="val">${s.prior ? '—' : s.mean.toFixed(2)}</span>` +
+        `<span class="muted">${s.prior ? 'no evidence' : 'evidence ' + Math.round(s.n) + (s.enough ? '' : ' (thin)')}</span>${k === fk ? FOCUS_MARK + ' <span class="muted">focus area</span>' : ''}</div>`;
     }).join('');
     el.innerHTML = `<div class="row"><b>${esc(nameOf(p))}</b><span class="muted small">${esc(p.trainee_id)} · ${p.sessions_completed} session${p.sessions_completed === 1 ? '' : 's'}` +
       `${at ? ` · seated in crew ${esc(at.crew)}, ${esc(seatLabel(at.seat))}` : ''}</span></div>` +
@@ -397,16 +413,16 @@
         const focus = (info.seatFocus || {})[seat] || [], seatDef = model && model.seats[seat];
         people[seat] = { name: id ? nameById(id) : '', active: isActive };
         const mini = sum ? focus.map(k => `<span title="${LONG[k]}: ${sum[k].prior ? 'no data' : sum[k].mean.toFixed(2)}">` +
-          `<b style="background:${sum[k].prior ? 'var(--line)' : barColor(sum[k].mean)}"></b>${LABELS[k]} ${sum[k].prior ? '—' : sum[k].mean.toFixed(2)}</span>`).join('') : '';
+          `<b class="${sum[k].prior ? 'bar--none' : barClass(sum[k].mean)}"></b>${LABELS[k]} ${sum[k].prior ? '—' : sum[k].mean.toFixed(2)}</span>`).join('') : '';
         const e = errs[`agent_${c}_${seat}`] || (id && errs[`seat_${c}_${seat}`]);
         const pred = id ? describePrediction(predictFor(id, seat)) : '';
         return `<div class="seat ${isActive ? 'active' : ''}" data-crew="${c}" data-seat="${seat}">` +
           `<div class="seatHead"><b>${i + 1} · ${esc(seatDef ? seatDef.label : seat)}</b><span class="grow"></span>` +
           (id ? `<button data-clear="${c}:${seat}" title="Clear this seat">Clear</button>` : '') + '</div>' +
-          (seatDef ? `<div class="seatText">${esc(seatDef.text)}</div>` : '') +
-          `<div class="seatWho">${id ? `<b data-inspect="${esc(id)}">${esc(nameById(id))}</b> <span class="muted small">${esc(id)}</span>` : `<span class="muted">${isActive ? 'Click a trainee in the roster' : 'Click here, then a trainee'}</span>`}</div>` +
+          `<div class="seatWho">${id ? `<b data-inspect="${esc(id)}">${esc(nameById(id))}</b> <span class="muted small">${esc(id)}</span>` : `<span class="muted">${isActive ? 'Choose a trainee from the pool' : 'Click here, then choose a trainee'}</span>`}</div>` +
           (sum ? `<div class="mini">${mini}</div><div class="small muted">${esc(describe(profileOf(id), focus).text)}</div>` : '') +
           (pred ? `<div class="small">${esc(pred)}</div>` : '') +
+          (seatDef ? `<details class="seatMore"><summary class="small muted">About this seat</summary><div class="seatText">${esc(seatDef.text)}</div></details>` : '') +
           `<label class="field"><span>Scripted agent</span><select data-agent="${c}:${seat}"><option value="">Choose…</option>` +
           agents.map(a => `<option value="${esc(a.path)}" ${st.agents[c][seat] === a.path ? 'selected' : ''}>${esc(a.label)}</option>`).join('') +
           '</select></label>' + (e ? `<div class="err">${esc(e)}</div>` : '') + '</div>';
@@ -430,10 +446,11 @@
     const models = st.models.filter(m => m.type === st.platform.type);
     $('optModel').innerHTML = models.map(m => `<option value="${esc(m.id)}" ${m.id === st.platform.model ? 'selected' : ''}>${esc(m.name)}</option>`).join('');
     const m = modelInfo(), t = typeInfo();
-    $('platformInfo').innerHTML = m ? `<div><b>${esc(m.name)}</b> · ${esc(m.operator)}</div>` +
-      `<div class="muted small">Real crew: ${esc(m.realCrew)}. This exercise seats ${t.seats.length} trainees per crew, in the ${esc(C.DOMAIN_BY_TYPE[st.platform.type])} domain.</div>` +
-      (m.note ? `<div class="muted small">${esc(m.note)}</div>` : '') +
-      `<div class="small"><a href="${esc(m.source)}" target="_blank" rel="noopener">Source</a></div>` : '';
+    // A summary and a Source link; the long sourcing notes sit one click away (R5)
+    $('platformInfo').innerHTML = m ? `<div><b>${esc(m.name)}</b> · ${esc(m.operator)} · ${t.seats.length} trainee seats per crew · ${esc(C.DOMAIN_BY_TYPE[st.platform.type])} domain · ` +
+      `<a href="${esc(m.source)}" target="_blank" rel="noopener">Source</a></div>` +
+      `<details><summary class="small muted">About these seats</summary><div class="muted small">Real crew: ${esc(m.realCrew)}.` +
+      `${m.note ? ' ' + esc(m.note) : ''}</div></details>` : '';
     $('err_platform').textContent = errs.platform || '';
   }
 
@@ -446,12 +463,31 @@
     for (const f of ['scenario', 'seed', 'duration_s', 'eval_interval_s']) $('err_' + f).textContent = errs[f] || '';
   }
 
+  // The mode badge, the "choosing for" line, and the one-line summaries of the collapsible sections. A section that
+  // holds an error opens by itself, so a problem is never hidden behind a closed panel.
+  const MODE_NAMES = { adaptive: 'Adaptive practice', fixed: 'Fixed assessment' };
+  function renderChrome(errs, envErrs) {
+    const fixed = st.opts.mode === 'fixed';
+    $('modeBadge').className = 'modeBadge ' + (fixed ? 'mode-fixed' : 'mode-adaptive');
+    $('modeBadge').textContent = (fixed ? '■ ' : '↻ ') + (MODE_NAMES[st.opts.mode] || st.opts.mode) + (fixed ? ' · no adjustments' : '');
+    const seat = st.active, seats = seatsOf(st.platform.type), allFull = SLOTS.every(c => seats.every(s => st.crews[c][s]));
+    $('poolFor').innerHTML = seat && seat.seat in (st.crews[seat.crew] || {})
+      ? `Choosing for <b>crew ${esc(seat.crew)}, ${esc(seatLabel(seat.seat))}</b>${allFull ? ' <span class="muted">(all seats filled; click a seat to change it)</span>' : ''}` : '';
+    const o = st.opts, sc = CGF.scenarios[o.scenario];
+    $('runSummary').textContent = `${sc ? (sc.name || o.scenario) : o.scenario} · seed ${o.seed} · ${MODE_NAMES[o.mode] || o.mode} · ` +
+      `${Number.isFinite(o.duration_s) ? Math.round(o.duration_s / 60) : '?'} min · evaluate every ${o.eval_interval_s} s`;
+    $('envSummary').textContent = `${Object.keys(st.envelope).length} settings` + (envErrs.length ? ` · ${envErrs.length} problem${envErrs.length > 1 ? 's' : ''}` : '');
+    if (['scenario', 'seed', 'duration_s', 'eval_interval_s'].some(f => errs[f])) $('runBox').open = true;
+    if (envErrs.length) $('envBox').open = true;
+  }
+
   function render() {
     const errs = checkSelection(st, ctx()), ready = !Object.keys(errs).length;
     renderPlatform(errs); renderScenarios(errs); renderRoster(); renderCrews(errs); renderCompare();
     if (document.activeElement !== $('noteBox')) renderDetail();   // never rebuild the note box while it is being typed in
     const envErrs = C.validateEnvelope(st.envelope);
     $('err_envelope').innerHTML = envErrs.map(esc).join('<br>');
+    renderChrome(errs, envErrs);
     const empty = Object.keys(errs).filter(k => k.startsWith('seat_') && /^Pick/.test(errs[k])).length;
     let alloc = null, cErrs = [];
     if (ready) {
@@ -577,6 +613,7 @@
       render();
     };
     $('weakAt').onchange = e => { st.weakAt = e.target.value; render(); };
+    $('showAll').onchange = e => { st.showAll = e.target.checked; render(); };
     for (const id of ['optScenario', 'optSeed', 'optMode', 'optDuration', 'optInterval'])
       $(id).addEventListener('input', () => { readOpts(); st.status = ''; render(); });
     $('btnReroll').onclick = () => {
@@ -632,7 +669,7 @@
 
     $('optType').innerHTML = Object.entries(F.platformTypes || {}).map(([k, t]) => `<option value="${esc(k)}">${esc(t.label)}</option>`).join('');
     $('weakAt').innerHTML = '<option value="">All trainees</option>' +
-      C.COMPETENCIES.map(k => `<option value="${k}">Weak at ${LABELS[k].toLowerCase()} (mean below 0.50)</option>`).join('');
+      C.COMPETENCIES.map(k => `<option value="${k}">Focus area: ${LONG[k]} (mean below 0.50)</option>`).join('');
 
     Object.assign(st, emptyCrews(st.platform.type));
     st.active = { crew: 'A', seat: seatsOf(st.platform.type)[0] };

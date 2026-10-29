@@ -54,6 +54,7 @@ Purpose: run the simulation and adapt the CGFs live, and let the instructor see 
 | `runtime.html`, `js/main.js`, `js/engine.js`, `js/factors.js`, `js/llm.js` | Existing runtime |
 | `harnesses/`, `scenarios/`, `plugins/`, `projects/`, `demos/`, `trainees/` | Existing content, plus scripted trainees |
 | `js/adapt/` | In-run adaptation: policy, envelope clamp, tailoring from the profile, steering |
+| `js/sim/`, `tests/runtime/` | Simulation events, scripted crews, applying adjustments, and the runtime tests |
 | `js/ui-reasoning.js` (new) | Instructor reasoning panel (see D3 below) |
 | `tests/` for the files above | |
 

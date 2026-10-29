@@ -13,7 +13,7 @@ There are four people, each with their own lane. Full detail, tasks and hand-off
 | Person | Lane | Files |
 |---|---|---|
 | JL | Allocation, hand-off and competency update | `allocate.html`, `js/ui-allocate*.js`, `host.html`, `link/` (JS and README), `js/assess/`, `contracts/`, `fixtures/` (profiles, platforms), `runner/`, `docs/`, their tests |
-| Devin | Simulation runtime and CGF behaviour | `runtime.html`, `js/main.js`, `js/engine.js`, `js/factors.js`, `js/llm.js`, `js/adapt/`, `js/ui-reasoning.js`, `harnesses/`, `scenarios/`, `plugins/`, `projects/`, `demos/`, `trainees/`, their tests |
+| Devin | Simulation runtime and CGF behaviour | `runtime.html`, `js/main.js`, `js/engine.js`, `js/factors.js`, `js/llm.js`, `js/adapt/`, `js/sim/`, `js/ui-reasoning.js`, `harnesses/`, `scenarios/`, `plugins/`, `projects/`, `demos/`, `trainees/`, `tests/runtime/`, their tests |
 | Glenda | End-of-training report and trainee history | `report.html`, `js/ui-report.js`, `js/report/`, `js/history/`, `fixtures/history/`, `tests/report/` |
 | Eevee | UI/UX design of the whole page | every `*.css` file, `css/`, `design/` |
 

@@ -1,6 +1,6 @@
 # Request for Devin: `Adapt.predictTarget`
 
-**From**: JL (allocation page). **To**: Devin (`js/adapt/`). **Date**: 2026-10-29. **Status**: open, nothing built.
+**From**: JL (allocation page). **To**: Devin (`js/adapt/`). **Date**: 2026-10-29. **Status**: done 2026-10-29. Devin built `js/adapt/predict.js` (decision 14 in `js/adapt/DECISIONS.md`); `allocate.html` loads it, and `tests/allocate.html` checks that the page's built-in preview agrees with it for every seeded trainee in every seat, in both modes. The preview stays as a fallback.
 
 ## What the allocation page needs
 
