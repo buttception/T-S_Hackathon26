@@ -132,6 +132,18 @@
     platform: config.platform.type, crew: config.crew.map(m => ({ seat: m.seat, trainee_id: m.trainee_id })), outcome: 'success', duration_s: 600,
     events: [], adjustments: [] }, over || {});
   test('checkRecord accepts a valid record that matches the config', () => eq(H.checkRecord(recFor(cfgA(), 'A'), cfgA(), 'A'), []));
+  test('checkRecord matches a crew with an AI partner by seat, id, role and whose runs it copies, whatever the key order', () => {
+    const c = cfgA(), p = { seat: 'weapons', trainee_id: 'partner_weapons', role: 'partner', derived_from: { trainee_id: 'trainee_b' },
+      agent_params: { rates: { hail_acknowledged: 0.3 }, reaction_delay_s: 20, basis: { source: 'default', sessions: 0 } } };
+    c.crew[0] = p;
+    const plain = m => ({ seat: m.seat, trainee_id: m.trainee_id });
+    const rec = recFor(c, 'A', { crew: [{ derived_from: { trainee_id: 'trainee_b' }, role: 'partner', trainee_id: 'partner_weapons', seat: 'weapons' }, plain(c.crew[1]), plain(c.crew[2])] });
+    eq(H.checkRecord(rec, c, 'A'), []);
+    const other = clone(rec); other.crew[0].derived_from = { trainee_id: 'trainee_a' };
+    ok(H.checkRecord(other, c, 'A').some(m => /crew/.test(m)), 'a different source trainee is a different crew');
+    const noRole = clone(rec); delete noRole.crew[0].role; delete noRole.crew[0].derived_from;
+    ok(H.checkRecord(noRole, c, 'A').length > 0, 'a partner recorded as a trainee is rejected');
+  });
   test('checkRecord rejects a record for another pane, scenario, seed, mode, platform or crew', () => {
     const c = cfgA(), has = (r, re) => ok(H.checkRecord(r, c, 'A').some(m => re.test(m)), 'expected ' + re + ' in ' + JSON.stringify(H.checkRecord(r, c, 'A')));
     has(recFor(c, 'B'), /record\.pane/);
