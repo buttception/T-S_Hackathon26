@@ -107,8 +107,9 @@ test('validator rejects a number that is not in facts, and ignores digits inside
 
 test('narrative sentences about a trainee use the same thresholds as the view', () => {
   const CGF = load();
-  const r = CGF.Report.build(recordOf('s_20261030_01'), 'trainee_c08');   // collision 3/2 = 0.6: not "needs work"
-  assert.doesNotMatch(r.narrative, /Needs the most work/);
+  const r = CGF.Report.build(recordOf('s_20261030_01'), 'trainee_c08');   // collision 3/2 = 0.6: not a focus area
+  assert.doesNotMatch(r.narrative, /Focus area/);
+  assert.match(CGF.Report.build(recordOf('s_20261030_02'), 'trainee_b').narrative, /Focus area: hail discipline\./);
   assert.match(r.narrative, /Strongest this session: territorial awareness/);
 });
 

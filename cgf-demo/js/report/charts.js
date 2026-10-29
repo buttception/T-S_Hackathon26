@@ -140,7 +140,7 @@
     const ly = keys.length * row + 26;
     out.push(`<rect x="${L}" y="${ly - 9}" width="18" height="10" rx="5" ${st('fill', 'start', 'opacity:.75')}/>`, txt(L + 24, ly, 'profile at start'));
     out.push(`<circle cx="${L + 140}" cy="${ly - 4}" r="5" ${st('fill', 'ok')}/>`, txt(L + 150, ly, 'this session'));
-    out.push(`<circle cx="${L + 250}" cy="${ly - 4}" r="5" fill="none" stroke-width="2.5" ${st('stroke', 'miss')}/>`, txt(L + 260, ly, 'needs work'));
+    out.push(`<circle cx="${L + 250}" cy="${ly - 4}" r="5" fill="none" stroke-width="2.5" ${st('stroke', 'miss')}/>`, txt(L + 260, ly, 'focus area'));
     if (nextComps) out.push(`<line x1="${L + 360}" x2="${L + 360}" y1="${ly - 10}" y2="${ly + 2}" stroke-width="3" ${st('stroke', 'next')}/>`, txt(L + 368, ly, 'next session'));
     out.push('</svg>');
     return out.join('');

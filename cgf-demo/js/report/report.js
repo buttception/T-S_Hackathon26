@@ -101,11 +101,11 @@
     if (!seen.length) { parts.push('No assessed events were recorded for this trainee.'); return parts.join(' '); }
     for (const [k, c] of seen)
       parts.push(`${LABELS[k]}: ${plural(c.success, 'success', 'successes')} and ${plural(c.fail, 'failure', 'failures')}, from a profile mean of ${f.competency_means_start[k]} at the start.`);
-    // Same thresholds as the report view: strength from 0.7, needs work at 0.4 or below, 2 events minimum
+    // Same thresholds as the report view: strength from 0.7, focus area at 0.4 or below, 2 events minimum
     const firm = seen.filter(([, c]) => c.success + c.fail >= MIN_EVENTS);
     const strongest = firm.filter(([, c]) => rate(c) >= STRONG_FROM).pop(), weakest = firm.find(([, c]) => rate(c) <= WEAK_TO);
     if (strongest) parts.push(`Strongest this session: ${LABELS[strongest[0]].toLowerCase()}.`);
-    if (weakest) parts.push(`Needs the most work: ${LABELS[weakest[0]].toLowerCase()}.`);
+    if (weakest) parts.push(`Focus area: ${LABELS[weakest[0]].toLowerCase()}.`);
     return parts.join(' ');
   }
 
