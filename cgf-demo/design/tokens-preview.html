@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colour tokens preview</title>
+<!-- Design review page for css/tokens.css. Owner: Eevee. Not part of the app. -->
+<link rel="stylesheet" href="../css/tokens.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface-bg); color: var(--text); font: 14px/1.45 "Segoe UI", system-ui, Arial, sans-serif; padding: 20px 24px 40px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); margin: 26px 0 10px; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
+  p.lead { color: var(--text-muted); margin: 0 0 6px; max-width: 980px; }
+  .groups { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+  .group { background: var(--surface-panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .group h3 { margin: 0 0 2px; font-size: 13px; }
+  .group .rule { color: var(--text-muted); font-size: 12px; margin-bottom: 8px; min-height: 34px; }
+  .sw { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: center; margin: 5px 0; font-size: 12.5px; }
+  .sw i { width: 26px; height: 26px; border-radius: 5px; border: 1px solid var(--border-strong); }
+  .sw code { color: var(--text-muted); font: 11.5px Consolas, monospace; }
+  .cmp { display: grid; grid-template-columns: 150px 1fr 1fr; gap: 0; background: var(--surface-panel); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .cmp > div { padding: 10px 12px; border-top: 1px solid var(--border); }
+  .cmp .hd { border-top: none; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); background: var(--surface-raised); }
+  .cmp .lbl { color: var(--text-muted); font-size: 12.5px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .bar { display: inline-block; vertical-align: middle; width: 64px; height: 8px; background: var(--data-track); border-radius: 4px; overflow: hidden; }
+  .bar b { display: block; height: 100%; }
+  .val { font: 12px Consolas, monospace; margin: 0 10px 0 4px; }
+  .cell { display: inline-block; white-space: nowrap; }
+  .focus { outline: 2px solid var(--data-focus); outline-offset: 2px; border-radius: 4px; }
+  .tag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 10px; border: 1px solid; }
+  .ico { width: 13px; height: 13px; flex: none; }
+  .log { font: 12px Consolas, monospace; background: var(--surface-sunken); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+  .log div { margin: 3px 0; }
+  .src { display: inline-block; font: 600 10.5px "Segoe UI", system-ui, sans-serif; padding: 0 6px; border-radius: 3px; margin-right: 6px; vertical-align: 1px; }
+  .banner { padding: 7px 12px; border-radius: 6px; font-weight: 600; border: 1px solid; display: inline-flex; gap: 6px; align-items: center; }
+  .err { font-size: 12.5px; display: inline-flex; gap: 5px; align-items: center; }
+  .heat { display: inline-grid; grid-template-columns: repeat(5, 30px); gap: 2px; }
+  .heat span { height: 22px; border-radius: 3px; }
+  .note { color: var(--text-muted); font-size: 12px; margin-top: 4px; }
+</style>
+</head>
+<body>
+<h1>Colour tokens, draft</h1>
+<p class="lead">Proposed <code>css/tokens.css</code>. Force colours mean <b>who</b> a unit is; status colours mean <b>something needs attention</b>; violet means <b>the AI acted</b>; data uses one neutral hue. Normal states carry no colour. Numbers are contrast ratios on the panel background (WCAG AA needs 4.5).</p>
+
+<h2>Token groups</h2>
+<div class="groups">
+  <div class="group"><h3>Force identity</h3><div class="rule">MIL-STD-2525 / APP-6. Map, symbols and force names only.</div>
+    <div class="sw"><i style="background:var(--force-friend-light)"></i><span>Friend</span><code>11.5</code></div>
+    <div class="sw"><i style="background:var(--force-hostile-light)"></i><span>Hostile / suspect</span><code>7.1</code></div>
+    <div class="sw"><i style="background:var(--force-neutral-light)"></i><span>Neutral</span><code>14.4</code></div>
+    <div class="sw"><i style="background:var(--force-unknown-light)"></i><span>Unknown</span><code>16.2</code></div>
+  </div>
+  <div class="group"><h3>Status</h3><div class="rule">Panel chrome only. Always with an icon or word.</div>
+    <div class="sw"><i style="background:var(--status-critical)"></i><span>Critical (magenta)</span><code>6.3</code></div>
+    <div class="sw"><i style="background:var(--status-caution)"></i><span>Caution (orange)</span><code>9.0</code></div>
+    <div class="sw"><i style="background:var(--status-done)"></i><span>Done / normal</span><code>14.5</code></div>
+  </div>
+  <div class="group"><h3>Source and mode</h3><div class="rule">Who acted, and whether adaptation is on.</div>
+    <div class="sw"><i style="background:var(--source-ai)"></i><span>AI / Adaptive mode</span><code>6.7</code></div>
+    <div class="sw"><i style="background:var(--source-instructor)"></i><span>Instructor</span><code>6.7</code></div>
+    <div class="sw"><i style="background:var(--source-cgf)"></i><span>CGF itself</span><code>6.4</code></div>
+    <div class="sw"><i style="background:var(--mode-fixed)"></i><span>Fixed mode</span><code>14.5</code></div>
+  </div>
+  <div class="group"><h3>Data</h3><div class="rule">One neutral hue. Fades with thin evidence.</div>
+    <div class="sw"><i style="background:var(--data-fill)"></i><span>Bar fill</span><code>8.0</code></div>
+    <div class="sw"><i style="background:var(--data-fill);opacity:var(--data-thin)"></i><span>Thin evidence</span><code></code></div>
+    <div class="sw"><i style="background:var(--data-0)"></i><span>Heatmap low</span><code></code></div>
+    <div class="sw"><i style="background:var(--data-4)"></i><span>Heatmap high</span><code></code></div>
+  </div>
+  <div class="group"><h3>Surfaces and UI</h3><div class="rule">Unchanged from today, renamed.</div>
+    <div class="sw"><i style="background:var(--surface-bg)"></i><span>Background</span><code></code></div>
+    <div class="sw"><i style="background:var(--surface-panel)"></i><span>Panel</span><code></code></div>
+    <div class="sw"><i style="background:var(--surface-raised)"></i><span>Raised</span><code></code></div>
+    <div class="sw"><i style="background:var(--ui-accent)"></i><span>Interactive</span><code>6.7</code></div>
+  </div>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-x" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5.3 5.3l5.4 5.4M10.7 5.3l-5.4 5.4" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 16 16"><path d="M8 1.5L15 14H1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 6v4M8 11.6v.4" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-check" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4.8 8.2l2.2 2.2 4.2-4.6" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.3 7V5a2.7 2.7 0 015.4 0v2" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+  <symbol id="i-ai" viewBox="0 0 16 16"><path d="M8 1.5l1.6 4.4L14 7.5l-4.4 1.6L8 13.5 6.4 9.1 2 7.5l4.4-1.6z" fill="currentColor"/></symbol>
+</svg>
+
+<h2>Before and after, using today's components</h2>
+<div class="cmp">
+  <div class="hd">Component</div><div class="hd">Today</div><div class="hd">With tokens</div>
+
+  <div class="lbl">Competency bars<br>(trainee_b, allocation page)</div>
+  <div class="row">
+    <span class="cell">Hail<span class="bar" style="background:#24364d"><b style="width:26%;background:#ff7b54"></b></span><span class="val">0.26</span></span>
+    <span class="cell">Territorial<span class="bar" style="background:#24364d"><b style="width:55%;background:#ffd166"></b></span><span class="val">0.55</span></span>
+    <span class="cell">Weapons<span class="bar" style="background:#24364d"><b style="width:72%;background:#4dd17a"></b></span><span class="val">0.72</span></span>
+  </div>
+  <div>
+    <div class="row">
+      <span class="cell focus">Hail<span class="bar"><b style="width:26%;background:var(--data-fill)"></b></span><span class="val">0.26</span></span>
+      <span class="cell">Territorial<span class="bar"><b style="width:55%;background:var(--data-fill)"></b></span><span class="val">0.55</span></span>
+      <span class="cell">Weapons<span class="bar"><b style="width:72%;background:var(--data-fill)"></b></span><span class="val">0.72</span></span>
+    </div>
+    <div class="note">Violet outline: the AI's focus area. No red for a low score.</div>
+  </div>
+
+  <div class="lbl">Exercise result banner</div>
+  <div class="row">
+    <span class="banner" style="background:#173b26;border-color:#4dd17a">Objective reached</span>
+    <span class="banner" style="background:#3d1717;border-color:#ff5c5c">Exercise failed</span>
+  </div>
+  <div class="row">
+    <span class="banner" style="background:var(--status-done-bg);border-color:var(--status-done);color:var(--status-done)"><svg class="ico"><use href="#i-check"/></svg>Objective reached</span>
+    <span class="banner" style="background:var(--status-critical-bg);border-color:var(--status-critical);color:var(--status-critical-text)"><svg class="ico"><use href="#i-x"/></svg>Exercise failed</span>
+  </div>
+
+  <div class="lbl">Malfunction and hail</div>
+  <div class="row">
+    <span class="tag" style="background:#4a2a08;border-color:#ffb347;color:#ffd9a8">RUDDER JAM</span>
+    <span style="color:#ffb347;font-weight:700;font-size:12px">HAIL PENDING (H)</span>
+  </div>
+  <div class="row">
+    <span class="tag" style="background:var(--status-caution-bg);border-color:var(--status-caution);color:var(--status-caution-text)"><svg class="ico"><use href="#i-warn"/></svg>Rudder jam</span>
+    <span class="tag" style="background:var(--status-caution-bg);border-color:var(--status-caution);color:var(--status-caution-text)"><svg class="ico"><use href="#i-warn"/></svg>Hail pending (H)</span>
+  </div>
+
+  <div class="lbl">Validation error</div>
+  <div><span class="err" style="color:#ff9a9a">Seed must be a whole number</span></div>
+  <div><span class="err" style="color:var(--status-critical-text)"><svg class="ico" style="color:var(--status-critical)"><use href="#i-x"/></svg>Seed must be a whole number</span></div>
+
+  <div class="lbl">CGF log entries</div>
+  <div class="log">
+    <div><span style="color:#ff9a9a">R-11</span> Radio call · Why: instructor</div>
+    <div><span style="color:#ff9a9a">R-11</span> Stood down · Why: calmed down over time</div>
+    <div><span style="color:#ff9a9a">R-11</span> flank_bias 0.20 → 0.35</div>
+  </div>
+  <div class="log">
+    <div><span class="src" style="background:var(--ui-accent-bg);color:var(--text-strong)">INSTRUCTOR</span><span style="color:var(--force-hostile-light)">R-11</span> Radio call</div>
+    <div><span class="src" style="background:var(--surface-raised);color:var(--source-cgf)">CGF</span><span style="color:var(--force-hostile-light)">R-11</span> Stood down: calmed down over time</div>
+    <div><span class="src" style="background:var(--source-ai-bg);color:var(--source-ai-text)">AI</span><span style="color:var(--force-hostile-light)">R-11</span> Flank tendency 0.20 → 0.35</div>
+  </div>
+
+  <div class="lbl">Mode badge<br>(new, needs R3)</div>
+  <div class="row"><span class="muted" style="color:var(--text-muted)">No badge today. Runtime shows "Exercise" in a dropdown.</span></div>
+  <div class="row">
+    <span class="tag" style="background:var(--mode-adaptive-bg);border-color:var(--mode-adaptive);color:var(--source-ai-text)"><svg class="ico"><use href="#i-ai"/></svg>Adaptive practice</span>
+    <span class="tag" style="background:var(--mode-fixed-bg);border-color:var(--mode-fixed);color:var(--mode-fixed)"><svg class="ico"><use href="#i-lock"/></svg>Fixed assessment</span>
+  </div>
+
+  <div class="lbl">Cohort heatmap<br>(planned)</div>
+  <div class="row"><span style="color:var(--text-muted)">Not built yet.</span></div>
+  <div class="heat"><span style="background:var(--data-0)"></span><span style="background:var(--data-1)"></span><span style="background:var(--data-2)"></span><span style="background:var(--data-3)"></span><span style="background:var(--data-4)"></span></div>
+</div>
+</body>
+</html>
