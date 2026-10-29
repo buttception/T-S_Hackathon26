@@ -20,9 +20,10 @@
   const mmss = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
   const r1 = v => Math.round(v * 10) / 10;
   // Each chart role has its own variable, --rp-chart-<role>, for the design lane to set in css/tokens.css;
-  // until it does, the role falls back to the theme token named here
+  // until it does, the role falls back to the theme token named here. miss = a missed event (success-rate chart),
+  // focus = a focus area (competencies chart)
   const ROLE = { label: 'muted', title: 'text', grid: 'line', base: 'muted', band: 'line', track: 'line', bg: 'bg',
-    'phase-up': 'warn', 'phase-down': 'accent', pressure: 'warn', rate: 'text', ok: 'accent', miss: 'warn',
+    'phase-up': 'warn', 'phase-down': 'accent', pressure: 'warn', rate: 'text', ok: 'accent', miss: 'warn', focus: 'warn',
     start: 'muted', next: 'text', trend: 'accent', pressed: 'warn' };
   const colour = role => `var(--rp-chart-${role}, var(--${ROLE[role]}))`;
   const st = (prop, role, extra) => `style="${prop}:${colour(role)}${extra ? ';' + extra : ''}"`;
@@ -132,7 +133,7 @@
       out.push(`<rect class="rp-chart-track" x="${L}" y="${mid - 5}" width="${W - L - Rm}" height="10" rx="5" ${st('fill', 'track', 'opacity:.6')}/>`);
       out.push(`<rect class="rp-chart-start" x="${L}" y="${mid - 5}" width="${r1(x(m0) - L)}" height="10" rx="5" ${st('fill', 'start', 'opacity:.75')}><title>Profile at start: ${m0}</title></rect>`);
       if (rate != null) out.push(`<circle class="rp-chart-ev rp-chart-ev-${rate >= R.STRONG_FROM ? 'ok' : rate <= R.WEAK_TO ? 'fail' : 'mid'}" cx="${r1(x(rate))}" cy="${mid}" r="6" ` +
-        (rate > R.WEAK_TO ? st('fill', 'ok') : ring('miss')) +
+        (rate > R.WEAK_TO ? st('fill', 'ok') : ring('focus')) +
         `><title>This session: ${c.success} of ${c.success + c.fail}</title></circle>`);
       if (n != null) out.push(`<line class="rp-chart-next" x1="${r1(x(n))}" x2="${r1(x(n))}" y1="${mid - 10}" y2="${mid + 10}" stroke-width="3" ${st('stroke', 'next')}><title>Next session: ${Math.round(n * 100) / 100}</title></line>`);
       out.push(txt(W - Rm + 16, mid + 4, rate == null ? '—' : Math.round(rate * 100) + '%', 'value'));
@@ -140,7 +141,7 @@
     const ly = keys.length * row + 26;
     out.push(`<rect x="${L}" y="${ly - 9}" width="18" height="10" rx="5" ${st('fill', 'start', 'opacity:.75')}/>`, txt(L + 24, ly, 'profile at start'));
     out.push(`<circle cx="${L + 140}" cy="${ly - 4}" r="5" ${st('fill', 'ok')}/>`, txt(L + 150, ly, 'this session'));
-    out.push(`<circle cx="${L + 250}" cy="${ly - 4}" r="5" fill="none" stroke-width="2.5" ${st('stroke', 'miss')}/>`, txt(L + 260, ly, 'focus area'));
+    out.push(`<circle cx="${L + 250}" cy="${ly - 4}" r="5" fill="none" stroke-width="2.5" ${st('stroke', 'focus')}/>`, txt(L + 260, ly, 'focus area'));
     if (nextComps) out.push(`<line x1="${L + 360}" x2="${L + 360}" y1="${ly - 10}" y2="${ly + 2}" stroke-width="3" ${st('stroke', 'next')}/>`, txt(L + 368, ly, 'next session'));
     out.push('</svg>');
     return out.join('');
