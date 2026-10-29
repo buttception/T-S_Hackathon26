@@ -1,0 +1,400 @@
+// Side panel, keyboard/mouse input and the instructor command parser.
+(function () {
+  'use strict';
+  const CGF = window.CGF, U = CGF.util, $ = id => document.getElementById(id), esc = U.esc;
+
+  let activeTab = 'trainee', actFilter = '';
+
+  const SLIDERS = [
+    { key: 'aggression',  label: 'Aggression',     min: 0.2, max: 2.5, step: 0.1, fmt: v => v.toFixed(1) + '×' },
+    { key: 'sensitivity', label: 'Sensitivity',    min: 0.2, max: 2,   step: 0.1, fmt: v => v.toFixed(1) + '×' },
+    { key: 'reaction',    label: 'Reaction delay', min: 0,   max: 120, step: 5,   fmt: v => v + ' s' },
+    { key: 'decay',       label: 'Calm-down rate', min: 0.2, max: 3,   step: 0.1, fmt: v => v.toFixed(1) + '×' },
+    { key: 'detection',   label: 'CGF detection',  min: 5,   max: 40,  step: 1,   fmt: v => v + ' nm' },
+    { key: 'timeScale',   label: 'Time scale',     min: 10,  max: 240, step: 10,  fmt: v => v + '×' }
+  ];
+
+  // ------------------------------------------------------------ logs
+  function addLog(text, cls) {
+    const div = document.createElement('div');
+    div.className = 'l-' + cls;
+    div.textContent = `[${U.fmtTime(CGF.sim ? CGF.sim.t : 0)}] ${text}`;
+    const el = $('log'); el.appendChild(div);
+    while (el.childNodes.length > 250) el.removeChild(el.firstChild);
+    el.scrollTop = el.scrollHeight;
+  }
+  function actionHtml(a) {
+    const f = CGF.scenario.forces[a.forceKey], color = f ? f.color : '#d7a8ff';
+    return `<div class="act"><span class="muted">${a.time}</span> <b style="color:${color}">${esc(a.unit)}</b> ${esc(a.action)}` +
+      `${a.state ? ` <span class="muted">[${esc(a.state)}${a.tension !== '' ? ' · ' + a.tension : ''}]</span>` : ''}` +
+      `${a.cause ? `<div class="cause">Why: ${esc(a.cause)}</div>` : ''}${a.detail ? `<div class="cause">${esc(a.detail)}</div>` : ''}</div>`;
+  }
+  function renderActions() {
+    const list = CGF.sim.actions.filter(a => !actFilter || a.forceKey === actFilter || !a.forceKey).slice(-300).reverse();
+    $('actions').innerHTML = list.map(actionHtml).join('') || '<div class="muted">No CGF actions yet.</div>';
+  }
+
+  // ------------------------------------------------------------ builders
+  function buildSliders() {
+    $('sliders').innerHTML = SLIDERS.map(s => `<div class="slider"><span>${s.label}</span>
+      <input type="range" id="sl-${s.key}" min="${s.min}" max="${s.max}" step="${s.step}" value="${CGF.params[s.key]}">
+      <span id="sv-${s.key}">${s.fmt(CGF.params[s.key])}</span></div>`).join('');
+    for (const s of SLIDERS) $('sl-' + s.key).addEventListener('input', e => {
+      CGF.params[s.key] = parseFloat(e.target.value); $('sv-' + s.key).textContent = s.fmt(CGF.params[s.key]);
+    });
+  }
+  const harnessOptions = (sel, list) => (list || Object.values(CGF.harnesses)).map(h => `<option value="${esc(h.id)}"${h.id === sel ? ' selected' : ''}>${esc(h.name)}</option>`).join('');
+
+  function buildRegistryLists() {
+    const curS = $('scenarioSel').value || (CGF.scenario && CGF.scenario.id);
+    $('scenarioSel').innerHTML = Object.values(CGF.scenarios).map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+    if (curS && CGF.scenarios[curS]) $('scenarioSel').value = curS;
+    const curH = $('harnessSel').value;
+    $('harnessSel').innerHTML = harnessOptions(curH);
+    const curD = $('demoSel').value;
+    $('demoSel').innerHTML = Object.values(CGF.demos || {}).filter(d => CGF.scenarios[d.scenario])
+      .map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('');
+    if (curD && CGF.demos[curD]) $('demoSel').value = curD;
+    showHarnessDesc();
+    if (CGF.sim) buildForceControls();
+  }
+  function showHarnessDesc() {
+    const h = CGF.harnesses[$('harnessSel').value];
+    $('harnessDesc').textContent = h ? `${h.description || ''} States: ${h.states.map(s => s.name).join(' → ')}.` : '';
+  }
+
+  function buildForceControls() {
+    const S = CGF.scenario, sim = CGF.sim;
+    const keys = Object.keys(S.forces).filter(k => k !== S.ownShip.force);
+    $('forceHarnesses').innerHTML = keys.map(k => {
+      const f = S.forces[k], H = sim.forceHarness[k];
+      return `<div class="forceRow"><b style="color:${f.color}">${esc(f.tag)} · ${esc(f.label)}</b>
+        <select data-force="${k}">${H ? '' : '<option value="">(no harness)</option>'}${harnessOptions(H && H.id, CGF.harnessesFor(k))}</select></div>`;
+    }).join('');
+    $('forceList').innerHTML = Object.entries(S.forces).map(([k, f]) => {
+      const H = sim.forceHarness[k], n = sim.units.filter(u => u.force === k).length;
+      return `<div><b style="color:${f.color}">${esc(f.label)}</b> <span class="muted">· ${k === S.ownShip.force ? 'trainee' : `${n} units · ${H ? esc(H.name) : 'no harness'}`}</span></div>`;
+    }).join('');
+    $('spawnForce').innerHTML = keys.filter(k => S.spawn[k]).map(k => `<option value="${k}">${esc(S.forces[k].label)}</option>`).join('');
+    $('actFilter').innerHTML = '<option value="">All forces</option>' + keys.map(k => `<option value="${k}">${esc(S.forces[k].label)}</option>`).join('');
+    $('actFilter').value = actFilter;
+    // Identity key (symbol shape and colour) and force key (label tag, zone colour, current harness)
+    const ID = CGF.style.identity;
+    const shapeCss = id => id.shape === 'circle' ? 'border-radius:50%' : id.shape === 'diamond' ? 'transform:rotate(45deg) scale(.8)' : '';
+    $('legend').innerHTML =
+      `<div class="muted">Identity</div>` +
+      ['friend', 'hostile', 'suspect', 'neutral'].map(k => `<div><i style="border-color:${ID[k].color};border-style:${ID[k].dashed ? 'dashed' : 'solid'};background:${U.hexA(ID[k].light, .25)};${shapeCss(ID[k])}"></i>${ID[k].label}</div>`).join('') +
+      `<div class="muted" style="margin-top:4px">Forces</div>` +
+      Object.entries(S.forces).map(([k, f]) =>
+        `<div><b style="color:${f.color};min-width:28px">${esc(f.tag)}</b>${esc(f.label)}${sim.forceHarness[k] ? ` <span class="muted">· ${esc(sim.forceHarness[k].name)}</span>` : ''}</div>`).join('');
+    refreshTargets();
+  }
+
+  function refreshTargets() {
+    const cur = $('injTarget').value;
+    $('injTarget').innerHTML = CGF.cgfs().map(u => `<option value="${esc(u.name)}">${esc(u.name)} (${esc(CGF.forceOf(u).label)})</option>`).join('');
+    if (CGF.cgfs().some(u => u.name === cur)) $('injTarget').value = cur;
+    refreshStateOptions();
+  }
+  function refreshStateOptions() {
+    const u = injTarget(), H = u && CGF.harnessOf(u);
+    $('injState').innerHTML = H ? H.states.map(s => `<option>${esc(s.name)}</option>`).join('') : '';
+  }
+  function refreshMalfButtons() {
+    const sim = CGF.sim;
+    $('malfButtons').innerHTML = CGF.malfunctions.map(m =>
+      `<button data-malf="${m.id}" class="${sim.malf[m.id] ? 'on' : ''}" title="${esc(m.desc)}">${esc(m.label)}</button>`).join('');
+    $('malfBar').innerHTML = CGF.malfunctions.filter(m => sim.malf[m.id]).map(m => `<div class="malfTag">${esc(m.label.toUpperCase())}</div>`).join('');
+    $('btnFog').classList.toggle('on', !!sim.fog);
+  }
+  function updateRunButton() {
+    const sim = CGF.sim;
+    $('btnRun').textContent = sim.outcome ? 'Finished' : sim.running ? 'Pause' : (sim.t > 0 ? 'Resume' : 'Start');
+  }
+  const injTarget = () => CGF.sim.units.find(u => u.name === $('injTarget').value) || null;
+
+  // ------------------------------------------------------------ periodic refresh
+  function refresh() {
+    const sim = CGF.sim, S = CGF.scenario, o = sim.own, shown = CGF.displayedOwn();
+    const zones = CGF.zonesAt(shown).filter(z => z.owner !== o.force);
+    $('hud').textContent =
+      `${U.fmtTime(sim.t)}   x${CGF.params.timeScale}   ${sim.mode === 'freeplay' ? 'FREEPLAY' : 'EXERCISE'}${sim.fog ? '   FOG' : ''}\n` +
+      `${o.name}\n` +
+      `HDG ${U.pad3(o.hdg)}  (ordered ${U.pad3(o.ordHdg)})\n` +
+      `SPD ${o.spd.toFixed(1)} kts  (ordered ${o.ordSpd} kts)\n` +
+      `POS ${shown.x.toFixed(1)}E ${shown.y.toFixed(1)}N nm\n` +
+      `ZONE ${zones.length ? zones.map(z => z.name).join(' / ') : 'International waters'}\n` +
+      `FC RADAR ${sim.fcTarget ? 'ON → ' + sim.fcTarget.name : 'off'}` +
+      (S.objective ? `\nTo ${S.objective.name || 'objective'} ${U.dist(shown, S.objective).toFixed(1)} nm` : '');
+
+    const p = sim.posture;
+    $('postureLabel').textContent = p < 0.15 ? 'Cautious' : p < 0.45 ? 'Assertive' : 'Provocative';
+    $('postureLabel').style.color = p < 0.15 ? '#4dd17a' : p < 0.45 ? '#ffd166' : '#ff5c5c';
+    $('postureVal').textContent = `(${Math.round(p * 100)}/100)`;
+    $('postureBar').style.width = (p * 100) + '%';
+
+    if (activeTab !== 'trainee') return;
+
+    const visible = sim.units.filter(CGF.visibleToTrainee)
+      .sort((a, b) => (b.role === 'cgf' ? b.tension : -1) - (a.role === 'cgf' ? a.tension : -1));
+    $('contacts').innerHTML = visible.map(u => {
+      const d = U.dist(o, u), b = U.bearing(o, u), color = CGF.forceColor(u);
+      const head = `<span><b style="color:${color}">${esc(u.name)}</b> <span class="muted">${esc(u.type || '')} · ${esc(CGF.forceOf(u).label)}</span></span>`;
+      if (u.role !== 'cgf') return `<div class="contact ${u === sim.selected ? 'sel' : ''}" data-name="${esc(u.name)}">${head}<span></span>
+        <span class="meta">BRG ${U.pad3(b)} · RNG ${d.toFixed(1)} nm</span></div>`;
+      const H = CGF.harnessOf(u), st = CGF.stateOf(u), sc = CGF.stateColor(u);
+      const pend = u.pendingIdx !== null ? ` → ${esc(H.states[u.pendingIdx].name)} in ${Math.max(0, Math.ceil(CGF.params.reaction * (H.reactionMult || 1) - (sim.t - u.pendingSince)))}s` : '';
+      return `<div class="contact ${u === sim.selected ? 'sel' : ''}" data-name="${esc(u.name)}">${head}
+        <span style="color:${sc};font-weight:600">${esc(st.name)}${pend}</span>
+        <div class="bar"><div style="width:${u.tension}%;background:${sc}"></div></div>
+        <span class="meta">${H.armed ? 'Tension' : 'Alarm'} ${Math.round(u.tension)} · BRG ${U.pad3(b)} · RNG ${d.toFixed(1)} nm${u.warnPending ? ' · <b style="color:#ffb347">HAIL PENDING (H)</b>' : ''}</span></div>`;
+    }).join('') || '<div class="muted">No contacts on radar.</div>';
+
+    const s = sim.selected;
+    if (s && s.role === 'cgf') {
+      const H = CGF.harnessOf(s);
+      $('whyTitle').textContent = `Why is ${s.name} reacting?`;
+      const rows = Object.entries(s.factors).map(([k, f]) => [k, (H.weights[k] || 0) * f]).filter(([, v]) => Math.abs(v) > 0.05)
+        .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+      const agg = CGF.aggressionOf(s), rate = s.P > 0 ? s.P * agg * CGF.params.sensitivity : s.P;
+      $('why').innerHTML = (rows.length ? rows.map(([k, v]) => `<div class="factor"><span>${esc((CGF.factors[k] || {}).label || k)}</span>
+          <div class="bar"><div style="width:${U.clamp(Math.abs(v) / 40 * 100, 3, 100)}%;background:${v > 0 ? '#ff7b54' : '#4dd17a'}"></div></div>
+          <span>${v > 0 ? '+' : ''}${v.toFixed(1)}</span></div>`).join('')
+        : `<div class="muted">${U.dist(s, o) > CGF.detectionRange() ? 'Ownship not detected (outside CGF detection range).' : 'Nothing provocative right now.'}</div>`) +
+        `<div class="muted small" style="margin-top:4px">Harness: ${esc(H.name)}. Net ${rate >= 0 ? '+' : ''}${rate.toFixed(1)}/min after aggression ×${agg.toFixed(2)}; calm-down −${(H.decayPerMin * CGF.params.decay).toFixed(1)}/min toward baseline ${H.baseTension}.</div>`;
+    } else { $('whyTitle').textContent = 'Why is it reacting?'; $('why').innerHTML = '<div class="muted">Select a CGF contact.</div>'; }
+
+    const st = sim.stats, fleeing = CGF.cgfs().filter(u => !CGF.harnessOf(u).armed && u.stateIdx >= 2).length;
+    const peaks = Object.entries(st.peak).map(([k, pk]) => [`Peak state · ${S.forces[k].label}`, pk.name]);
+    $('aar').innerHTML = [
+      ['Elapsed', U.fmtDur(sim.t)], ...peaks, ['Max armed tension', Math.round(st.maxTension)],
+      ['Merchants diverting/fleeing now', fleeing],
+      ['Time in foreign territorial waters', U.fmtDur(st.terrSec)], ['Time in foreign claimed zones', U.fmtDur(st.contSec)],
+      ['Fire-control radar used', U.fmtDur(st.fcSec)], ['Warnings received', st.warnings], ['Warnings ignored', st.ignored],
+      ['Hails acknowledged', st.acks], ['CGF actions logged', sim.actions.length], ['Instructor injects', st.injects],
+      ['Malfunctions injected', st.malfs], ['Live harness swaps', st.swaps]
+    ].map(([a, b]) => `<span>${esc(a)}</span><span>${esc(b)}</span>`).join('');
+
+    drawChart();
+  }
+
+  function drawChart() {
+    const c = $('chart'), g = c.getContext('2d'), w = c.width, h = c.height, data = CGF.sim.chart;
+    g.fillStyle = '#0d1726'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(138,160,184,.15)';
+    for (const y of [25, 50, 75]) { g.beginPath(); g.moveTo(0, h - y / 100 * h); g.lineTo(w, h - y / 100 * h); g.stroke(); }
+    if (data.length < 2) return;
+    const n = Math.max(data.length, 60);
+    for (const [idx, color] of [[0, '#ff7b7b'], [1, '#4da6ff']]) {
+      g.strokeStyle = color; g.lineWidth = 1.5; g.beginPath();
+      data.forEach((d, i) => { const x = i / (n - 1) * w, y = h - d[idx] / 100 * (h - 4) - 2; i ? g.lineTo(x, y) : g.moveTo(x, y); });
+      g.stroke();
+    }
+  }
+
+  // ------------------------------------------------------------ instructor free-text command
+  // Rule-based stand-in for a local LLM: it maps words to the same CGF.inject calls the buttons use.
+  const HARNESS_WORDS = [
+    [['non-hostile', 'non hostile', 'friendly', 'nonhostile'], 'non-hostile-navy'],
+    [['hostile'], 'hostile-navy'],
+    [['grey', 'gray', 'militia'], 'grey-zone'],
+    [['pirate', 'piracy'], 'piracy'],
+    [['civil', 'merchant shipping'], 'civil-shipping']
+  ];
+  function findHarness(t) {
+    for (const h of Object.values(CGF.harnesses)) if (t.includes(h.id) || t.includes(h.name.toLowerCase())) return h.id;
+    for (const [words, id] of HARNESS_WORDS) if (CGF.harnesses[id] && words.some(w => t.includes(w))) return id;
+    return null;
+  }
+  function findForce(t) {
+    const S = CGF.scenario;
+    return Object.keys(S.forces).filter(k => k !== S.ownShip.force)
+      .find(k => new RegExp(`\\b${k}\\b`).test(t) || t.includes(S.forces[k].label.toLowerCase())) || null;
+  }
+
+  function runCommand(text) {
+    const t = text.toLowerCase().trim(); if (!t) return;
+    addLog('INSTRUCTOR > ' + text, 'instr');
+    const has = (...w) => w.some(x => t.includes(x));
+    const force = findForce(t);
+    let done = 0;
+
+    if (force && has('set', 'switch', 'swap', 'change', 'make', 'become', ' to ')) {
+      const hid = findHarness(t.replace(new RegExp(`\\b${force}\\b`, 'g'), ''));
+      if (hid) { CGF.inject.setForceHarness(force, hid); return; }
+    }
+    if (has('freeplay', 'free play')) { CGF.inject.setMode('freeplay'); return; }
+    if (has('exercise mode', 'scored mode')) { CGF.inject.setMode('exercise'); return; }
+    if (has('repair', 'fix all', 'clear malf')) { CGF.inject.repairAll(); done++; }
+    else {
+      const M = CGF.inject.malfunction;
+      if (has('rudder', 'steering')) { M('rudder', true); done++; }
+      if (has('engine', 'propulsion')) { M('engine', true); done++; }
+      if (has('radar fail', 'radar down', 'lose radar', 'radar failure')) { M('radar', true); done++; }
+      if (has('comms', 'radio fail', 'radio down')) { M('comms', true); done++; }
+      if (has('gps', 'navigation')) { M('gps', true); done++; }
+      if (has('fire-control stuck', 'fc stuck', 'fire control stuck')) { M('fc', true); done++; }
+    }
+    if (has('spawn', 'add unit', 'reinforce')) { CGF.inject.spawn(force || $('spawnForce').value); done++; }
+    if (has('fog')) { CGF.inject.fog(!has('clear fog', 'no fog')); done++; }
+
+    const unit = CGF.cgfs().find(u => t.includes(u.name.toLowerCase())) || injTarget();
+    const H = unit && CGF.harnessOf(unit);
+    const st = H && H.states.find(s => t.includes(s.name.toLowerCase()));
+    if (st) { CGF.inject.force(unit, st.name); done++; }
+    else if (has('escalate', 'aggressive', 'angry')) { CGF.inject.adjust(unit, 25); done++; }
+    else if (has('calm', 'de-escalate', 'deescalate', 'relax')) { CGF.inject.adjust(unit, -25); done++; }
+    const q = text.match(/["“](.+?)["”]/);
+    if (q || has('demand', 'hail')) { CGF.inject.radio(unit, q ? q[1] : ''); done++; }
+    if (!done) addLog('Command not understood. Try: escalate R-21 · force B-31 block · set red to non-hostile · spawn black · fog · rudder jam · repair', 'sys');
+  }
+
+  // ------------------------------------------------------------ wiring
+  function init(config) {
+    $('title').innerHTML = `${esc(config.title || 'CGF Trainer')} <small>· ${esc(config.subtitle || 'offline demo')}</small>`;
+    document.title = config.title || 'CGF Trainer';
+    buildSliders();
+    buildRegistryLists();
+
+    CGF.on('log', addLog);
+    CGF.on('registry', buildRegistryLists);
+    CGF.on('reset', () => {
+      const S = CGF.scenario;
+      $('log').innerHTML = ''; $('banner').style.display = 'none';
+      $('scenarioName').textContent = S.name; $('brief').textContent = S.brief || '';
+      $('scenarioSel').value = S.id;
+      $('modeSel').value = CGF.sim.mode;
+      buildForceControls(); refreshMalfButtons(); updateRunButton(); renderActions();
+    });
+    CGF.on('harness', () => { buildForceControls(); renderActions(); });
+    CGF.on('units', () => { refreshTargets(); buildForceControls(); });
+    CGF.on('malf', refreshMalfButtons);
+    CGF.on('env', refreshMalfButtons);
+    CGF.on('run', updateRunButton);
+    CGF.on('action', a => { if (activeTab === 'cgflog' && (!actFilter || a.forceKey === actFilter || !a.forceKey)) $('actions').insertAdjacentHTML('afterbegin', actionHtml(a)); });
+    CGF.on('caption', text => { $('caption').textContent = text; $('caption').style.display = text ? 'block' : 'none'; });
+    CGF.on('demo', running => { $('btnDemo').textContent = running ? 'Stop demo' : 'Play demo'; $('btnDemo').classList.toggle('on', running); });
+    CGF.on('demo-tab', name => { const t = document.querySelector(`.tab[data-tab="${name}"]`); if (t) t.click(); });
+    CGF.on('params', () => SLIDERS.forEach(s => { $('sl-' + s.key).value = CGF.params[s.key]; $('sv-' + s.key).textContent = s.fmt(CGF.params[s.key]); }));
+    $('btnDemo').addEventListener('click', () => CGF.demo.isRunning() ? CGF.demo.stop() : CGF.demo.start($('demoSel').value, { loop: $('demoLoop').checked }));
+    CGF.on('outcome', (kind, text) => { const b = $('banner'); b.className = kind || ''; b.textContent = text; b.style.display = kind ? 'block' : 'none'; updateRunButton(); });
+    CGF.on('mode', () => { $('modeSel').value = CGF.sim.mode; updateRunButton(); });
+    $('modeSel').addEventListener('change', e => CGF.inject.setMode(e.target.value));
+
+    $('btnRun').addEventListener('click', CGF.actions.toggleRun);
+    $('btnReset').addEventListener('click', () => CGF.loadScenario(CGF.scenario.id, currentHarnessIds()));
+    $('btnLoadScenario').addEventListener('click', () => CGF.loadScenario($('scenarioSel').value));
+    $('harnessSel').addEventListener('change', showHarnessDesc);
+    $('injTarget').addEventListener('change', refreshStateOptions);
+    $('actFilter').addEventListener('change', e => { actFilter = e.target.value; renderActions(); });
+    $('btnExportActs').addEventListener('click', () => download(`cgf-actions-${CGF.scenario.id}.csv`, CGF.actionsCsv(), 'text/csv'));
+    $('btnExport').addEventListener('click', () => {
+      const h = CGF.harnesses[$('harnessSel').value];
+      if (h) download(`harness-${h.id}.json`, JSON.stringify(h, null, 2), 'application/json');
+    });
+    $('fileIn').addEventListener('change', e => {
+      const file = e.target.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const h = JSON.parse(reader.result);
+          CGF.validateHarness(h);
+          if (CGF.harnesses[h.id]) h.id = h.id + '-custom';
+          CGF.registerHarness(h);
+          $('harnessSel').value = h.id; showHarnessDesc();
+          addLog(`Harness loaded: ${h.name} (${h.id}). Assign it to a force on the Instructor tab.`, 'sys');
+        } catch (err) { addLog('Could not load harness: ' + err.message, 'alert'); }
+        e.target.value = '';
+      };
+      reader.readAsText(file);
+    });
+    $('forceHarnesses').addEventListener('change', e => {
+      const sel = e.target.closest('select[data-force]');
+      if (sel && sel.value) CGF.inject.setForceHarness(sel.dataset.force, sel.value);
+    });
+
+    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+      activeTab = t.dataset.tab;
+      document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === t));
+      document.querySelectorAll('[data-pane]').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== activeTab));
+      if (activeTab === 'cgflog') renderActions();
+      refresh();
+    }));
+
+    document.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (b) b.blur();
+      const inj = e.target.closest('[data-inj]');
+      if (inj) {
+        const u = injTarget();
+        switch (inj.dataset.inj) {
+          case 'escalate': CGF.inject.adjust(u, 25); break;
+          case 'calm': CGF.inject.adjust(u, -25); break;
+          case 'force': CGF.inject.force(u, $('injState').value); break;
+          case 'radio': CGF.inject.radio(u, $('injRadio').value.trim()); $('injRadio').value = ''; break;
+          case 'spawn': CGF.inject.spawn($('spawnForce').value); break;
+          case 'fog': CGF.inject.fog(); break;
+          case 'repair': CGF.inject.repairAll(); break;
+        }
+      }
+      const mb = e.target.closest('[data-malf]'); if (mb) CGF.inject.malfunction(mb.dataset.malf);
+      const c = e.target.closest('.contact');
+      if (c) selectUnit(CGF.sim.units.find(u => u.name === c.dataset.name));
+    });
+    $('btnCmd').addEventListener('click', () => { runCommand($('cmd').value); $('cmd').value = ''; });
+    $('cmd').addEventListener('keydown', e => { if (e.key === 'Enter') { runCommand($('cmd').value); $('cmd').value = ''; } });
+
+    document.addEventListener('keydown', e => {
+      const tag = e.target.tagName, type = e.target.type;
+      if (tag === 'SELECT' || tag === 'TEXTAREA' || (tag === 'INPUT' && type !== 'range' && type !== 'checkbox')) return;
+      const A = CGF.actions; let handled = true;
+      switch (e.key) {
+        case 'ArrowLeft': case 'a': case 'A': A.orderHeading(-5); break;
+        case 'ArrowRight': case 'd': case 'D': A.orderHeading(5); break;
+        case 'ArrowUp': case 'w': case 'W': A.orderSpeed(2); break;
+        case 'ArrowDown': case 's': case 'S': A.orderSpeed(-2); break;
+        case 'h': case 'H': A.acknowledge(); break;
+        case 'r': case 'R': A.toggleFc(); break;
+        case ' ': A.toggleRun(); break;
+        case 'Escape': CGF.demo.stop(); break;
+        default: handled = false;
+      }
+      if (handled) { e.preventDefault(); if (tag === 'INPUT') e.target.blur(); }
+    });
+
+    const canvas = $('map');
+    canvas.addEventListener('click', e => {
+      const r = canvas.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top;
+      let best = null, bestD = 14;
+      for (const u of CGF.sim.units) {
+        if (!CGF.visibleToTrainee(u) && activeTab !== 'instructor') continue;
+        const [ux, uy] = CGF.render.toScreen(u.x, u.y), d = Math.hypot(ux - sx, uy - sy);
+        if (d < bestD) { best = u; bestD = d; }
+      }
+      if (best) { selectUnit(best); return; }
+      CGF.actions.orderHeadingTo(U.bearing(CGF.displayedOwn(), CGF.render.toWorld(sx, sy)));
+    });
+    canvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      CGF.render.view.half = U.clamp(CGF.render.view.half * (e.deltaY > 0 ? 1.1 : 0.9), 8, 60);
+    }, { passive: false });
+  }
+
+  function selectUnit(u) {
+    if (!u) return;
+    CGF.sim.selected = u;
+    if (u.role === 'cgf') { $('injTarget').value = u.name; refreshStateOptions(); }
+  }
+  function currentHarnessIds() {
+    const out = {};
+    for (const [k, H] of Object.entries(CGF.sim.forceHarness)) out[k] = H.id;
+    return out;
+  }
+  function download(name, text, type) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type }));
+    a.download = name; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  CGF.ui = { init, refresh, runCommand, isInstructorView: () => activeTab === 'instructor' };
+})();

@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CGF Maritime Trainer</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <div id="mapWrap">
+    <canvas id="map"></canvas>
+    <div id="hud"></div>
+    <div id="banner"></div>
+    <div id="malfBar"></div>
+    <div id="legend"></div>
+    <div id="caption"></div>
+  </div>
+
+  <aside id="panel">
+    <div id="panelHead">
+      <h1 id="title">CGF Maritime Trainer <small>· loading…</small></h1>
+      <div class="row">
+        <button id="btnRun" class="primary">Start</button>
+        <button id="btnReset">Restart</button>
+        <select id="modeSel" title="Exercise: objective and failure state end the run. Freeplay: open-ended, nothing ends it.">
+          <option value="exercise">Exercise</option>
+          <option value="freeplay">Freeplay</option>
+        </select>
+        <span class="muted small" id="scenarioName"></span>
+      </div>
+      <div class="row">
+        <span class="muted small">Demo</span>
+        <select id="demoSel" class="grow"></select>
+        <label class="small muted"><input type="checkbox" id="demoLoop"> loop</label>
+        <button id="btnDemo">Play demo</button>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-tab="trainee">Trainee</button>
+        <button class="tab" data-tab="instructor">Instructor</button>
+        <button class="tab" data-tab="cgflog">CGF log</button>
+        <button class="tab" data-tab="setup">Setup</button>
+      </div>
+    </div>
+
+    <div id="panelBody">
+      <!-- TRAINEE -->
+      <section data-pane="trainee">
+        <h2>Mission</h2>
+        <div id="brief" class="muted"></div>
+
+        <h2>Trainee posture (as assessed by CGF)</h2>
+        <div class="row"><span id="postureLabel">–</span><span class="muted" id="postureVal"></span></div>
+        <div class="bar"><div id="postureBar" style="width:0;background:var(--accent)"></div></div>
+        <canvas id="chart" width="376" height="90" style="width:100%;height:90px;margin-top:6px"></canvas>
+        <div class="muted small"><span style="color:#ff7b7b">━</span> highest armed-CGF tension &nbsp; <span style="color:#4da6ff">━</span> trainee provocation</div>
+
+        <h2>Contacts</h2>
+        <div id="contacts"></div>
+
+        <h2 id="whyTitle">Why is it reacting?</h2>
+        <div id="why"></div>
+
+        <h2>After-action summary</h2>
+        <div class="aar" id="aar"></div>
+
+        <h2>Event log</h2>
+        <div id="log" class="logbox"></div>
+
+        <h2>Controls</h2>
+        <div class="keys">
+          <span><kbd>A</kbd>/<kbd>D</kbd> <kbd>←</kbd>/<kbd>→</kbd></span><span>Order heading −/+ 5°</span>
+          <span><kbd>W</kbd>/<kbd>S</kbd> <kbd>↑</kbd>/<kbd>↓</kbd></span><span>Order speed +/− 2 kts</span>
+          <span>Click sea</span><span>Steer toward that point</span>
+          <span>Click contact</span><span>Select contact</span>
+          <span><kbd>H</kbd></span><span>Acknowledge hail / comply</span>
+          <span><kbd>R</kbd></span><span>Toggle fire-control radar on selected contact (provocative)</span>
+          <span><kbd>Space</kbd></span><span>Pause / resume</span>
+          <span>Mouse wheel</span><span>Zoom</span>
+        </div>
+      </section>
+
+      <!-- INSTRUCTOR -->
+      <section data-pane="instructor" class="hidden">
+        <h2>Force harnesses (switch live)</h2>
+        <div id="forceHarnesses"></div>
+        <div class="muted small">Changing a force's harness keeps its ships, positions and tension, and changes how it behaves from now on.</div>
+
+        <h2>Instructor command</h2>
+        <div class="row">
+          <input type="text" id="cmd" placeholder="e.g. escalate R-21 · set black to hostile · spawn pirate · gps drift · freeplay">
+          <button id="btnCmd" class="primary">Inject</button>
+        </div>
+        <div class="muted small">Rule-based parser for the demo. A local LLM (e.g. Ollama) can replace it, turning free text into the same inject calls.</div>
+
+        <h2>Contact injects</h2>
+        <div class="row"><span class="muted">Target</span><select id="injTarget" class="grow"></select></div>
+        <div class="row">
+          <button data-inj="escalate">Escalate +25</button>
+          <button data-inj="calm">De-escalate −25</button>
+        </div>
+        <div class="row">
+          <select id="injState" class="grow"></select>
+          <button data-inj="force">Force state</button>
+        </div>
+        <div class="row">
+          <input type="text" id="injRadio" placeholder="Custom radio demand (blank = harness default)">
+          <button data-inj="radio">Send</button>
+        </div>
+
+        <h2>Scenario injects</h2>
+        <div class="row">
+          <select id="spawnForce"></select>
+          <button data-inj="spawn">Spawn unit</button>
+          <button data-inj="fog" id="btnFog">Fog (detection ½)</button>
+        </div>
+
+        <h2>Ownship malfunctions</h2>
+        <div class="row" id="malfButtons"></div>
+        <div class="row"><button data-inj="repair">Repair all</button></div>
+        <div class="muted small">While this tab is open, the map also shows instructor-only truth: contacts hidden by radar failure and the real ownship position under GPS drift.</div>
+      </section>
+
+      <!-- CGF ACTION LOG -->
+      <section data-pane="cgflog" class="hidden">
+        <h2>Important CGF actions</h2>
+        <div class="row">
+          <select id="actFilter" class="grow"></select>
+          <button id="btnExportActs">Export CSV</button>
+        </div>
+        <div class="muted small">Every escalation, stand-down, radio call, radar lock, flight from conflict and harness change, with the reasons behind it. Newest first.</div>
+        <div id="actions" class="logbox" style="margin-top:6px"></div>
+      </section>
+
+      <!-- SETUP -->
+      <section data-pane="setup" class="hidden">
+        <h2>Scenario</h2>
+        <div class="row"><select id="scenarioSel" class="grow"></select><button id="btnLoadScenario">Load (restart)</button></div>
+        <div id="forceList" class="small"></div>
+
+        <h2>Harness library</h2>
+        <div class="row"><select id="harnessSel" class="grow"></select></div>
+        <p id="harnessDesc" class="muted small"></p>
+        <div class="row">
+          <label class="btn">Load harness JSON<input type="file" id="fileIn" accept=".json,application/json" hidden></label>
+          <button id="btnExport">Export selected</button>
+        </div>
+        <div class="muted small">A harness defines how one force behaves: its states, thresholds, what provokes it and its radio calls. Exported JSON can be edited and loaded back as a new harness.</div>
+
+        <h2>CGF parameters (live)</h2>
+        <div id="sliders"></div>
+      </section>
+    </div>
+  </aside>
+</div>
+
+<!-- Engine (shared by every project) -->
+<script src="js/util.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/behaviours.js"></script>
+<script src="js/factors.js"></script>
+<script src="js/malfunctions.js"></script>
+<script src="js/render.js"></script>
+<script src="js/demo.js"></script>
+<script src="js/ui.js"></script>
+<!-- Boot: loads config.js (or ?config=path/to/config.js), then its plugins, harnesses and scenarios -->
+<script src="js/main.js"></script>
+</body>
+</html>
