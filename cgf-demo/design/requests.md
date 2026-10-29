@@ -7,7 +7,7 @@ Status: open, agreed, done, declined.
 | ID | Owner | File | Request | Why | Status |
 |---|---|---|---|---|---|
 | R1 | JL | `js/ui-allocate.js` `barColor()` | Stop setting bar colours inline. Set a class instead (for example `bar--low`, `bar--mid`, `bar--high`, and `bar--focus` on the lowest well-evidenced competency); Eevee styles them | Audit A: red/green bars clash with force colours and read as judgement (P3, Ethical AI) | done (0291f1d; CSS override removed) |
-| R2 | Devin | `js/ui.js` lines 27, 132, 150, 161, 183, 188 | Replace inline colours (posture label, hail-pending text, factor bars, chart colours) with classes or CSS variables from `css/tokens.css` once it exists | Audit A (P3); LANES rule that other lanes do not hard-code colours | open |
+| R2 | Devin | `js/ui.js` lines 27, 132, 150, 161, 183, 188 | Replace inline colours (posture label, hail-pending text, factor bars, chart colours) with classes or CSS variables from `css/tokens.css` once it exists | Audit A (P3); LANES rule that other lanes do not hard-code colours | agreed: solution A (classes), see "R2 spec" below; CSS ready |
 | R3 | Team (JL decides) | All pages | Agree one name pair for adaptation on or off (proposal: "Adaptive practice" and "Fixed assessment"), separate from Exercise/Freeplay, and show it as an always-visible badge on runtime and host | Audit B (P3, P5) | partly done: allocation badge (0291f1d). Waiting on JL to adopt the names; then host badge (JL) and runtime badge (Devin) |
 | R4 | All owners | Labels in HTML and JS | Apply the instructor-facing glossary (`design/glossary.md`, to be written) to labels such as harness, tension, posture, envelope, setting names | Audit D, finding 8 (P2, P3) | open: waiting on Eevee to write design/glossary.md |
 | R5 | JL | `allocate.html`, `js/ui-allocate.js` | Collapse seat descriptions to one line with "more"; shorten the platform box to a summary plus a "Source" link | Findings 2, 5 (P1, P2) | done (0291f1d) |
@@ -27,6 +27,23 @@ Status: open, agreed, done, declined.
 | R19 | Glenda | `js/ui-report.js` print button | Open every `<details>` (competency table, history, key moments) before `window.print()` and restore them after, so the PDF holds the whole report | Report review: collapsed sections do not print (P1) | done (ea6ef4c, Glenda); verified on print; headless --print-to-pdf still misses closed sections |
 | R20 | Glenda | `js/ui-report.js` Trainee events table, Result column | Give single-event results their own classes (for example `rp-result--met` / `rp-result--missed`) and words ("met" / "missed" instead of "success" / "fail"). They now reuse `rp-outcome--success` / `--fail`, the session-outcome classes, so restyling outcomes would turn every missed hail into a failure chip. `report.css` keeps them plain until then | R17 review: one event is evidence about a competency, not a failed session (P3, Ethical AI) | open |
 | R21 | Glenda | `js/report/charts.js` chart roles | Split the `miss` role in two: `miss` for a missed event (success-rate chart) and `focus` for the focus area (competencies chart). Today both read `--rp-chart-miss`, so the focus area shows as an orange ring while the competency table outlines it in violet | R17 review (P3) | open |
+
+## R2 spec: runtime colours as classes (for Devin)
+
+Agreed 2026-10-29 (Eevee): solution A. Every colour moves out of `js/ui.js` and `runtime.html` into a class or a token; the CSS is already in `css/style.css` and `css/tokens.css`, so each change shows the new colour as soon as it lands. Previews: today in `design/previews/23` to `25`; the spec applied in `29` and `30` (simulated in the browser, Devin's files untouched).
+
+| # | Where | Today | Change to | Styled as |
+|---|---|---|---|---|
+| 1 | `js/ui.js` ~132, posture label | `style.color` green / yellow / red | Set `className` to `posture--cautious`, `posture--assertive` or `posture--provocative`; remove the `style.color` line | none (normal), caution orange, critical magenta |
+| 2 | `runtime.html` ~97, `#postureBar` | inline `background:var(--accent)` | Remove the inline `background` (keep `width`) | `--rt-chart-trainee`, matching the chart line |
+| 3 | `js/ui.js` ~150, "HAIL PENDING (H)" | `<b style="color:#ffb347">` | `<b class="hailPending">` | caution orange with a warning sign |
+| 4 | `js/ui.js` ~161, "Why is it reacting?" bars | inline `background` `#ff7b54` / `#4dd17a` | Keep the inline `width`; add class `factor--raise` (value > 0) or `factor--lower` | caution orange / neutral data colour |
+| 5 | `js/ui.js` ~183-188, `drawChart` | `#0d1726`, `rgba(138,160,184,.15)`, `#ff7b7b`, `#4da6ff` | Read the colours once per draw: `const cs = getComputedStyle(document.documentElement), tok = n => cs.getPropertyValue('--rt-chart-' + n).trim();` then use `tok('bg')`, `tok('grid')`, `tok('cgf')`, `tok('trainee')` | tokens in `css/tokens.css` |
+| 6 | `runtime.html` ~99, chart legend | `<span style="color:#ff7b7b">` and `#4da6ff` | `<span class="chartKey--cgf">` and `<span class="chartKey--trainee">` | same tokens as the chart lines |
+| 7 | `js/ui.js` ~27, CGF log name with no force | fallback `'#d7a8ff'` | When there is no force, give the name `class="unit--none"` instead of an inline colour (force colours from the scenario stay inline: they are force identity) | muted text |
+| 8 | `js/engine.js` 19, `CGF.style.stateColors` (used by `js/render.js` 179 and `js/ui.js` 145) | grey, yellow, orange, orange-red, red by escalation level | Read the five values from `--escalation-0` to `--escalation-4` once at start-up (same `getComputedStyle` helper as #5), keeping the array as the fallback. On contact cards, put `class="esc-<n>"` on the card, `escState` on the state name and `escFill` on the tension bar, instead of the inline colour | calm levels uncoloured, then caution orange, then critical magenta |
+
+Done when: `grep -nE "#[0-9a-fA-F]{3,6}|rgba?\(" js/ui.js runtime.html` finds no colours outside scenario force data, and the runtime still opens from `file://`.
 
 ## Open requests by problem category
 
