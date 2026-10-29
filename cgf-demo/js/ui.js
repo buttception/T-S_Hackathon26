@@ -171,42 +171,27 @@
     $('postureVal').textContent = `(${Math.round(p * 100)}/100)`;
     $('postureBar').style.width = (p * 100) + '%';
 
+    if (activeTab === 'instructor') { renderWhy(); drawChart(); }
     if (activeTab !== 'trainee') return;
 
-    const visible = sim.units.filter(CGF.visibleToTrainee)
-      .sort((a, b) => (b.role === 'cgf' ? b.tension : -1) - (a.role === 'cgf' ? a.tension : -1));
+    // The trainee sees what a contact is doing, not what it thinks (design R9): no tension, no predicted next state
+    const visible = sim.units.filter(CGF.visibleToTrainee).sort((a, b) => U.dist(o, a) - U.dist(o, b));
     $('contacts').innerHTML = visible.map(u => {
       const d = U.dist(o, u), b = U.bearing(o, u), color = CGF.forceColor(u);
       const head = `<span><b style="color:${color}">${esc(u.name)}</b> <span class="muted">${esc(u.type || '')} · ${esc(CGF.forceOf(u).label)}</span></span>`;
       if (u.role !== 'cgf') return `<div class="contact ${u === sim.selected ? 'sel' : ''}" data-name="${esc(u.name)}">${head}<span></span>
         <span class="meta">BRG ${U.pad3(b)} · RNG ${d.toFixed(1)} nm</span></div>`;
-      const H = CGF.harnessOf(u), st = CGF.stateOf(u), lvl = Math.min(u.stateIdx || 0, 4);
-      const pend = u.pendingIdx !== null ? ` → ${esc(H.states[u.pendingIdx].name)} in ${Math.max(0, Math.ceil(CGF.params.reaction * (H.reactionMult || 1) - (sim.t - u.pendingSince)))}s` : '';
+      const st = CGF.stateOf(u), lvl = Math.min(u.stateIdx || 0, 4);
       return `<div class="contact esc-${lvl} ${u === sim.selected ? 'sel' : ''}" data-name="${esc(u.name)}">${head}
-        <span class="escState">${esc(st.name)}${pend}</span>
-        <div class="bar"><div class="escFill" style="width:${u.tension}%"></div></div>
-        <span class="meta">${H.armed ? 'Tension' : 'Alarm'} ${Math.round(u.tension)} · BRG ${U.pad3(b)} · RNG ${d.toFixed(1)} nm${u.warnPending ? ' · <b class="hailPending">HAIL PENDING (H)</b>' : ''}</span></div>`;
+        <span class="escState">${esc(st.name)}</span>
+        <span class="meta">BRG ${U.pad3(b)} · RNG ${d.toFixed(1)} nm${u.warnPending ? ' · <b class="hailPending">HAIL PENDING (H)</b>' : ''}</span></div>`;
     }).join('') || '<div class="muted">No contacts on radar.</div>';
-
-    const s = sim.selected;
-    if (s && s.role === 'cgf') {
-      const H = CGF.harnessOf(s);
-      $('whyTitle').textContent = `Why is ${s.name} reacting?`;
-      const rows = Object.entries(s.factors).map(([k, f]) => [k, (H.weights[k] || 0) * f]).filter(([, v]) => Math.abs(v) > 0.05)
-        .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
-      const agg = CGF.aggressionOf(s), rate = s.P > 0 ? s.P * agg * CGF.params.sensitivity : s.P;
-      $('why').innerHTML = (rows.length ? rows.map(([k, v]) => `<div class="factor"><span>${esc((CGF.factors[k] || {}).label || k)}</span>
-          <div class="bar"><div class="${v > 0 ? 'factor--raise' : 'factor--lower'}" style="width:${U.clamp(Math.abs(v) / 40 * 100, 3, 100)}%"></div></div>
-          <span>${v > 0 ? '+' : ''}${v.toFixed(1)}</span></div>`).join('')
-        : `<div class="muted">${U.dist(s, o) > CGF.detectionRange() ? 'Ownship not detected (outside CGF detection range).' : 'Nothing provocative right now.'}</div>`) +
-        `<div class="muted small" style="margin-top:4px">Harness: ${esc(H.name)}. Net ${rate >= 0 ? '+' : ''}${rate.toFixed(1)}/min after aggression ×${agg.toFixed(2)}; calm-down −${(H.decayPerMin * CGF.params.decay).toFixed(1)}/min toward baseline ${H.baseTension}.</div>`;
-    } else { $('whyTitle').textContent = 'Why is it reacting?'; $('why').innerHTML = '<div class="muted">Select a CGF contact.</div>'; }
 
     const st = sim.stats, fleeing = CGF.cgfs().filter(u => !CGF.harnessOf(u).armed && u.stateIdx >= 2).length;
     const peaks = Object.entries(st.peak).map(([k, pk]) => [`Peak state · ${S.forces[k].label}`, pk.name]);
     // grouped (design R10): how it went, what the trainee did, the neutrals, and what the instructor did
     const groups = [
-      ['Run', [['Elapsed', U.fmtDur(sim.t)], ...peaks, ['Max armed tension', Math.round(st.maxTension)]]],
+      ['Run', [['Elapsed', U.fmtDur(sim.t)], ...peaks]],
       ['Trainee', [['Warnings received', st.warnings], ['Warnings ignored', st.ignored], ['Hails acknowledged', st.acks],
         ['Time in foreign territorial waters', U.fmtDur(st.terrSec)], ['Time in foreign claimed zones', U.fmtDur(st.contSec)],
         ['Fire-control radar used', U.fmtDur(st.fcSec)]]],
@@ -215,8 +200,24 @@
     ];
     $('aar').innerHTML = groups.map(([title, rows]) => `<div class="aarGroup"><h3>${esc(title)}</h3><div class="aar">` +
       rows.map(([a, b]) => `<span>${esc(a)}</span><span>${esc(b)}</span>`).join('') + '</div></div>').join('');
+  }
 
-    drawChart();
+  // Instructor tab: why the selected CGF is reacting, its tension and what it will do next (design R9)
+  function renderWhy() {
+    const sim = CGF.sim, o = sim.own, s = sim.selected;
+    if (s && s.role === 'cgf') {
+      const H = CGF.harnessOf(s);
+      $('whyTitle').textContent = `Why is ${s.name} reacting?`;
+      const next = s.pendingIdx !== null ? ` → ${H.states[s.pendingIdx].name} in ${Math.max(0, Math.ceil(CGF.params.reaction * (H.reactionMult || 1) - (sim.t - s.pendingSince)))}s` : '';
+      const rows = Object.entries(s.factors).map(([k, f]) => [k, (H.weights[k] || 0) * f]).filter(([, v]) => Math.abs(v) > 0.05)
+        .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+      const agg = CGF.aggressionOf(s), rate = s.P > 0 ? s.P * agg * CGF.params.sensitivity : s.P;
+      $('why').innerHTML = (rows.length ? rows.map(([k, v]) => `<div class="factor"><span>${esc((CGF.factors[k] || {}).label || k)}</span>
+          <div class="bar"><div class="${v > 0 ? 'factor--raise' : 'factor--lower'}" style="width:${U.clamp(Math.abs(v) / 40 * 100, 3, 100)}%"></div></div>
+          <span>${v > 0 ? '+' : ''}${v.toFixed(1)}</span></div>`).join('')
+        : `<div class="muted">${U.dist(s, o) > CGF.detectionRange() ? 'Ownship not detected (outside CGF detection range).' : 'Nothing provocative right now.'}</div>`) +
+        `<div class="muted small" style="margin-top:4px">${esc(CGF.stateOf(s).name)}${esc(next)} · ${H.armed ? 'tension' : 'alarm'} ${Math.round(s.tension)}/100. Harness: ${esc(H.name)}. Net ${rate >= 0 ? '+' : ''}${rate.toFixed(1)}/min after aggression ×${agg.toFixed(2)}; calm-down −${(H.decayPerMin * CGF.params.decay).toFixed(1)}/min toward baseline ${H.baseTension}.</div>`;
+    } else { $('whyTitle').textContent = 'Why is it reacting?'; $('why').innerHTML = '<div class="muted">Select a CGF contact.</div>'; }
   }
 
   function drawChart() {

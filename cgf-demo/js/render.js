@@ -243,8 +243,10 @@
       if (u.role === 'cgf') {
         const st = CGF.stateOf(u), sc = CGF.stateColor(u);
         label(`${tag} ${u.name} · ${st.name}`, sx + 11, sy - 4, u.stateIdx ? sc : id.light);
-        ctx.fillStyle = '#1c2b40'; ctx.fillRect(sx + 11, sy + 2, 50, 4);
-        ctx.fillStyle = sc; ctx.fillRect(sx + 11, sy + 2, 50 * u.tension / 100, 4);
+        if (instructor) {   // tension is the CGF's private state: instructor view only (design R9)
+          ctx.fillStyle = '#1c2b40'; ctx.fillRect(sx + 11, sy + 2, 50, 4);
+          ctx.fillStyle = sc; ctx.fillRect(sx + 11, sy + 2, 50 * u.tension / 100, 4);
+        }
         if (st.fcRadar) dashedLine(u, own, '#ff3b3b');
       } else label(`${tag} ${u.name}`, sx + 9, sy - 4, U.hexA(id.light, .85));
       ctx.globalAlpha = 1;
