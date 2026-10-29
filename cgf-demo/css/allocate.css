@@ -154,18 +154,12 @@ svg.vehicle { display: block; max-height: 100px; margin: 2px 0; }
    Hierarchy follows the instructor's workflow (P1): page title, then the stages (platform and crew, run setup,
    hand-off) and the trainee pool, then seat cards, then fields and help text. Each level differs in size and weight,
    not colour alone (P2, P3). Minimum size 12px, for the projector (audit finding C).
-   Body, caption, spacing, fonts, line heights and weights are the shared tokens from tokens.css. This page needs four
-   more steps; they are local to #allocApp so they never override the shared scale on other pages. */
-#allocApp {
-  --alloc-fs-page: 24px;      /* page title */
-  --alloc-fs-section: 18px;   /* stage and panel headings: Crew, Trainee pool */
-  --alloc-fs-card: 16px;      /* seat cards, Run options and Adaptation limits, Start run */
-  --alloc-fs-small: 13px;     /* help text, field labels, errors */
-}
+   Sizes, spacing, fonts, line heights and weights are the shared tokens from tokens.css (this page's scale became the
+   shared one on 2026-10-29). */
 
 /* ---- base */
 body { font-family: var(--font-ui); font-size: var(--fs-body); line-height: var(--lh-body); }
-#allocApp .small { font-size: var(--alloc-fs-small); }
+#allocApp .small { font-size: var(--fs-small); }
 #allocApp .muted { line-height: var(--lh-body); }
 #allocApp button, #allocApp .btn, #allocApp select, #allocApp input[type=text], #allocApp input[type=number] {
   font-size: var(--fs-body); min-height: 34px; padding: 6px var(--space-3); }
@@ -177,7 +171,7 @@ body { font-family: var(--font-ui); font-size: var(--fs-body); line-height: var(
 
 /* ---- level 1: header */
 #allocApp header { padding: var(--space-4) var(--space-5); gap: var(--space-4); align-items: center; }
-#allocApp header h1 { font-size: var(--alloc-fs-page); line-height: var(--lh-tight); font-weight: var(--fw-medium);
+#allocApp header h1 { font-size: var(--fs-page); line-height: var(--lh-tight); font-weight: var(--fw-medium);
   color: var(--text-strong); letter-spacing: -.01em; }
 /* The subtitle is the page's three steps; on its own line it reads as guidance, not as part of the title (P2) */
 #allocApp header h1 small { display: block; margin-top: var(--space-1); font-size: var(--fs-body);
@@ -186,7 +180,7 @@ body { font-family: var(--font-ui); font-size: var(--fs-body); line-height: var(
 /* The markup starts the subtitle with "· ", a separator from when it shared the title's line. Until it goes (R24),
    pull the first 0.62em (the dot and its space) left of the box and clip it, so the line starts with its first word. */
 #allocApp header h1 small { text-indent: -0.62em; clip-path: inset(0); }
-#allocApp .modeBadge { font-size: var(--alloc-fs-small); padding: 6px var(--space-4); }
+#allocApp .modeBadge { font-size: var(--fs-small); padding: 6px var(--space-4); }
 
 /* ---- stage */
 #allocApp main { grid-template-columns: minmax(0, 1fr) minmax(400px, 520px); }
@@ -194,12 +188,12 @@ body { font-family: var(--font-ui); font-size: var(--fs-body); line-height: var(
 
 /* Fields: label left, control right; labels in muted body-small so values carry the weight */
 #allocApp .field { grid-template-columns: 128px 1fr; gap: var(--space-2) var(--space-3); margin: var(--space-2) 0; }
-#allocApp .field > span:first-child { font-size: var(--alloc-fs-small); color: var(--text-muted); }
-#allocApp .err { font-size: var(--alloc-fs-small); margin: 0 0 var(--space-2) 140px; }
+#allocApp .field > span:first-child { font-size: var(--fs-small); color: var(--text-muted); }
+#allocApp .err { font-size: var(--fs-small); margin: 0 0 var(--space-2) 140px; }
 
 #platformBar { gap: 0 var(--space-5); }
 #platformBar .field { grid-template-columns: 112px 1fr; }
-#allocApp .platformInfo { padding: var(--space-3) var(--space-4); font-size: var(--alloc-fs-small); line-height: var(--lh-body); border-radius: 8px; }
+#allocApp .platformInfo { padding: var(--space-3) var(--space-4); font-size: var(--fs-small); line-height: var(--lh-body); border-radius: 8px; }
 #platformBar .platformInfo { margin-top: var(--space-2); }
 #allocApp .platformInfo summary { margin-top: var(--space-1); }
 
@@ -207,16 +201,16 @@ body { font-family: var(--font-ui); font-size: var(--fs-body); line-height: var(
 #slots { grid-template-columns: minmax(0, 1fr); gap: var(--space-5); }
 #slots .crew { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-4); align-items: stretch; }
 #slots .crew > .crewHead, #slots .crew > svg.vehicle { grid-column: 1 / -1; }
-#allocApp .crewHead { font-size: var(--alloc-fs-section); line-height: var(--lh-tight); font-weight: var(--fw-medium);
+#allocApp .crewHead { font-size: var(--fs-section); line-height: var(--lh-tight); font-weight: var(--fw-medium);
   text-transform: none; letter-spacing: 0; color: var(--text-strong); margin: 0; }
 #allocApp .crewHead .muted { font-size: var(--fs-body); font-weight: var(--fw-regular); margin-left: var(--space-1); }
 #slots svg.vehicle { max-height: 110px; margin: 0; }
 
 /* ---- level 3: seat cards */
 #slots .seat { margin: 0; padding: var(--space-4); border-radius: 8px; display: flex; flex-direction: column; gap: var(--space-2); }
-#allocApp .seatHead b { font-size: var(--alloc-fs-card); line-height: var(--lh-tight); font-weight: var(--fw-medium); color: var(--text-strong); }
+#allocApp .seatHead b { font-size: var(--fs-card); line-height: var(--lh-tight); font-weight: var(--fw-medium); color: var(--text-strong); }
 #allocApp .seatWho { margin: 0; font-size: var(--fs-body); }
-#allocApp .seatText { font-size: var(--alloc-fs-small); line-height: var(--lh-body); margin: var(--space-2) 0 0; }
+#allocApp .seatText { font-size: var(--fs-small); line-height: var(--lh-body); margin: var(--space-2) 0 0; }
 /* Inside a seat card the label sits above its control, so the dropdown gets the card's full width (no cut-off choices) */
 #allocApp .seat .field { grid-template-columns: minmax(0, 1fr); gap: var(--space-1); margin: 0; }
 #allocApp .seatHead { align-items: flex-start; }
@@ -230,32 +224,32 @@ body { font-family: var(--font-ui); font-size: var(--fs-body); line-height: var(
 /* ---- collapsible sections. Run options and Adaptation limits are stages of the workflow, so they get a card.
    "About this seat", "About these seats" and the share link are optional reading: a quiet text toggle, no box (P2) */
 #stage details { padding: 0; border: none; background: none; border-radius: 0; }
-#stage details > summary { font-size: var(--alloc-fs-small); color: var(--text-muted); width: max-content; max-width: 100%; }
+#stage details > summary { font-size: var(--fs-small); color: var(--text-muted); width: max-content; max-width: 100%; }
 #stage details > summary:hover { color: var(--text); }
 #stage details[open] > summary { margin-bottom: var(--space-2); }
 #stage #runBox, #stage #envBox { padding: var(--space-3) var(--space-4); border: 1px solid var(--border); background: var(--surface-panel); border-radius: 8px; }
-#stage #runBox > summary, #stage #envBox > summary { font-size: var(--alloc-fs-card); line-height: var(--lh-tight); color: var(--text); padding: var(--space-1) 0; width: auto; }
+#stage #runBox > summary, #stage #envBox > summary { font-size: var(--fs-card); line-height: var(--lh-tight); color: var(--text); padding: var(--space-1) 0; width: auto; }
 #stage #runBox > summary b, #stage #envBox > summary b { font-weight: var(--fw-medium); color: var(--text-strong); }
-#stage #runBox > summary .small, #stage #envBox > summary .small { font-size: var(--alloc-fs-small); font-weight: var(--fw-regular); }
+#stage #runBox > summary .small, #stage #envBox > summary .small { font-size: var(--fs-small); font-weight: var(--fw-regular); }
 #stage #runBox[open] > summary, #stage #envBox[open] > summary { margin-bottom: var(--space-3); }
 #runBox .field { grid-template-columns: 172px 1fr; }
 #runBox .err { margin-left: 184px; }
 #allocApp .env { font-size: var(--fs-body); }
 #allocApp .env th { font-size: var(--fs-caption); text-transform: uppercase; letter-spacing: .06em; padding: var(--space-2); }
-#allocApp .env td { padding: var(--space-2); font-family: var(--font-mono); font-size: var(--alloc-fs-small); font-variant-numeric: tabular-nums; }
+#allocApp .env td { padding: var(--space-2); font-family: var(--font-mono); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
 
 /* ---- hand-off: the end of the workflow, so Start run is the strongest control on the page (P1, P5) */
 #handoff { margin: auto calc(-1 * var(--space-5)) 0; padding: var(--space-3) var(--space-5) var(--space-4); }
 #handoff > .row { gap: var(--space-2); }
 #handoff #outputNote { font-size: var(--fs-body); }
-#allocApp #btnStart { font-size: var(--alloc-fs-card); font-weight: var(--fw-medium); padding: var(--space-2) var(--space-5); min-height: 40px; }
+#allocApp #btnStart { font-size: var(--fs-card); font-weight: var(--fw-medium); padding: var(--space-2) var(--space-5); min-height: 40px; }
 #allocApp #btnStart:not(:disabled) { background: var(--ui-accent); border-color: var(--ui-accent); color: var(--text-on-accent); }
 #allocApp #btnStart:not(:disabled):hover { background: var(--ui-accent-strong); border-color: var(--ui-accent-strong); color: var(--text-strong); }
 #allocApp #status:not(:empty) { margin-top: var(--space-1); }
 
 /* ---- trainee pool */
 #pool { padding: var(--space-5); gap: var(--space-3); }
-#pool h2 { font-size: var(--alloc-fs-section); line-height: var(--lh-tight); font-weight: var(--fw-medium); text-transform: none;
+#pool h2 { font-size: var(--fs-section); line-height: var(--lh-tight); font-weight: var(--fw-medium); text-transform: none;
   letter-spacing: 0; color: var(--text-strong); border-bottom: none; padding: 0; }
 #pool #poolFor { font-size: var(--fs-body); }
 #pool .row { gap: var(--space-3); }
@@ -267,8 +261,8 @@ body { font-family: var(--font-ui); font-size: var(--fs-body); line-height: var(
 #pool #roster td { font-size: var(--fs-body); padding: var(--space-2) 6px; }
 #pool #roster td.num { font-variant-numeric: tabular-nums; }
 #pool .bar { width: 28px; }
-#pool .val { font-family: var(--font-mono); font-size: var(--alloc-fs-small); font-variant-numeric: tabular-nums; width: 34px; margin-left: var(--space-1); }
-#pool #detail { padding: var(--space-3) var(--space-4); font-size: var(--alloc-fs-small); line-height: var(--lh-body); }
+#pool .val { font-family: var(--font-mono); font-size: var(--fs-small); font-variant-numeric: tabular-nums; width: 34px; margin-left: var(--space-1); }
+#pool #detail { padding: var(--space-3) var(--space-4); font-size: var(--fs-small); line-height: var(--lh-body); }
 
 /* ---- mid widths (small laptops): the stage is narrower than the pool, so stack the platform fields and let the
    hand-off note take its own line above the buttons */

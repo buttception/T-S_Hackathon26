@@ -139,22 +139,27 @@ kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 3
 .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 8px; font-size: 12px; }
 .hidden { display: none !important; }
 
-/* ---- Runtime panel: type hierarchy and spacing (tokens.css). Scoped to #app/#panel so the other pages that load
-   style.css keep their own sizes. Four levels: title, section label, body, caption; sections separated by space,
-   not only by lines (P2: cluster, not clutter). */
+/* ---- Runtime panel: type hierarchy and spacing (tokens.css, the shared six-level scale). Scoped to #app/#panel so the
+   other pages that load style.css keep their own sizes. Levels used here: page title, panel sections (card level, as
+   on the allocation page), body, small; sections separated by space, not only by lines (P2: cluster, not clutter). */
 #app { grid-template-columns: 1fr 440px; }                 /* 40px wider: fewer wrapped controls and labels */
 #panel { font: var(--fs-body)/var(--lh-body) var(--font-ui); }
 #panelHead { padding: var(--space-4) var(--space-4) 0; }
 #panelBody { padding: var(--space-1) var(--space-4) var(--space-5); }
-#panel h1 { font-size: var(--fs-title); font-weight: var(--fw-bold); line-height: var(--lh-tight); color: var(--text-strong); margin: 0; }
-#panel h1 small { font-size: var(--fs-caption); font-weight: var(--fw-regular); }
-#panel h2 { font-size: var(--fs-section); font-weight: var(--fw-bold); letter-spacing: .08em; color: var(--text-muted);
-  margin: var(--space-5) 0 var(--space-2); padding-bottom: var(--space-1); }
+#panel h1 { font-size: var(--fs-page); font-weight: var(--fw-medium); line-height: var(--lh-tight); color: var(--text-strong); margin: 0; }
+/* The subtitle (scenario, forces) sits on its own line, as on the allocation page. The markup starts it with "· ", a
+   separator from when it shared the title's line: pull the dot and its space left of the box and clip them. */
+#panel h1 small { display: block; margin-top: var(--space-1); font-size: var(--fs-small); font-weight: var(--fw-regular);
+  letter-spacing: 0; text-indent: -0.62em; clip-path: inset(0); }
+#panel h1 small::first-letter { text-transform: uppercase; }
+/* Panel sections read as headings in sentence case (the markup's own wording), like Run options on the allocation page */
+#panel h2 { font-size: var(--fs-card); font-weight: var(--fw-medium); line-height: var(--lh-tight); text-transform: none;
+  letter-spacing: 0; color: var(--text-strong); border-bottom: none; margin: var(--space-5) 0 var(--space-2); padding-bottom: 0; }
 #panel h2:first-child { margin-top: var(--space-4); }
 #panel .row { gap: var(--space-2); margin: var(--space-2) 0; }
 #panel button, #panel select, #panel input[type=text], #panel input[type=number], #panel textarea { padding: 6px 10px; }
 #panel select { padding-right: 28px; }
-#panel .small, #panel .muted.small { font-size: var(--fs-caption); line-height: var(--lh-tight); }
+#panel .small, #panel .muted.small { font-size: var(--fs-small); line-height: var(--lh-tight); }
 #panel p { margin: 0 0 var(--space-2); }
 /* Tabs: bigger targets, and the open tab is marked by an accent underline as well as the fill */
 #panel .tabs { gap: var(--space-1); margin-top: var(--space-3); }
@@ -162,16 +167,16 @@ kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 3
 #panel .tab.active { color: var(--text-strong); box-shadow: inset 0 -2px 0 var(--accent); }
 /* Lists and cards */
 #panel .contact { padding: var(--space-2) var(--space-3); margin: var(--space-2) 0; gap: 2px var(--space-2); }
-#panel .contact b { font-size: var(--fs-heading); }
-#panel .contact .meta, #panel .act .cause, #panel .preview .meta { font-size: var(--fs-caption); }
-#panel .logbox { font: var(--fs-caption)/var(--lh-body) var(--font-mono); padding: var(--space-2) var(--space-3); }
+#panel .contact b { font-size: var(--fs-card); }
+#panel .contact .meta, #panel .act .cause, #panel .preview .meta { font-size: var(--fs-small); }
+#panel .logbox { font: var(--fs-small)/var(--lh-body) var(--font-mono); padding: var(--space-2) var(--space-3); }
 #panel .act { padding: var(--space-2) 0; }
 #panel .slider { grid-template-columns: 120px 1fr 56px; gap: var(--space-2); margin: var(--space-2) 0; }
 #panel .slider span:last-child, #panel .factor span:last-child, #panel .aar span:nth-child(even) { font-family: var(--font-mono); }
 #panel .forceRow { gap: var(--space-2); margin: var(--space-2) 0; }
-#panel .factor { font-size: var(--fs-caption); gap: var(--space-2); margin: var(--space-1) 0; }
-#panel .aar, #panel .keys { font-size: var(--fs-caption); gap: var(--space-1) var(--space-2); }
-#panel .preview { padding: var(--space-2) var(--space-3); margin: var(--space-2) 0; font-size: var(--fs-caption); }
+#panel .factor { font-size: var(--fs-small); gap: var(--space-2); margin: var(--space-1) 0; }
+#panel .aar, #panel .keys { font-size: var(--fs-small); gap: var(--space-1) var(--space-2); }
+#panel .preview { padding: var(--space-2) var(--space-3); margin: var(--space-2) 0; font-size: var(--fs-small); }
 #panel .llmGrid { gap: var(--space-2); }
 #panel details { margin: var(--space-3) 0; }
 #panel summary { cursor: pointer; font-weight: var(--fw-medium); }
