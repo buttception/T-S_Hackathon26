@@ -10,7 +10,7 @@
 </style>
 </head>
 <body>
-<h1>Assess tests (competency update, profile persistence, cohort)</h1>
+<h1>Assess tests (competency update, profile persistence, cohort, AI partner parameters)</h1>
 <div id="summary">running…</div>
 <ul id="results"></ul>
 
@@ -127,6 +127,74 @@
     ok(typeof m0.trainee_b.hail_discipline === 'number');
     A.update(record([1, 2, 3, 4, 5, 6].map(n => hailFail(n, 'trainee_b'))));
     ok(A.cohort().trainee_b.hail_discipline < m0.trainee_b.hail_discipline, 'cohort follows the update');
+  });
+
+  // ---- cohort summary (J6)
+  test('cohortSummary counts only profiles with enough evidence, and says null where nobody is rated', () => {
+    const s = A.cohortSummary(), m = A.cohort();
+    eq(s.trainees, A.profiles().length);
+    ok(s.competencies.hail_discipline.rated >= 15, 'hail rated: ' + s.competencies.hail_discipline.rated);
+    ok(s.competencies.hail_discipline.mean > 0 && s.competencies.hail_discipline.mean < 1);
+    for (const k of ['threat_evaluation', 'contact_detection', 'picture_reporting', 'escalation_control'])
+      eq([s.competencies[k].rated, s.competencies[k].mean, s.competencies[k].share_below_half], [0, null, null], k);
+    const below = A.profiles().filter(p => { const ab = p.competencies.hail_discipline; return ab && ab.alpha + ab.beta >= 8 && ab.alpha / (ab.alpha + ab.beta) < 0.5; }).length;
+    eq(s.competencies.hail_discipline.below_half, below);
+    ok(Object.keys(m).length === s.trainees);
+  });
+  test('cohortSummary follows a competency update', () => {
+    const before = A.cohortSummary().competencies.hail_discipline.mean;
+    A.update(record([1, 2, 3, 4, 5, 6, 7, 8].map(n => hailFail(n, 'trainee_a'))));
+    ok(A.cohortSummary().competencies.hail_discipline.mean < before, 'cohort mean fell');
+  });
+
+  // ---- AI partner parameters (J7, INTERFACES §3.2)
+  const entry = (sid, k, success, fail) => ({ session_id: sid, report: { facts: { events_by_competency: { [k]: { success, fail } } } } });
+  const withHistory = (id, entries) => { CGF.History = { list: who => (who === id ? entries : []) }; };
+  const SUCCESS_TYPES = ['hail_acknowledged', 'safe_passage', 'left_territorial', 'fc_restraint', 'pirate_speed_response'];
+
+  test('partnerParams without history uses the profile mean where there is enough evidence, else 0.5', () => {
+    const r = A.partnerParams({ trainee_id: 'trainee_b' });
+    eq(Object.keys(r.rates).sort(), SUCCESS_TYPES.slice().sort());
+    eq(r.rates.hail_acknowledged, A.means(A.profile('trainee_b')).hail_discipline);
+    eq(r.basis.by_competency.hail_discipline, 'profile');
+    eq([r.basis.source, r.basis.sessions], ['profile', 0]);
+    eq(r.reaction_delay_s, A.DEFAULT_REACTION_DELAY_S);
+  });
+  test('partnerParams for an unknown trainee is all defaults', () => {
+    const r = A.partnerParams({ trainee_id: 'trainee_new' });
+    ok(SUCCESS_TYPES.every(t => r.rates[t] === 0.5), 'all 0.5');
+    eq([r.basis.source, r.basis.sessions], ['default', 0]);
+  });
+  test('partnerParams prefers history: (successes + 1) / (events + 2), counting the sessions used', () => {
+    withHistory('trainee_b', [entry('s_1', 'hail_discipline', 1, 5), entry('s_2', 'hail_discipline', 1, 3)]);
+    const r = A.partnerParams({ trainee_id: 'trainee_b' });
+    eq(r.rates.hail_acknowledged, 0.25);   // (2 + 1) / (10 + 2)
+    eq([r.basis.source, r.basis.sessions, r.basis.by_competency.hail_discipline], ['history', 2, 'history']);
+    eq(r.basis.by_competency.collision_avoidance, 'profile');   // no history for it: falls back to the profile
+  });
+  test('partnerParams can be limited to chosen sessions', () => {
+    withHistory('trainee_b', [entry('s_1', 'hail_discipline', 1, 5), entry('s_2', 'hail_discipline', 1, 3)]);
+    const r = A.partnerParams({ trainee_id: 'trainee_b', session_ids: ['s_2'] });
+    eq(r.rates.hail_acknowledged, 0.33);   // (1 + 1) / (4 + 2)
+    eq(r.basis.sessions, 1);
+  });
+  test('partnerParams ignores history with too few events', () => {
+    withHistory('trainee_b', [entry('s_1', 'hail_discipline', 1, 1)]);   // 2 events, below the minimum of 3
+    const r = A.partnerParams({ trainee_id: 'trainee_b' });
+    eq(r.basis.by_competency.hail_discipline, 'profile');
+    eq(r.basis.sessions, 0);
+  });
+  test('partnerParams is deterministic and keeps every rate between 0 and 1', () => {
+    withHistory('trainee_a', [entry('s_1', 'hail_discipline', 9, 0), entry('s_2', 'weapons_discipline', 0, 9)]);
+    const a = A.partnerParams({ trainee_id: 'trainee_a' }), b = A.partnerParams({ trainee_id: 'trainee_a' });
+    eq(a, b);
+    ok(Object.values(a.rates).every(x => x > 0 && x < 1), 'smoothed away from 0 and 1: ' + JSON.stringify(a.rates));
+  });
+  test('partnerParams needs a trainee id', () => {
+    for (const bad of [null, {}, { trainee_id: '' }, { trainee_id: 5 }]) {
+      let msg = ''; try { A.partnerParams(bad); } catch (e) { msg = e.message; }
+      ok(/trainee_id/.test(msg), JSON.stringify(bad));
+    }
   });
 
   reset();

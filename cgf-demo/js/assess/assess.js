@@ -5,6 +5,8 @@
 //   Assess.update(record, reports?)        -> { trainee_id: Profile } after applying a session record
 //   Assess.cohort()                        -> { trainee_id: { competency: mean } } for every known profile
 //   Assess.means(profile)                  -> { competency: mean } for the competencies the profile holds
+//   Assess.cohortSummary()                 -> per competency: how many are rated, the mean, how many are below 0.5 (J6)
+//   Assess.partnerParams({trainee_id, session_ids?}) -> { rates, reaction_delay_s, basis } for an AI partner (J7)
 //
 // The evidence is the session record's events. Each event that names a competency and an outcome of success or
 // fail adds 1 to alpha (success) or beta (fail) of that competency, for the trainee named on the event. The report is
@@ -90,5 +92,66 @@
     return m;
   }
 
-  CGF.Assess = { PRIOR, profile, profiles, update, cohort, means };
+  // ---- Cohort summary (J6): where the intake as a whole is developing, for improving the curriculum, never to rank
+  // people. Per competency over every known profile, counting only profiles with enough evidence (alpha + beta >= 8):
+  //   { trainees, competencies: { k: { rated, mean, below_half, share_below_half } } }   mean is null when nobody is rated
+  const EVIDENCE_MIN = 8;
+  const round2 = x => Math.round(x * 100) / 100;
+
+  function cohortSummary() {
+    const ps = profiles(), out = { trainees: ps.length, competencies: {} };
+    for (const k of competencies()) {
+      const rated = ps.map(p => (p.competencies || {})[k]).filter(ab => ab && ab.alpha + ab.beta >= EVIDENCE_MIN).map(ab => ab.alpha / (ab.alpha + ab.beta));
+      const below = rated.filter(m => m < 0.5).length;
+      out.competencies[k] = {
+        rated: rated.length,
+        mean: rated.length ? round2(rated.reduce((a, b) => a + b, 0) / rated.length) : null,
+        below_half: below,
+        share_below_half: rated.length ? round2(below / rated.length) : null
+      };
+    }
+    return out;
+  }
+
+  // ---- AI partners (INTERFACES §3.2): the parameters of a crewmate who behaves as a trainee did in older runs.
+  //   Assess.partnerParams({ trainee_id, session_ids? }) -> { rates, reaction_delay_s, basis }
+  // `rates` maps the SUCCESS event type of each measured competency to the chance the partner takes it (hail_discipline
+  // -> hail_acknowledged); the failure type is the rest. Per competency, in order of preference:
+  //   history  at least MIN_HISTORY_EVENTS counted events in the chosen sessions (History.list): (success + 1) / (events + 2)
+  //   profile  the profile mean, when the profile has enough evidence
+  //   default  0.5
+  // Computed by code from stored numbers only, no randomness and no LLM, so the same inputs give the same parameters.
+  const MIN_HISTORY_EVENTS = 3, DEFAULT_RATE = 0.5, DEFAULT_REACTION_DELAY_S = 20;
+
+  function successTypes() {   // competency -> its success event type, from the §4 event table
+    const out = {}, table = (CGF.contracts && CGF.contracts.EVENT_TYPES) || {};
+    for (const [type, [k, outcome]] of Object.entries(table)) if (k && outcome === 'success') out[k] = type;
+    return out;
+  }
+
+  function partnerParams(derived_from) {
+    if (!derived_from || typeof derived_from.trainee_id !== 'string' || !derived_from.trainee_id) throw new Error('Assess.partnerParams: derived_from.trainee_id is required');
+    const id = derived_from.trainee_id, want = Array.isArray(derived_from.session_ids) ? derived_from.session_ids : null;
+    const entries = (CGF.History && typeof CGF.History.list === 'function' ? CGF.History.list(id) : []).filter(e => !want || want.includes(e.session_id));
+    const p = profile(id), rates = {}, by = {}, used = new Set();
+    for (const [k, type] of Object.entries(successTypes())) {
+      let s = 0, f = 0; const from = [];
+      for (const e of entries) {
+        const c = ((e.report && e.report.facts && e.report.facts.events_by_competency) || {})[k];
+        if (c && (c.success || c.fail)) { s += c.success || 0; f += c.fail || 0; from.push(e.session_id); }
+      }
+      const ab = (p.competencies || {})[k];
+      if (s + f >= MIN_HISTORY_EVENTS) { rates[type] = round2((s + 1) / (s + f + 2)); by[k] = 'history'; from.forEach(x => used.add(x)); }
+      else if (ab && ab.alpha + ab.beta >= EVIDENCE_MIN) { rates[type] = mean(ab); by[k] = 'profile'; }
+      else { rates[type] = DEFAULT_RATE; by[k] = 'default'; }
+    }
+    const kinds = Object.values(by);
+    return {
+      rates, reaction_delay_s: DEFAULT_REACTION_DELAY_S,   // not derived from history yet: no event records the delay
+      basis: { source: kinds.includes('history') ? 'history' : kinds.includes('profile') ? 'profile' : 'default', sessions: used.size, by_competency: by }
+    };
+  }
+
+  CGF.Assess = { PRIOR, EVIDENCE_MIN, MIN_HISTORY_EVENTS, DEFAULT_RATE, DEFAULT_REACTION_DELAY_S, profile, profiles, update, cohort, cohortSummary, means,
+    partnerParams };
 })();
