@@ -18,6 +18,7 @@
 <script src="../contracts/contracts.js"></script>
 <script src="../fixtures/profiles/roster.js"></script>
 <script src="../js/assess/assess.js"></script>
+<script src="../js/ui-cohort.js"></script>
 <script>
 (function () {
   const C = CGF.contracts, A = CGF.Assess, F = window.CGF_FIXTURES;
@@ -145,6 +146,30 @@
     const before = A.cohortSummary().competencies.hail_discipline.mean;
     A.update(record([1, 2, 3, 4, 5, 6, 7, 8].map(n => hailFail(n, 'trainee_a'))));
     ok(A.cohortSummary().competencies.hail_discipline.mean < before, 'cohort mean fell');
+  });
+
+  // ---- cohort view (js/ui-cohort.js): logic only
+  const V = CGF.cohortView;
+  test('heatLevel maps a mean onto five steps and null onto no evidence', () => {
+    eq([0, 0.19, 0.2, 0.39, 0.4, 0.59, 0.6, 0.79, 0.8, 1].map(V.heatLevel), [0, 0, 1, 1, 2, 2, 3, 3, 4, 4]);
+    eq([V.heatLevel(null), V.heatLevel(undefined), V.heatLevel(NaN)], [null, null, null]);
+  });
+  test('the cohort matrix is in id order, never sorted by performance, and counts only enough evidence', () => {
+    const rows = V.matrix(A.profiles(), C.COMPETENCIES, A.EVIDENCE_MIN), ids = rows.map(r => r.trainee_id);
+    eq(ids, ids.slice().sort());
+    const b = rows.find(r => r.trainee_id === 'trainee_b');
+    eq(b.cells.hail_discipline, { mean: 0.26, enough: true });
+    eq(b.cells.threat_evaluation, { mean: null, enough: false });
+    eq(b.name, 'Ben Ong');
+    const thin = V.matrix([{ trainee_id: 'x', sessions_completed: 1, competencies: { hail_discipline: { alpha: 4, beta: 3 } } }], C.COMPETENCIES, A.EVIDENCE_MIN);
+    eq(thin[0].cells.hail_discipline.enough, false, '7 events is below the minimum of 8');
+  });
+  test('every competency has a plain label, and the summary note is honest about thin or missing data', () => {
+    C.COMPETENCIES.forEach(k => ok(V.LONG[k] && V.label(k) === V.LONG[k], k));
+    ok(/Not measured yet/.test(V.summaryNote({ rated: 0, mean: null, below_half: 0, share_below_half: null })));
+    ok(/Only 3 trainees rated/.test(V.summaryNote({ rated: 3, mean: 0.5, below_half: 1, share_below_half: 0.33 })));
+    ok(/candidate for more practice/.test(V.summaryNote({ rated: 10, mean: 0.4, below_half: 5, share_below_half: 0.5 })));
+    ok(/2 of 10/.test(V.summaryNote({ rated: 10, mean: 0.7, below_half: 2, share_below_half: 0.2 })));
   });
 
   // ---- AI partner parameters (J7, INTERFACES §3.2)

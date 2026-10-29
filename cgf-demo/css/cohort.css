@@ -1,0 +1,31 @@
+/* Cohort overview page (cohort.html). Structure and the heatmap scale only; uses the design tokens from css/tokens.css
+   (loaded through css/style.css). Written by JL as a starting point; Eevee owns the look and can restyle or fold it in.
+   Colour is never the only carrier of meaning here: every heatmap cell prints its number. */
+
+#cohortApp { display: flex; flex-direction: column; min-height: 100vh; }
+#cohortApp header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px;
+  background: var(--surface-panel); border-bottom: 1px solid var(--border); }
+#cohortApp header h1 { margin: 0; }
+#cohortApp a.btn { text-decoration: none; color: var(--text); }
+#cohortApp main { padding: 10px 14px 24px; max-width: 1400px; }
+.cohort-caption { background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: 6px; padding: 8px 12px; }
+
+.cohort-table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.cohort-table th { text-align: left; color: var(--text-muted); font-weight: 400; padding: 5px 8px; white-space: nowrap; }
+.cohort-table td { padding: 5px 8px; border-top: 1px solid var(--border); }
+.cohort-table td.num { text-align: right; white-space: nowrap; }
+.cohort-table tbody th { color: var(--text); font-family: Consolas, monospace; }
+.cohort-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; }
+
+.cohort-bar { display: inline-block; vertical-align: middle; width: 110px; height: 8px; background: var(--data-track); border-radius: 4px; overflow: hidden; }
+.cohort-bar i { display: block; height: 100%; background: var(--data-fill); }
+.val { display: inline-block; vertical-align: middle; margin-left: 6px; font-family: Consolas, monospace; }
+
+/* The heatmap: five steps of one neutral hue, low to high, from the data scale. No red or green. */
+.cohort-heatmap td.heat { text-align: center; font-family: Consolas, monospace; min-width: 64px; }
+.heat--0 { background: var(--data-0); color: var(--text); }
+.heat--1 { background: var(--data-1); color: var(--text-strong); }
+.heat--2 { background: var(--data-2); color: var(--text-on-accent); }
+.heat--3 { background: var(--data-3); color: var(--text-on-accent); }
+.heat--4 { background: var(--data-4); color: var(--text-on-accent); }
+.heat--none { color: var(--text-muted); }

@@ -17,6 +17,7 @@ param(
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'cdp.ps1')
 
+if ($Pages) { $Pages = @($Pages | ForEach-Object { $_ -split ',' } | Where-Object { $_ }) }   # `-File ... -Pages a,b` arrives as one string
 $tests = Join-Path (Split-Path $PSScriptRoot -Parent) 'tests'
 $files = if ($Pages) { $Pages | ForEach-Object { Join-Path $tests ($_ -replace '\.html$', '' | ForEach-Object { "$_.html" }) } }
          else { Get-ChildItem $tests -Filter *.html | Sort-Object Name | ForEach-Object { $_.FullName } }

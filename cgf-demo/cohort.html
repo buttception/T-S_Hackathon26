@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cohort overview</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/cohort.css">
+</head>
+<body>
+<div id="cohortApp">
+  <header>
+    <h1>Cohort overview <small>· where the intake is developing</small></h1>
+    <a class="btn" href="allocate.html">Back to allocation</a>
+  </header>
+
+  <main>
+    <!-- Ethical AI (design/PRINCIPLES.md): the caption is part of the page, not a footnote -->
+    <p class="cohort-caption"><b>For improving the curriculum, not for judging or ranking individuals.</b>
+      Trainees are listed in id order and are never sorted by performance. Practice runs adapt to each trainee, so these figures are not qualification results.</p>
+    <p id="cohortCount" class="muted small"></p>
+
+    <h2>By competency</h2>
+    <table id="cohortSummary" class="cohort-table"></table>
+
+    <h2>By trainee</h2>
+    <div class="row">
+      <label class="small"><input type="checkbox" id="showNames"> Show trainee names (otherwise ids)</label>
+      <span class="muted small">Darker cells mean a higher mean. Every cell also shows its number. A dash means not enough evidence yet.</span>
+    </div>
+    <div class="cohort-wrap"><table id="cohortMatrix" class="cohort-table cohort-heatmap"></table></div>
+  </main>
+</div>
+
+<script src="js/util.js"></script>
+<script src="contracts/contracts.js"></script>
+<script src="fixtures/profiles/roster.js"></script>
+<script src="js/assess/assess.js"></script>
+<script src="js/ui-cohort.js"></script>
+</body>
+</html>
