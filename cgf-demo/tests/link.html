@@ -144,13 +144,13 @@
     const noRole = clone(rec); delete noRole.crew[0].role; delete noRole.crew[0].derived_from;
     ok(H.checkRecord(noRole, c, 'A').length > 0, 'a partner recorded as a trainee is rejected');
   });
-  test('forReport leaves a trainee-only record alone and drops AI partners from the crew the report builder sees', () => {
+  test('forReport passes the record through whole: the report lists AI partners itself and gives them no report', () => {
     const c = cfgA(), rec = recFor(c, 'A');
     eq(H.forReport(rec), rec, 'no partners: the same record');
     const withP = clone(rec); withP.crew[0] = { seat: 'weapons', trainee_id: 'partner_weapons', role: 'partner', derived_from: { trainee_id: 'trainee_b' } };
     const out = H.forReport(withP);
-    eq(out.crew.map(m => m.trainee_id), [rec.crew[1].trainee_id, rec.crew[2].trainee_id]);
-    eq(withP.crew.length, 3, 'the original record is not changed');
+    eq(out.crew.length, 3, 'the partner entry stays in the crew');
+    eq(out.crew[0].role, 'partner');
     eq(H.forReport(null), null);
   });
   test('checkRecord rejects a record for another pane, scenario, seed, mode, platform or crew', () => {

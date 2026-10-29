@@ -250,9 +250,9 @@
     const other = A.withPlatform(s, { type: 'tank', model: 'leopard2sg' }, ids, domainOf);
     eq(Object.keys(other.partners.A), [], 'tank seats do not include weapons');
   });
-  test('while the runtime cannot play partners, the page says so (PARTNERS_RUN is the switch)', () => {
+  test('the runtime plays AI partners (D8), so Start is not held back for them (PARTNERS_RUN)', () => {
     eq(typeof A.PARTNERS_RUN, 'boolean');
-    ok(A.PARTNERS_RUN === false, 'flip PARTNERS_RUN and update this test when Devin\'s D8 lands');
+    ok(A.PARTNERS_RUN === true, 'PARTNERS_RUN is the switch that holds Start back for a partner allocation');
   });
   test('describePartner says in words where the numbers come from', () => {
     const t = A.describePartner(stubParams(), 'Ben Ong');
