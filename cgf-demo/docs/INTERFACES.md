@@ -91,7 +91,7 @@ Validation: `crew` length and `seat` ids match the type; `trainee_id` is a lower
 
 ### 3.1 Allocation (wrapper)
 
-Changed 2026-10-29 (JL), built: **one crew per run.** The wrapper keeps `shared` and `slots`, with exactly one slot, pane `A`. Panes A and B no longer exist as a pair; the letter `A` is only the name of the one runtime instance.
+Changed 2026-10-29 (JL), built: **one crew per run.** The wrapper holds the run settings in `shared` and the `crew` directly. There is no `slots` array and no A/B pair. An allocation saved in a browser in the older `slots` shape is still read by the allocation page and the host through a small read-only shim (it takes `slots[0].crew`); the validator itself accepts only the shape below.
 
 The trainee allocation page outputs one `Allocation`. The run page reads it and derives the scenario config (section 3).
 
@@ -108,12 +108,10 @@ The trainee allocation page outputs one `Allocation`. The run page reads it and 
     "envelope": "<envelope object from section 2>",
     "platform": {"type": "warship", "model": "formidable"}
   },
-  "slots": [
-    {"pane": "A", "crew": [
-      {"seat": "weapons",    "trainee_id": "trainee_c17", "agent_profile": "trainees/strong.js"},
-      {"seat": "sensors",    "trainee_id": "trainee_c08", "agent_profile": "trainees/strong.js"},
-      {"seat": "navigation", "trainee_id": "trainee_b",   "agent_profile": "trainees/weak_hail_discipline.js"}
-    ]}
+  "crew": [
+    {"seat": "weapons",    "trainee_id": "trainee_c17", "agent_profile": "trainees/strong.js"},
+    {"seat": "sensors",    "trainee_id": "trainee_c08", "agent_profile": "trainees/strong.js"},
+    {"seat": "navigation", "trainee_id": "trainee_b",   "agent_profile": "trainees/weak_hail_discipline.js"}
   ]
 }
 ```
@@ -123,16 +121,16 @@ The trainee allocation page outputs one `Allocation`. The run page reads it and 
 | `allocation_id` | Unique id for this run |
 | `created_at_session` | Id of the most recent completed session when the allocation was made, or `null` |
 | `shared` | The run settings of section 3: `scenario`, `seed`, `mode`, `duration_s`, `eval_interval_s`, `envelope`, `platform` |
-| `slots` | Exactly one entry, `pane: "A"`, holding the `crew` (section 3) |
+| `crew` | The crew of section 3: one entry per seat of the platform type |
 
 Validation:
-- `slots` has exactly 1 entry, with `pane` `A`.
+- The only keys are `allocation_id`, `created_at_session`, `shared` and `crew`.
 - `crew` fills every seat of the platform type, in seat order.
 - No trainee appears twice.
 - `agent_profile` is required and non-null in every seat. A human-driven seat is out of scope for G1.
 - `shared` passes the section 3 checks: integer `seed`, `duration_s > 0`, `eval_interval_s < duration_s`, `mode` in the Mode enumeration, a valid envelope, a valid `platform`, and a scenario whose domain matches the platform type.
 
-Derivation: `expandAllocation(allocation) -> ScenarioConfig[]` returns an array with the one section 3 config (`scenario_id` is `<allocation_id>_A`). It is an array so the host page, which loops over configs, needs no change. The function is pure and lives in `contracts/`. `validateAllocation(allocation, opts)` checks the structure first and then validates the derived config.
+Derivation: `expandAllocation(allocation) -> ScenarioConfig` returns the one section 3 config (`scenario_id` is the `allocation_id`). The function is pure and lives in `contracts/`. `validateAllocation(allocation, opts)` checks the structure first and then validates the derived config.
 
 The allocation page's "Suggest demo crew" fills each seat, in seat order, with the unused trainee whose measured competency on that seat's focus is lowest (the most to gain). A seat with no measured competency gets the first unused trainee.
 
@@ -229,10 +227,10 @@ The profile is the **prior**. During a session the engine keeps a working copy t
 
 Adaptation runs per seat. The profile stays per trainee, so a trainee's history follows them between seats and platforms.
 
-- **Working copy:** one per seat of a pane, started from the profile of the trainee in that seat and updated only by events with that `seat`.
+- **Working copy:** one per seat of the crew, started from the profile of the trainee in that seat and updated only by events with that `seat`.
 - **Target:** for each seat, the weakest competency with enough evidence among that seat's competencies (section 1.1; `seatFocus` in `fixtures/platforms.js`). If none of them has enough evidence, the weakest competency with enough evidence overall.
-- **Combining seats:** all of a pane's seats can have a target at once. For each setting the pane's CGFs receive, the engine applies the single largest requested change among the seats and ignores the others for that cycle. Changes are never summed. The adjustment record says which seat it served.
-- **Live signal:** the window and the challenge band (section 6) are kept per seat. A pane's overall pressure follows its seats: any seat `up` raises the pane only if no seat is `down`; any seat `down` wins.
+- **Combining seats:** all of the crew's seats can have a target at once. For each setting the CGFs receive, the engine applies the single largest requested change among the seats and ignores the others for that cycle. Changes are never summed. The adjustment record says which seat it served.
+- **Live signal:** the window and the challenge band (section 6) are kept per seat. The overall pressure follows the seats: any seat `up` raises it only if no seat is `down`; any seat `down` wins.
 - **Fixed mode** gives no adjustments for any seat.
 - **Reports and the profile strip** show results per seat and per trainee.
 
@@ -318,7 +316,7 @@ Owner: Glenda (report lane). The report is built from the session record (§9.1)
 
 ### 9.1 Session record and history entry (proposed 2026-10-29, to confirm with Devin and Glenda)
 
-**Session record**: emitted by the runtime (Devin) when a run ends, passed by the host page to the report and the competency update. **Built 2026-10-29:** the pane sends it to the host as the `record` message (§11); the host validates it with `CGF.contracts.validateSessionRecord` plus a match against the pane's config, stores valid records under `cgf.lastRun`, calls `Report.finishSession` and shows an "Open report" link per pane. It also fires a `cgf:session-record` event on the host window (`detail: {pane, record, errors, run}`) for the competency update to hook into, and an "Export session records" button downloads the run as JSON.
+**Session record**: emitted by the runtime (Devin) when a run ends, passed by the host page to the report and the competency update. **Built 2026-10-29:** the runtime sends it to the host as the `record` message (§11); the host validates it with `CGF.contracts.validateSessionRecord` plus a match against the run's config, stores the valid record under `cgf.lastRun`, calls `Report.finishSession` and shows an "Open report" link. It also fires a `cgf:session-record` event on the host window (`detail: {record, errors, run}`) for the competency update to hook into, and an "Export session records" button downloads the run as JSON.
 
 ```json
 {
@@ -339,7 +337,7 @@ Owner: Glenda (report lane). The report is built from the session record (§9.1)
 }
 ```
 
-`events` are §4 events, and each carries a `seat`. `adjustments` are §7 records. `mode` is `adaptive` or `fixed`. `platform` is the platform **type** string (`warship`), not the `{type, model}` object of §3. `crew` has one entry per seat of that type, in seat order, with `seat`, `role` and `trainee_id` (no `agent_profile`). A partner seat has `role: "partner"`, a `partner_<seat>` id and `derived_from: {trainee_id, session_ids?}`; the report lists it as "AI partner, based on <trainee_id>" and neither the report nor `Assess.update` treats it as a trainee. `pane` is `A`, `B`, or `null` for a local run.
+`events` are §4 events, and each carries a `seat`. `adjustments` are §7 records. `mode` is `adaptive` or `fixed`. `platform` is the platform **type** string (`warship`), not the `{type, model}` object of §3. `crew` has one entry per seat of that type, in seat order, with `seat`, `role` and `trainee_id` (no `agent_profile`). A partner seat has `role: "partner"`, a `partner_<seat>` id and `derived_from: {trainee_id, session_ids?}`; the report lists it as "AI partner, based on <trainee_id>" and neither the report nor `Assess.update` treats it as a trainee.
 
 `CGF.contracts.validateSessionRecord(record, {envelope})` checks all of this, including that every event and adjustment carries the record's `session_id`, that every event's trainee sits in the seat it names, and, when an envelope is given, that every adjusted value is inside it. It was checked against full sessions from Devin's runtime (adaptive, fixed and the earlier challenge mode): no errors.
 
@@ -389,27 +387,27 @@ Owner: Glenda (report lane). The report is built from the session record (§9.1)
 
 ## 11. Cross-instance messages (host page to runtime)
 
-Changed 2026-10-29: one runtime iframe, not two. The URL marker stays `runtime.html?pane=A` and the `pane` field in messages is `"A"`.
+Changed 2026-10-29: one runtime iframe. The URL marker is `runtime.html?linked=1` and messages carry no instance tag.
 
-The runtime is an iframe of `runtime.html?pane=A` (the page was `index.html` until 2026-10-29). Under `file://` the panes are cross-origin, so the host and the panes talk only through `postMessage`. As built (2026-10-29), the messages are defined and validated in `cgf-demo/contracts/link.js`, and every message is `{cgfLink: 1, type, pane, ...payload}`. Origins are opaque under `file://`, so the host accepts a message only if `event.source` is that pane's iframe window, and the pane only if it comes from `window.parent`.
+The runtime is an iframe of `runtime.html?linked=1` (the page was `index.html` until 2026-10-29). Under `file://` the runtime is cross-origin, so the host and the runtime talk only through `postMessage`. As built, the messages are defined and validated in `cgf-demo/contracts/link.js`, and every message is `{cgfLink: 1, type, ...payload}`. Origins are opaque under `file://`, so the host accepts a message only if `event.source` is its iframe window, and the runtime only if it comes from `window.parent`.
 
 | Message | Direction | Payload |
 |---|---|---|
-| `hello` | pane to host | `api: {ok, missing[]}`. Sent once, when the runtime has booted. `missing` lists runtime calls the link needs and cannot find |
-| `init` | host to pane | `config`: the pane's scenario config (section 3, expanded from the Allocation). The pane answers `ready`, or `error` if the config is invalid, the scenario is not loaded, or its domain does not match the platform |
-| `ready` | pane to host | `scenario`, `domain`, `platform`, `crew` |
-| `start`, `pause`, `restart` | host to pane | none. `restart` reloads the scenario from the same config |
-| `status` | pane to host | `t`, `running`, `outcome`, `stats` (warnings, ignored, acks, maxTension). Sent when something changes |
-| `ended` | pane to host | `outcome` (`success` or `fail`), `text` |
-| `record` | pane to host | `record`: the §9.1 session record, sent once when an adaptive run ends. Devin's runtime emits it as the `session-record` event and `link/pane.js` forwards it. The host checks it (`hostLink.checkRecord`: valid under §9.1, adjusted values inside the allocation's envelope, and the same pane, scenario, seed, mode, platform and crew as the config the pane was given), keeps only valid records under `localStorage` `cgf.lastRun` as `{allocation_id, records: {A, B}}`, and calls Glenda's `Report.finishSession` to build the reports, append the history entries and get the report page URL |
-| `error` | pane to host | `message` |
-| `events` | pane to host | Event array. **Reserved** for the adaptation loop, not sent yet |
-| `apply` | host to pane | Adjustment array. **Reserved**, not sent yet |
-| `snapshot` | pane to host | Snapshot. **Reserved**, not sent yet |
+| `hello` | runtime to host | `api: {ok, missing[]}`. Sent once, when the runtime has booted. `missing` lists runtime calls the link needs and cannot find |
+| `init` | host to runtime | `config`: the scenario config (section 3, expanded from the Allocation). The runtime answers `ready`, or `error` if the config is invalid, the scenario is not loaded, or its domain does not match the platform |
+| `ready` | runtime to host | `scenario`, `domain`, `platform`, `crew` |
+| `start`, `pause`, `restart` | host to runtime | none. `restart` reloads the scenario from the same config |
+| `status` | runtime to host | `t`, `running`, `outcome`, `stats` (warnings, ignored, acks, maxTension). Sent when something changes |
+| `ended` | runtime to host | `outcome` (`success` or `fail`), `text` |
+| `record` | runtime to host | `record`: the §9.1 session record, sent once when an adaptive run ends. Devin's runtime emits it as the `session-record` event and `link/runtime-link.js` forwards it. The host checks it (`hostLink.checkRecord`: valid under §9.1, adjusted values inside the allocation's envelope, and the same scenario, seed, mode, platform and crew as the config the runtime was given), keeps only the latest valid record under `localStorage` `cgf.lastRun` as `{allocation_id, record}`, and calls Glenda's `Report.finishSession` to build the reports, append the history entries and get the report page URL |
+| `error` | runtime to host | `message` |
+| `events` | runtime to host | Event array. **Reserved** for the adaptation loop, not sent yet |
+| `apply` | host to runtime | Adjustment array. **Reserved**, not sent yet |
+| `snapshot` | runtime to host | Snapshot. **Reserved**, not sent yet |
 
-The pane does not change `CGF.params` or any harness on `init`. It records the allocation's envelope on `CGF.sim.link.envelope` and fires a `link-init` event; the adaptation code subscribes to that event.
+The runtime link does not change `CGF.params` or any harness on `init`. It records the allocation's envelope on `CGF.sim.link.envelope` and fires a `link-init` event; the adaptation code subscribes to that event.
 
-The Engine runs in the host page. With crews there is one working profile per trainee seat, not per pane, and none for partner seats. Targets are chosen per seat (section 5.1).
+The Engine runs in the host page. With crews there is one working profile per trainee seat, and none for partner seats. Targets are chosen per seat (section 5.1).
 
 Ownership and the runtime API the link depends on: `cgf-demo/link/README.md` in the repo.
 

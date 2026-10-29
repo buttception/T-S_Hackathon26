@@ -399,7 +399,7 @@ test('D5: the link-init event from link/runtime-link.js starts a session with th
   await new Promise(r => setTimeout(r, 0));
   const s = CGF.adaptRuntime.session();
   assert.ok(s);
-  assert.match(s.session_id, /^s_\d{8}_\d{6}$/, 'a generated session id has no pane suffix');
+  assert.match(s.session_id, /^s_\d{8}_\d{6}$/, 'a generated session id has no letter suffix');
   deq(s.config.crew, cfg.crew);
   assert.equal(CGF.params.sensitivity, cfg.envelope.sensitivity.base, 'settings start at the envelope base');
 });

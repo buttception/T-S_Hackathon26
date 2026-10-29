@@ -20,7 +20,7 @@ Each finding says who can fix it: **Eevee** (CSS or design files) or a **request
 | `10-runtime-setup-scenario-llm.jpg` | Runtime Setup tab: scenario, harness library, local LLM |
 | `11-runtime-setup-parameters.jpg` | Runtime Setup tab: live CGF parameters |
 
-Not captured: the host page with two live panes (needs a full allocation saved), and the LLM preview card (needs a local model running).
+Not captured: the host page with a live run (needs a full allocation saved), and the LLM preview card (needs a local model running).
 
 ## What already works
 

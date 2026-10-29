@@ -2,14 +2,14 @@
 
 Owner: Eevee (UI/UX lane, see `docs/LANES.md`). Adopted 2026-10-29.
 
-These five principles govern the look and flow of every page: allocation, host (two panes), runtime, instructor reasoning panel, and report. Any design decision, by any lane, is checked against them. When a decision conflicts with a principle, raise it, note the pros and cons, and agree the trade-off with Eevee rather than working around it.
+These five principles govern the look and flow of every page: allocation, host, runtime, instructor reasoning panel, and report. Any design decision, by any lane, is checked against them. When a decision conflicts with a principle, raise it, note the pros and cons, and agree the trade-off with Eevee rather than working around it.
 
 ## Who we design for
 
 | Audience | Needs | Where |
 |---|---|---|
 | Instructor (primary) | Control and situational awareness while running several trainees under time pressure | Allocation, host, reasoning panel, report |
-| Trainee | A believable exercise; should not see the adaptation working | Runtime pane |
+| Trainee | A believable exercise; should not see the adaptation working | Runtime |
 | Judges | Grasp each screen in seconds during a 5-minute demo | Everything shown in the demo |
 
 The instructor is an expert user. Dense screens are fine when they are well chunked; screens that hide what experts need are not. Design for a projector in a dim room, read at a glance and from a distance.

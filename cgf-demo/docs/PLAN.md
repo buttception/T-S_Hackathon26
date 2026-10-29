@@ -4,7 +4,7 @@ Decided 2026-10-29: the plan and the team repo (`buttception/T-S_Hackathon26`, `
 
 Updated 2026-10-29: roles re-cut into four lanes by person (JL, Devin, Glenda, Eevee). See sections 3, 5 and 7, and `docs/LANES.md`, which has each person's tasks and the hand-offs. This replaces the Lead / Sim / Engine / Console / Design split and the earlier "Evi" Design role (read Evi as Eevee).
 
-Changed 2026-10-29 (JL): **one crew, one runtime.** Panes A and B are removed; the demo trains a single set of crew. The instructor can add **AI partners** to fill seats; a partner behaves according to what older runs say about a trainee (section 2b). The side-by-side divergence demo is replaced by a run-after-run loop: history sets the target, live behaviour sets the intensity, and the profile moves between runs. Task S5 (two instances) and the second pane in C1 are dropped.
+Changed 2026-10-29 (JL): **one crew, one runtime.** The A/B pair is removed; the demo trains a single set of crew. The instructor can add **AI partners** to fill seats; a partner behaves according to what older runs say about a trainee (section 2b). The side-by-side divergence demo is replaced by a run-after-run loop: history sets the target, live behaviour sets the intensity, and the profile moves between runs. Task S5 (two instances) and the second pane in C1 are dropped.
 
 ## 1. Goal and scoring
 
@@ -53,12 +53,12 @@ A run has one crew on one platform. Each seat is either:
 
 A partner's behaviour comes from history: the success rate per event type in that trainee's past session records, or their profile means if there are no records, or a default. A trainee's earlier self is an allowed source. At least one seat must be a trainee. Partners are seeded and deterministic (invariant 3). Partners do not change the scenario's outcome rules; they only fill seats a person would otherwise fill. Detail: INTERFACES section 3.2.
 
-Why: most training is crew based, and a crew with empty seats can't be run. This lets one trainee practise with realistic crewmates and keeps the demo to one pane.
+Why: most training is crew based, and a crew with empty seats can't be run. This lets one trainee practise with realistic crewmates and keeps the demo to one runtime.
 
 ## 3. Assumptions
 
 - Hackathon length is not yet fixed. Timings below use percentages, with 24h and 48h equivalents.
-- Single crew per run (since 2026-10-29): no pane A/B. The host page loads one runtime. AI partners fill seats the instructor leaves to the system.
+- Single crew per run (since 2026-10-29): no A/B pair. The host page loads one runtime. AI partners fill seats the instructor leaves to the system.
 - Roles: four people, one lane each. JL: allocation, hand-off to the runtime, competency update (and Lead duties). Devin: simulation runtime and CGF behaviour, with the instructor-facing reasoning. Glenda: end-of-training report and trainee history. Eevee: UI/UX design of the whole page.
 - Stack: vanilla JS loaded with `<script>` tags, no build step, no server, runs from `file://`. This matches the repo and suits locked-down laptops. The earlier Python / FastAPI decision is dropped.
 - Tests: Node's built-in `node:test` if Node is allowed on the event machines. Otherwise a browser test page (`tests/index.html`). Confirm which.
@@ -103,7 +103,7 @@ Full file lists, tasks and acceptance tests per person are in `docs/LANES.md`.
 
 **G0:** Contracts in `docs/INTERFACES.md` match the validators in `contracts/`. Each lane has a stub that returns fixture data. The runner executes a full loop on stubs and writes an adjustment log. Fixed-step mode exists. The visual system (D1) is handed to Console.
 
-**G1 (the readiness gate):** One crew, one pane, scripted crew, run twice on the same seed. Demo platform and scenario (JL, 2026-10-29): a warship on `strait-transit`, the only scenario with a competency signal. Other platforms are allocation only.
+**G1 (the readiness gate):** One crew, one runtime, scripted crew, run twice on the same seed. Demo platform and scenario (JL, 2026-10-29): a warship on `strait-transit`, the only scenario with a competency signal. Other platforms are allocation only.
 - Run 1: the navigation trainee's profile is weak at hail discipline. The CGFs visibly shift toward hail pressure within two evaluation cycles. The other trainee seat's target differs, so the reasons differ per seat.
 - The live signal works: when the scripted trainee keeps missing hails, the pressure eases; when the scripted trainee answers them, it rises.
 - (Tentative, only if AI partners are confirmed) At least one seat is an AI partner built from history (`derived_from`). It plays from its parameters, is never targeted, and its profile is not updated.
@@ -150,7 +150,7 @@ Tasks and acceptance tests that changed with the re-cut: `Adapt.endSession` retu
 | S4 | `apply(adjustments)`: set unit parameters and factor-weight multipliers at runtime | 1 | Applied values show in the Setup tab and the CGF log |
 | S5 | ~~Instance isolation so two copies run side by side~~ **Dropped 2026-10-29** (one runtime per host page). Keep the iframe only to isolate the runtime from the host page | 1 | The one runtime ticks in its iframe from `file://` |
 | S6 | Fix known engine issues: repeated `failState` logging in freeplay, silent unknown-factor weights, unclamped `opening` factor | 1 | Unit test for each |
-| S7 | Snapshot stream for the console | 1 | The pane updates smoothly |
+| S7 | Snapshot stream for the console | 1 | The runtime view updates smoothly |
 
 ### Engine
 
@@ -180,7 +180,7 @@ Competency to tactic mapping for v1 (proposed; Sim and Engine validate it agains
 
 | ID | Task | Phase | Acceptance |
 |---|---|---|---|
-| C1 | Host page with one runtime pane | 1 | Renders the live instance |
+| C1 | Host page with one runtime frame | 1 | Renders the live instance |
 | C2 | Setup panel: envelope min, max and base per parameter, mode toggle | 1 | Values reach the engine and show in the log |
 | C3 | Adjustment log with template explanations that cite the evidence | 1 | Every adjustment appears with its reason |
 | C4 | Profile strip per trainee: competency bars, current target, live pressure | 1 | Updates as events arrive |
@@ -222,7 +222,7 @@ Design delivers specs and mockups only. It never edits simulation, engine or oth
 | 0:30 | Instructor sets the envelope | Setup panel |
 | 1:00 | Same strait. The crew's navigation trainee has a profile weak at hail discipline; their CGFs start pressing hails. (If AI partners are confirmed: an AI partner built from an older run fills the weapons seat.) The log says why, tagged `history` | Pane, profile strip, log |
 | 2:00 | The trainee keeps missing hails, so the pressure eases (`live`); a trainee who answers them gets the opposite. History set the target, current behaviour set the intensity | Profile strip and log |
-| 2:30 | Instructor types "test the navigation trainee's collision avoidance". The parsed directive is shown, then the CGFs shift | Steering box and pane |
+| 2:30 | Instructor types "test the navigation trainee's collision avoidance". The parsed directive is shown, then the CGFs shift | Steering box and runtime |
 | 3:15 | Toggle fixed mode for assessment | Mode toggle, log goes quiet |
 | 3:30 | Report, the profile moves, the allocation page predicts a new target for run 2, then the cohort heatmap | Report and heatmap |
 | 4:15 | Savings model, on-prem deployment, HLA/DIS integration roadmap | Two slides |

@@ -1,4 +1,4 @@
-/* Host page for the side-by-side run. Builds on css/style.css variables; selectors are scoped to #hostApp. */
+/* Host page for the training run. Builds on css/style.css variables; selectors are scoped to #hostApp. */
 #hostApp { display: flex; flex-direction: column; height: 100vh; }
 #hostApp header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 14px;
   background: var(--panel); border-bottom: 1px solid var(--line); }

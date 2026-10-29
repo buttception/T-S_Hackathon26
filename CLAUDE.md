@@ -23,7 +23,7 @@ Do not edit another lane's files. If the task needs a change there, stop and rep
 
 - Devin wrote the existing runtime code. Do not reformat or restructure it.
 - Eevee edits CSS and design files only. A layout that needs new markup or a class goes into `design/requests.md` for the page's owner. The other lanes use the classes and tokens from `design/` and do not hard-code colours or spacing.
-- The one shared touch point in `runtime.html` is the `link/pane.js` script tag. It stays.
+- The one shared touch point in `runtime.html` is the `link/runtime-link.js` script tag. It stays.
 - Everyone pushes directly to `main` (decided 2026-10-29, JL). No lane branches and no merge gate. To keep `main` safe:
   - Commit only files in your own lane, in small commits, and push often.
   - Before each push, pull with `git pull --no-rebase` (a merge, never a rebase), run your lane's tests, and open the page you changed from `file://`. `main` must always open and run.

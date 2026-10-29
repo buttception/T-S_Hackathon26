@@ -1,5 +1,7 @@
 # Hackathon: trainee allocation page (plan)
 
+> Historical (2026-10-29): this page describes the first, two-pane version. The A/B panes were removed; there is one crew and one runtime. For current truth see INTERFACES §3.1 and §11 and `link/README.md`.
+
 **Summary**: This is a pre-run page. The instructor chooses the player role (fighter, warship or tank), seats a trainee from the seeded roster in every position of two crews (crew A in pane A, crew B in pane B), and sets the shared run options. The page outputs one `Allocation` (INTERFACES §3.1), which expands into one scenario config per pane (§3). The simulation run consumes it later. Linking to the run is out of scope for this build.
 
 **Last updated**: 2026-10-29. Status: MVP built and on `main`. The first version (one trainee per pane) was pushed as `6085374`. The player-role and crews version replaces it (commit below). The branch `feat/allocation-page` still exists on `origin` at `6085374`. JL decided to skip branching because the project is one day long.

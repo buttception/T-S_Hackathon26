@@ -14,7 +14,7 @@ Allocation  ->  Runtime + CGF  ->  End-of-training report  ->  Competency update
      \_________________ page look and feel (Eevee) ______________/
 ```
 
-1. **JL** picks the crew and scenario on the allocation page and chooses which seats are trainees and which are AI partners (built from older runs), and hands the `Allocation` to the host page, which sends the one runtime its config (`init`, INTERFACES §11). One crew per run; there are no panes A and B (changed 2026-10-29).
+1. **JL** picks the crew and scenario on the allocation page and chooses which seats are trainees and which are AI partners (built from older runs), and hands the `Allocation` to the host page, which sends the one runtime its config (`init`, INTERFACES §11). One crew per run and one runtime (changed 2026-10-29).
 2. **Devin** runs the simulation for that config. The CGFs adapt to what the trainee does, and the instructor can see why.
 3. When a run ends, the host passes the **session record** (events, adjustments, outcome) to **Glenda**. She builds the end-of-training report and appends it to the trainee's history.
 4. **JL** reads the session record and the report, and updates the trainee's competency profile. The allocation page then shows the new profile.
@@ -45,7 +45,7 @@ Tasks:
 | J5 | **Done 2026-10-29** (the page reads `Assess.profiles()`). Allocation page reads the saved profile, so the bars move after a run | Bars change after a run |
 | J6 | **Done 2026-10-29.** Cohort data and view (old E8, C8): `Assess.cohort()`, `Assess.cohortSummary()`, and `cohort.html` (`js/ui-cohort.js`), worded for improving the curriculum and never ranking; rows in id order; every heatmap cell prints its number | Summary and matrix for the seeded cohort; the four unmeasured competencies say "not measured yet" |
 | J7 | **Done on JL's side 2026-10-29** (Devin's D8 pending): contract and validators for partner crew entries (INTERFACES §3.2, `contracts/`), `Assess.partnerParams` (rates from saved sessions, else the profile, else 0.5), the allocation page seat role "A trainee / An AI partner" with the source trainee and the parameters in words, `Assess.update` and the host skip partners. Start is disabled for a partner allocation until D8 (`PARTNERS_RUN` in `js/ui-allocate.js`) | A partner seat validates and gets `agent_params`; the same inputs give the same params. 104 allocate, 35 assess tests |
-| J8 | **Done 2026-10-29: single crew.** `PANES` and `SLOTS` are `['A']`; compare and swap crews removed; `suggestCrew` replaces `suggestCrews`; tests updated (allocate 88, link 31, assess 12 pass in headless Chrome). The allocation keeps `shared` and one slot (INTERFACES §3.1) | Allocation, host and link tests pass for one crew |
+| J8 | **Done 2026-10-29: single crew.** the A/B pane concept is removed everywhere (2026-10-29, JL across lanes): the allocation holds `crew` directly, the link protocol has no `pane` field, the runtime marker is `?linked=1`, `link/pane.js` became `link/runtime-link.js`; compare and swap crews removed; `suggestCrew` replaces `suggestCrews`; tests updated (allocate 88, link 31, assess 12 pass in headless Chrome). The allocation keeps `shared` and `crew` (INTERFACES §3.1) | Allocation, host and link tests pass for one crew |
 | J9 | **Done 2026-10-29.** Baseline comparison for the demo: `Runs.save` keeps the last ten session records, `Runs.baselineFor` finds the fixed-mode run on the same scenario, seed, platform and crew, `Runs.compare` counts what changed (code-computed, templates only), and `compare.html` shows it. The host saves each valid record and links the comparison | A fixed run then an adaptive run on one seed through the real host and runtime show on `compare.html`; too few events are reported as such, never as a change |
 | J10 | **Done 2026-10-29.** Test runner: `runner/run-tests.ps1` runs every page in `tests/` in headless Edge or Chrome and exits non-zero on a failure (no Node needed). Run it before each push | `powershell -ExecutionPolicy Bypass -File runner\run-tests.ps1` prints one line per page |
 
@@ -126,9 +126,9 @@ Tasks:
 
 | From to | What | Where defined | Status |
 |---|---|---|---|
-| JL to Devin | Run config: platform, crew (each seat `trainee` or `partner`, with `agent_params` for partners), per-seat profile, scenario, seed, mode, envelope | INTERFACES §3, §3.2, §11 (`link-init`) | Built for two panes; single crew and partners proposed |
+| JL to Devin | Run config: platform, crew (each seat `trainee` or `partner`, with `agent_params` for partners), per-seat profile, scenario, seed, mode, envelope | INTERFACES §3, §3.2, §11 (`link-init`) | Built; single crew built, partners proposed |
 | Glenda to JL (tentative) | `History.entries(trainee_id) -> entry[]`, so `Assess.partnerParams` can read past runs | INTERFACES §9.1 | Proposed |
-| Devin to Glenda and JL | **Session record** at the end of a run: events (§4), adjustments (§7), outcome, seed, config | INTERFACES §9.1, §11 (`record`) | Built 2026-10-29. Devin's runtime emits it, the pane forwards it, the host validates it, stores `cgf.lastRun` and calls `Report.finishSession`. Competency update (JL) not built |
+| Devin to Glenda and JL | **Session record** at the end of a run: events (§4), adjustments (§7), outcome, seed, config | INTERFACES §9.1, §11 (`record`) | Built 2026-10-29. Devin's runtime emits it, the runtime link forwards it, the host validates it, stores `cgf.lastRun` and calls `Report.finishSession`. Competency update (JL) not built |
 | Glenda to JL | **Report** facts per session | INTERFACES §9 | Proposed |
 | Glenda to JL and Devin | Trainee history summary | INTERFACES §9.1 | Proposed |
 | JL to everyone | Updated profile | INTERFACES §5 | Exists |
@@ -141,7 +141,7 @@ Tasks:
 1. Never edit a file outside your lane. If you need a change there, write down the exact request (file, function, behaviour) and tell its owner.
 2. A new file belongs to the lane that creates it, and sits in that lane's folder or uses its prefix.
 3. Contracts (`contracts/`, `docs/INTERFACES.md`) change only through JL.
-4. The one shared touch point in `runtime.html` is the `link/pane.js` script tag. Devin owns the file; JL's tag stays.
+4. The one shared touch point in `runtime.html` is the `link/runtime-link.js` script tag. Devin owns the file; JL's tag stays.
 5. Everyone pushes directly to `main` (decided 2026-10-29, JL). No lane branches and no merge gate. To keep `main` safe:
    - Commit only files in your own lane, in small commits, and push often.
    - Before each push, pull with `git pull --no-rebase` (a merge, never a rebase), run your lane's tests, and open the page you changed from `file://`. `main` must always open and run.

@@ -37,7 +37,7 @@ Then open `http://localhost:8765/runtime.html`.
 | `runtime.html?demo=vision` | Plays the 7-minute vision demo as soon as the page loads |
 | `runtime.html?demo=vision&loop=1` | The same, on a loop (for a stand) |
 | `allocate.html` | Instructor allocation: pick the crew and the envelope |
-| `host.html` | Runs allocated crews side by side and collects session records |
+| `host.html` | Runs the allocated crew and collects session records |
 | `report.html` | End-of-training report from a session record |
 
 ---
