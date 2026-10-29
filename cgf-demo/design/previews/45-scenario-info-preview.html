@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scenario Info Preview</title>
+<!-- Design preview (Eevee): scenario name, brief and force key on runtime.html, before and after.
+     Self-contained so it opens from file://. Token values copied from css/tokens.css. Static mock, not wired to the sim. -->
+<style>
+:root {
+  --surface-bg: #081421; --surface-panel: #0d1c30; --surface-raised: #12243c; --surface-sunken: #0a1828;
+  --border: #1e3653; --border-strong: #4a78a8;
+  --text: #e1eaf4; --text-strong: #f7fafd; --text-muted: #93abc6;
+  --ui-accent: #2f9dff; --ui-selected-bg: #0f2a4c;
+  --force-friend: #00a8dc; --force-friend-light: #80e0ff;
+  --force-hostile: #ff3031; --force-hostile-light: #ff8080;
+  --force-neutral: #00e200; --force-neutral-light: #aaffaa;
+  --source-ai: #b98fff; --source-ai-bg: #24183f;
+  /* scenario force colours, from scenarios/strait-transit.js */
+  --f-blue: #00a8dc; --f-red: #ff3031; --f-black: #b8bec6; --f-pirate: #ff9f1c; --f-white: #00e200;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--surface-bg); color: var(--text);
+  font: 13px/1.45 "Segoe UI", system-ui, Arial, sans-serif; padding: 20px 16px 40px; }
+h1 { font-size: 18px; margin: 0 0 4px; color: var(--text-strong); }
+.lede { color: var(--text-muted); margin: 0 0 18px; max-width: 900px; }
+.compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); gap: 20px; }
+.frame { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface-panel); }
+.frameHead { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border);
+  font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); }
+.frameHead b { color: var(--text-strong); letter-spacing: .04em; }
+.frameHead .grow { flex: 1; }
+.screen { display: grid; grid-template-columns: 1fr 250px; min-height: 470px; }
+@media (max-width: 640px) { .screen { grid-template-columns: 1fr; } }
+
+/* map */
+.map { position: relative; background: #06111d; overflow: hidden; min-height: 300px; }
+.map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.legend { position: absolute; left: 8px; bottom: 8px; background: rgba(10,20,32,.9); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 8px; font-size: 11px; }
+.legend div { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.legend .muted { color: var(--text-muted); }
+.sym { width: 9px; height: 9px; display: inline-block; border: 1.5px solid; flex: none; }
+.sym.circle { border-radius: 50%; }
+.sym.diamond { transform: rotate(45deg) scale(.8); }
+
+/* panel */
+.panel { padding: 10px 12px; border-left: 1px solid var(--border); min-width: 0; }
+.row { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; margin: 4px 0; }
+.btn { background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: 5px; padding: 3px 8px;
+  font-size: 12px; color: var(--text); }
+.btn.primary { background: var(--ui-accent); border-color: var(--ui-accent); color: #03101f; font-weight: 600; }
+.small { font-size: 11.5px; } .muted { color: var(--text-muted); }
+h2 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted);
+  margin: 12px 0 6px; border-bottom: 1px solid var(--border); padding-bottom: 3px; }
+.tabs { display: flex; gap: 2px; margin-top: 8px; border-bottom: 1px solid var(--border); }
+.tab { font-size: 11.5px; padding: 4px 7px; color: var(--text-muted); border-bottom: 2px solid transparent; }
+.tab.on { color: var(--text-strong); border-bottom-color: var(--ui-accent); }
+
+/* AFTER: scenario strip */
+.scn { background: var(--surface-raised); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; margin: 6px 0 2px; }
+.scnTop { display: flex; align-items: baseline; gap: 6px; }
+.scnName { font-size: 14px; font-weight: 600; color: var(--text-strong); }
+.scnMeta { font-size: 11px; color: var(--text-muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 600; letter-spacing: .04em;
+  padding: 1px 6px 1px 4px; border-radius: 3px; background: var(--surface-sunken); border: 1px solid var(--border); color: var(--text); }
+.chip i { width: 7px; height: 7px; border-radius: 1px; display: inline-block; }
+
+/* AFTER: structured mission */
+.mission { display: grid; grid-template-columns: auto 1fr; gap: 3px 8px; font-size: 12.5px; color: var(--text); }
+.mission dt { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); padding-top: 2px; }
+.mission dd { margin: 0; }
+.mission ul { margin: 0; padding-left: 14px; }
+
+/* AFTER: force rows (one pattern for legend, Setup, Instructor) */
+.forceRow { display: grid; grid-template-columns: 8px 34px 1fr auto; align-items: center; gap: 6px; padding: 3px 0;
+  border-bottom: 1px solid rgba(30,54,83,.6); font-size: 12px; }
+.forceRow:last-child { border-bottom: 0; }
+.forceRow i { width: 8px; height: 8px; border-radius: 1px; }
+.forceRow .tag { font-weight: 700; font-size: 10.5px; letter-spacing: .04em; }
+.forceRow .kind { font-size: 10.5px; color: var(--text-muted); }
+.harness { font-size: 10.5px; color: var(--source-ai); background: var(--source-ai-bg); border-radius: 3px; padding: 0 5px; }
+.instrOnly { display: none; }
+.view-instructor .instrOnly { display: initial; }
+.view-instructor .forceRow .instrOnly { display: block; grid-column: 3 / 5; }
+
+/* AFTER: pinned objective on the map + collapsible legend */
+.objPin { position: absolute; left: 8px; top: 8px; background: rgba(10,20,32,.92); border: 1px solid var(--border);
+  border-left: 3px solid var(--force-friend); border-radius: 6px; padding: 5px 9px; font-size: 11.5px; max-width: 75%; }
+.objPin b { color: var(--text-strong); }
+details.legend2 { position: absolute; left: 8px; bottom: 8px; background: rgba(10,20,32,.92); border: 1px solid var(--border);
+  border-radius: 6px; font-size: 11px; max-width: calc(100% - 16px); }
+details.legend2 summary { cursor: pointer; padding: 4px 8px; color: var(--text-muted); list-style: none; }
+details.legend2 summary::before { content: "▸ "; } details.legend2[open] summary::before { content: "▾ "; }
+.lgCols { display: flex; gap: 14px; padding: 0 8px 7px; flex-wrap: wrap; }
+.lgCols > div > div { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.lgHead { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-bottom: 2px; }
+.lgNote { padding: 0 8px 6px; color: var(--text-muted); font-size: 10.5px; }
+
+/* view switch + notes */
+.switch { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 5px; overflow: hidden; }
+.switch button { background: transparent; color: var(--text-muted); border: 0; padding: 3px 9px; font: inherit; font-size: 11px; cursor: pointer; }
+.switch button.on { background: var(--ui-selected-bg); color: var(--ui-accent); }
+.notes { margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }
+.note { background: var(--surface-panel); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+.note h3 { margin: 0 0 4px; font-size: 12.5px; color: var(--text-strong); }
+.note p { margin: 0; color: var(--text-muted); font-size: 12px; }
+.note .n { display: inline-block; min-width: 18px; color: var(--ui-accent); font-weight: 700; }
+.mark { outline: 1px dashed var(--source-ai); outline-offset: 2px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<h1>Scenario info on runtime.html: before and after</h1>
+<p class="lede">Strait transit, Trainee tab open. This is a static mock with no running sim. Use the switch on the right-hand frame to compare what the trainee sees with what the instructor sees. Dashed violet outlines on the left mark the problems; the numbers match the notes at the bottom.</p>
+
+<div class="compare">
+  <!-- BEFORE -->
+  <div class="frame">
+    <div class="frameHead"><b>Before</b><span class="grow">current build</span></div>
+    <div class="screen">
+      <div class="map">
+        <svg viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <polygon points="0,0 70,0 80,95 115,150 80,205 70,300 0,300" fill="#1a1414" stroke="#ff3031" stroke-opacity=".5"/>
+          <polygon points="215,145 230,150 233,135 220,130" fill="#1b1d20" stroke="#b8bec6" stroke-opacity=".6"/>
+          <polyline points="185,300 187,150 185,0" fill="none" stroke="#2a4a6a" stroke-dasharray="4 4"/>
+          <polyline points="200,0 198,150 200,300" fill="none" stroke="#2a4a6a" stroke-dasharray="4 4"/>
+          <circle cx="192" cy="255" r="5" fill="none" stroke="#00a8dc" stroke-width="2"/>
+          <path d="M140 140 l6 6 l-6 6 l-6 -6z" fill="none" stroke="#ff3031" stroke-width="1.5"/>
+          <path d="M240 210 l6 6 l-6 6 l-6 -6z" fill="none" stroke="#ff3031" stroke-width="1.5" stroke-dasharray="2 2"/>
+          <rect x="182" y="80" width="8" height="8" fill="none" stroke="#00e200" stroke-width="1.5"/>
+          <circle cx="192" cy="45" r="4" fill="#00a8dc" opacity=".5"/>
+        </svg>
+        <div class="legend mark" title="3, 4, 5">
+          <div class="muted">Identity</div>
+          <div><span class="sym circle" style="border-color:var(--force-friend)"></span>Friend</div>
+          <div><span class="sym diamond" style="border-color:var(--force-hostile)"></span>Hostile</div>
+          <div><span class="sym diamond" style="border-color:var(--force-hostile);border-style:dashed"></span>Suspect</div>
+          <div><span class="sym" style="border-color:var(--force-neutral)"></span>Neutral</div>
+          <div class="muted" style="margin-top:4px">Forces</div>
+          <div><b style="color:var(--f-blue);min-width:26px">BLU</b>Blue force (Singapore)</div>
+          <div><b style="color:var(--f-red);min-width:26px">RED</b>Red force <span class="muted">· Hostile state</span></div>
+          <div><b style="color:var(--f-black);min-width:26px">BLK</b>Black force <span class="muted">· Grey-zone</span></div>
+          <div><b style="color:var(--f-pirate);min-width:26px">PIR</b>Pirate group <span class="muted">· Raiders</span></div>
+          <div><b style="color:var(--f-white);min-width:26px">MER</b>Neutral shipping <span class="muted">· Civil traffic</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div style="font-weight:600;color:var(--text-strong)">CGF Maritime Trainer <span class="muted" style="font-weight:400">· offline demo</span></div>
+        <div class="row">
+          <span class="btn primary">Start</span><span class="btn">Restart</span><span class="btn">×60</span><span class="btn">Exercise</span>
+          <span class="muted small mark" title="1">Strait transit (Red, Black, pirates, neutral shipping)</span>
+        </div>
+        <div class="tabs"><span class="tab on">Trainee</span><span class="tab">Instructor</span><span class="tab">CGF log</span><span class="tab">Reasoning</span><span class="tab">Setup</span></div>
+        <h2>Mission</h2>
+        <div class="muted mark" title="2">BLUE-1 transits north to the exit point. Red force holds the western coast; Black force claims the reef to the east; a pirate group operates to the south-east. Keep the sea lanes open and avoid escalation.</div>
+        <h2>Contacts</h2>
+        <div class="muted small">…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AFTER -->
+  <div class="frame" id="after">
+    <div class="frameHead"><b>After</b><span class="grow">proposal</span>
+      <span class="switch" role="group" aria-label="Viewer">
+        <button type="button" class="on" data-view="trainee">Trainee view</button>
+        <button type="button" data-view="instructor">Instructor view</button>
+      </span>
+    </div>
+    <div class="screen view-trainee" id="afterScreen">
+      <div class="map">
+        <svg viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <polygon points="0,0 70,0 80,95 115,150 80,205 70,300 0,300" fill="#1a1414" stroke="#ff3031" stroke-opacity=".5"/>
+          <polygon points="215,145 230,150 233,135 220,130" fill="#1b1d20" stroke="#b8bec6" stroke-opacity=".6"/>
+          <polyline points="185,300 187,150 185,0" fill="none" stroke="#2a4a6a" stroke-dasharray="4 4"/>
+          <polyline points="200,0 198,150 200,300" fill="none" stroke="#2a4a6a" stroke-dasharray="4 4"/>
+          <circle cx="192" cy="255" r="5" fill="none" stroke="#00a8dc" stroke-width="2"/>
+          <path d="M140 140 l6 6 l-6 6 l-6 -6z" fill="none" stroke="#ff3031" stroke-width="1.5"/>
+          <path d="M240 210 l6 6 l-6 6 l-6 -6z" fill="none" stroke="#ff3031" stroke-width="1.5" stroke-dasharray="2 2"/>
+          <rect x="182" y="80" width="8" height="8" fill="none" stroke="#00e200" stroke-width="1.5"/>
+          <circle cx="192" cy="45" r="4" fill="#00a8dc" opacity=".5"/>
+        </svg>
+        <div class="objPin"><b>Objective</b> · Transit north to the Exit point</div>
+        <details class="legend2" open>
+          <summary>Map key</summary>
+          <div class="lgCols">
+            <div>
+              <div class="lgHead">Symbol = identity</div>
+              <div><span class="sym circle" style="border-color:var(--force-friend)"></span>Friend</div>
+              <div><span class="sym diamond" style="border-color:var(--force-hostile)"></span>Hostile</div>
+              <div><span class="sym diamond" style="border-color:var(--force-hostile);border-style:dashed"></span>Suspect</div>
+              <div><span class="sym" style="border-color:var(--force-neutral)"></span>Neutral</div>
+            </div>
+            <div>
+              <div class="lgHead">Tag and zone = force</div>
+              <div><i class="sym" style="background:var(--f-blue);border-color:var(--f-blue)"></i><b>BLU</b> Blue (you)</div>
+              <div><i class="sym" style="background:var(--f-red);border-color:var(--f-red)"></i><b>RED</b> Red force</div>
+              <div><i class="sym" style="background:var(--f-black);border-color:var(--f-black)"></i><b>BLK</b> Black force</div>
+              <div><i class="sym" style="background:var(--f-pirate);border-color:var(--f-pirate)"></i><b>PIR</b> Pirate group</div>
+              <div><i class="sym" style="background:var(--f-white);border-color:var(--f-white)"></i><b>MER</b> Merchant shipping</div>
+            </div>
+          </div>
+        </details>
+      </div>
+      <div class="panel">
+        <div style="font-weight:600;color:var(--text-strong)">CGF Maritime Trainer <span class="muted" style="font-weight:400">· offline demo</span></div>
+        <div class="scn">
+          <div class="scnTop"><span class="scnName">Strait transit</span><span class="scnMeta">Sea · Exercise</span></div>
+          <div class="chips">
+            <span class="chip"><i style="background:var(--f-red)"></i>RED</span>
+            <span class="chip"><i style="background:var(--f-black)"></i>BLK</span>
+            <span class="chip"><i style="background:var(--f-pirate)"></i>PIR</span>
+            <span class="chip"><i style="background:var(--f-white)"></i>MER</span>
+          </div>
+        </div>
+        <div class="row"><span class="btn primary">Start</span><span class="btn">Restart</span><span class="btn">×60</span><span class="btn">Exercise</span></div>
+        <div class="tabs"><span class="tab on">Trainee</span><span class="tab">Instructor</span><span class="tab">CGF log</span><span class="tab">Reasoning</span><span class="tab">Setup</span></div>
+        <h2>Mission</h2>
+        <dl class="mission">
+          <dt>Objective</dt><dd>BLUE-1 transits north to the Exit point.</dd>
+          <dt>Situation</dt><dd><ul>
+            <li>Red holds the western coast.</li>
+            <li>Black claims the reef to the east.</li>
+            <li>Pirates operate to the south-east.</li>
+            <li>Merchant ships use both sea lanes.</li></ul></dd>
+          <dt>Constraints</dt><dd>Keep the sea lanes open. Avoid escalation.</dd>
+        </dl>
+        <h2>Forces</h2>
+        <div>
+          <div class="forceRow"><i style="background:var(--f-blue)"></i><span class="tag" style="color:var(--f-blue)">BLU</span><span>Blue (you)</span><span class="kind">state</span></div>
+          <div class="forceRow"><i style="background:var(--f-red)"></i><span class="tag" style="color:var(--f-red)">RED</span><span>Red force</span><span class="kind">state</span>
+            <span class="instrOnly small muted">3 units · <span class="harness">Hostile state</span></span></div>
+          <div class="forceRow"><i style="background:var(--f-black)"></i><span class="tag" style="color:var(--f-black)">BLK</span><span>Black force</span><span class="kind">state</span>
+            <span class="instrOnly small muted">4 units · <span class="harness">Grey-zone</span></span></div>
+          <div class="forceRow"><i style="background:var(--f-pirate)"></i><span class="tag" style="color:var(--f-pirate)">PIR</span><span>Pirate group</span><span class="kind">non-state</span>
+            <span class="instrOnly small muted">2 units · <span class="harness">Raiders</span></span></div>
+          <div class="forceRow"><i style="background:var(--f-white)"></i><span class="tag" style="color:var(--f-white)">MER</span><span>Merchant shipping</span><span class="kind">civil</span>
+            <span class="instrOnly small muted">5 units · <span class="harness">Civil traffic</span></span></div>
+        </div>
+        <div class="small muted instrOnly" style="margin-top:6px">Instructor only: the trainee never sees the behaviour labels.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="notes">
+  <div class="note"><h3><span class="n">1</span>Scenario name</h3><p>Before: the full name sat at the end of the control row in small grey text, and wrapped. After: a short name with domain and mode on its own line at the top of the panel, and the force list moved into colour chips.</p></div>
+  <div class="note"><h3><span class="n">2</span>Mission brief</h3><p>Before: one grey paragraph. After: Objective / Situation / Constraints, in normal text colour. The objective is also pinned on the map, so it stays visible on every tab.</p></div>
+  <div class="note"><h3><span class="n">3</span>Behaviour labels hidden from the trainee</h3><p>The map key no longer shows "Hostile state", "Grey-zone" and so on. They appear only in the instructor view, in the AI violet, so they read as AI behaviour settings.</p></div>
+  <div class="note"><h3><span class="n">4</span>Two keys, clearly labelled</h3><p>"Symbol = identity" and "Tag and zone = force" sit side by side, so red diamonds (hostile) aren't confused with the Red force itself.</p></div>
+  <div class="note"><h3><span class="n">5</span>Collapsible key, one force row</h3><p>The map key can be collapsed so it stops covering the map. The same force row is used in the legend, the Trainee tab, Setup and Instructor; only the instructor version adds unit count and behaviour.</p></div>
+  <div class="note"><h3><span class="n">!</span>Colour to check</h3><p>The pirate orange (#ff9f1c) is close to the status caution orange (#ffa94d) used for malfunction tags. Suggest moving pirates further from it, or leaving the caution colour only on panel chrome.</p></div>
+</div>
+
+<script>
+  document.querySelectorAll('.switch button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.switch button').forEach(x => x.classList.toggle('on', x === b));
+    const s = document.getElementById('afterScreen');
+    s.classList.toggle('view-instructor', b.dataset.view === 'instructor');
+    s.classList.toggle('view-trainee', b.dataset.view === 'trainee');
+  }));
+</script>
+</body>
+</html>
