@@ -7,7 +7,7 @@
 **Status (2026-10-29): phase 1 built and pushed to `main`** (commits `09873ef` and `999dcc1`), separated from the runtime so JL and Devin can work at the same time. The sections below are the original plan; this block says what was built.
 
 - **Built**: `host.html` (two panes, Start, Pause and Restart both), `link/host.js`, `link/host.css`, `link/runtime-link.js` (the adapter that runs inside the runtime), `contracts/link.js` (the message contract), `tests/link.html`, `link/README.md` (ownership, the runtime API the link depends on, protocol, how to test). `allocate.html`'s "Start run" now saves the allocation and opens `host.html`.
-- **The one shared touch point** is one tag in `runtime.html`: `<script src="link/runtime-link.js"></script>`, committed on its own (`999dcc1`) so it can be seen or reverted. It does nothing unless the page is a `?pane=` iframe. **JL needs to tell Devin about it.**
+- **The one shared touch point** is one tag in `runtime.html`: `<script src="link/runtime-link.js"></script>`, committed on its own (`999dcc1`) so it can be seen or reverted. It does nothing unless the page is a `?linked=1` iframe. **JL needs to tell Devin about it.**
 - **Checked**: `tests/link.html` passes 27 of 27 in Chrome. It loads the real `runtime.html` in an iframe and walks hello, init, ready, start, pause and restart, plus bad inputs and a runtime opened on its own (it sends nothing). I also drove the whole flow in Chrome: pick six trainees on the allocation page, press Start run, and both panes loaded, ran to about 7:44 of sim time in 8 s, paused, and restarted to 0:00. Not run in Edge.
 - **What a pane does with its trainee today**: loads the scenario, shows an overlay with the platform and its crew, and reports status. Because the runtime has no scripted trainee agent and no tailoring yet, **the two panes still play identically** until those exist (R3 and R4).
 - **Not applied on purpose**: the allocation's envelope. Its default values (aggression 0.4, sensitivity 0.5, reaction 8 s) are on a different scale from the runtime's own (1, 1 and 30 s); applying them would cut tension build-up to about a fifth and runs might never escalate. The pane records the envelope on `CGF.sim.link.envelope` only. **Open for the Lead**: re-base the envelope fixture, or map it relative to the runtime defaults.
@@ -41,8 +41,8 @@ sequenceDiagram
     participant AL as allocate.html (built)
     participant ST as localStorage cgf.allocation
     participant H as host.html (new)
-    participant PA as Pane A, index.html?pane=A
-    participant PB as Pane B, index.html?pane=B
+    participant PA as Pane A, index.html?linked=1
+    participant PB as Pane B, index.html?linked=1
 
     I->>AL: Pick trainee A and B, scenario, seed, mode
     AL->>AL: buildRunConfigs, validate against section 3
@@ -104,7 +104,7 @@ flowchart TD
 | Phase | ID | Task | Lane | Acceptance |
 |---|---|---|---|---|
 | 1. The link | R1 | `host.html`: two iframes of `index.html`, reads `cgf.allocation` (or `?alloc=`), validates, sends `init` to each pane, Start and Pause for both | Lead | Two panes load the same scenario; trainee ids show in each pane's header |
-| 1 | R2 | `link/runtime-link.js`: pane side of the messages. On `init`: load the scenario, store the config on `CGF.sim`, put the envelope bases into `CGF.params`, show the trainee id and seed, tag the CGF log. Needs one `<script>` tag in `index.html`; it does nothing unless the page has `?pane=` | Console | Opened on its own, `index.html` behaves exactly as before |
+| 1 | R2 | `link/runtime-link.js`: pane side of the messages. On `init`: load the scenario, store the config on `CGF.sim`, put the envelope bases into `CGF.params`, show the trainee id and seed, tag the CGF log. Needs one `<script>` tag in `index.html`; it does nothing unless the page has `?linked=1` | Console | Opened on its own, `index.html` behaves exactly as before |
 | 1 | R3 | `js/adapt/tailor.js`: weakest competency with enough evidence, mapped to setting nudges, clamped to the envelope, applied to the pane's harness weights. A stub that Engine's E4 replaces | Engine | Panes A and B start with different CGF settings, and the log says why |
 | 2. Real trainees | R4 | Scripted agents `trainees/strong.js` and `trainees/weak_hail_discipline.js` (Sim S3) so each pane runs unattended and the weakness shows in behaviour | Sim | The weak agent ignores hails far more often than the strong one |
 | 3. Close the loop | R5 | End of run: update each profile in `localStorage`; the allocation page reads saved profiles over the fixtures | Engine, Console | Bars on the allocation page move after a run |
