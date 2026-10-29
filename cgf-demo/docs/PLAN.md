@@ -70,7 +70,7 @@ Why: most training is crew based, and a crew with empty seats can't be run. This
 
 ## 4. Collaboration setup
 
-Git on GitHub (`buttception/T-S_Hackathon26`). Each lane works on its own branch and merges to `main` through the Lead. `main` always opens and runs.
+Git on GitHub (`buttception/T-S_Hackathon26`). Everyone pushes directly to `main` (since 2026-10-29), with no lane branches and no merge gate. Safety comes from lane file ownership, small commits, `git pull --no-rebase` and lane tests before each push, and no force-push (rules in `docs/LANES.md`). `main` always opens and runs.
 
 Two Claude Code sessions are used to limit context growth:
 - **Lead session**: this vault. Holds decisions, contracts, plan docs, the Resume block.
@@ -210,7 +210,7 @@ Design delivers specs and mockups only. It never edits simulation, engine or oth
 | L3 | Report generator: code computes every figure; the LLM only phrases them; a validator rejects any narrative containing a number absent from the facts | 2, priority 3 | Report passes the validator on both demo trainees |
 | L4 | Demo scenario, seeds, five back-to-back runs, fallback video | 3 | G3 |
 | L5 | Savings model, deck, Q&A prep (deck uses Design's D5 theme) | 2 to 4 | Rehearsed twice under 5 minutes |
-| L6 | Merge gatekeeping at each gate | All | `main` always runs |
+| L6 | Gate checks: at each gate JL pulls `main`, runs all tests and the demo from `file://`, and reports what is broken and whose lane it is (no merge gate; everyone pushes to `main`) | All | `main` always runs |
 
 ## 8. Demo script (5 minutes)
 
@@ -244,7 +244,7 @@ Keep the fallback video one click away for every beat. The repo's captioned demo
 | Risk | Mitigation |
 |---|---|
 | Lanes do not integrate late in the event | Stubs at G0; the runner exercises the full loop from the first hour |
-| Edits collide with the existing repo code | Lane ownership by file (`docs/LANES.md`); each person on their own branch; JL merges |
+| Edits collide with the existing repo code, or a bad push breaks `main` | Lane ownership by file (`docs/LANES.md`); everyone pushes to `main`; pull-merge-test before each push; no force-push |
 | Devin's lane gates the others (events, session record) | He delivers the session record (D5) early; Glenda and JL build against a fixture session record until then |
 | Report and competency update depend on each other | The order is fixed: report, then competency update, then `History.attachAssessment` (INTERFACES §9.1) |
 | The lane rules never reach teammates' Claude sessions | Copy `CLAUDE.md` and `docs/` into the repo at Phase 0 (not done yet) |

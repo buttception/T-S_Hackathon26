@@ -138,4 +138,9 @@ Tasks:
 2. A new file belongs to the lane that creates it, and sits in that lane's folder or uses its prefix.
 3. Contracts (`contracts/`, `docs/INTERFACES.md`) change only through JL.
 4. The one shared touch point in `runtime.html` is the `link/pane.js` script tag. Devin owns the file; JL's tag stays.
-5. Work on your own branch (`jl/...`, `devin/...`, `glenda/...`, `eevee/...`) and merge to `main` through JL. `main` must always open and run.
+5. Everyone pushes directly to `main` (decided 2026-10-29, JL). No lane branches and no merge gate. To keep `main` safe:
+   - Commit only files in your own lane, in small commits, and push often.
+   - Before each push, pull with `git pull --no-rebase` (a merge, never a rebase), run your lane's tests, and open the page you changed from `file://`. `main` must always open and run.
+   - Never force-push, never rebase or reset commits that are already pushed, and never push with `--force` to "fix" a rejected push: pull, merge, push again. A force-push on 2026-10-29 dropped three commits from `main`.
+   - If the pull brings a conflict in another lane's file, keep their version and tell them; do not resolve it for them.
+   - Contracts (`contracts/`, `docs/INTERFACES.md`) still change only through JL.
