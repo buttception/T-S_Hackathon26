@@ -16,14 +16,18 @@
 #roster td { padding: 5px 8px; border-top: 1px solid var(--line); white-space: nowrap; }
 #roster tbody tr { cursor: pointer; }
 #roster tbody tr:hover { background: var(--panel2); }
-#roster tbody tr.taken { background: #12263d; }
+#roster tbody tr.taken { background: var(--ui-selected-bg); }
 #roster td.id { font-family: Consolas, monospace; }
 #roster td.num { text-align: right; width: 70px; }
 .slotTag { display: inline-block; min-width: 18px; text-align: center; margin-right: 6px; border-radius: 3px;
-  background: var(--accent); color: #04121f; font-weight: 700; font-size: 11px; }
+  background: var(--accent); color: var(--text-on-accent); font-weight: 700; font-size: 11px; }
 
-.bar { display: inline-block; vertical-align: middle; width: 70px; height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
-.bar i { display: block; height: 100%; }
+.bar { display: inline-block; vertical-align: middle; width: 70px; height: 8px; background: var(--data-track); border-radius: 4px; overflow: hidden; }
+/* Competency bars use one neutral data colour, so a low score never reads as hostile or as failure.
+   !important overrides the red/amber/green that js/ui-allocate.js sets inline (barColor); drop it once
+   that inline colour is removed (design/requests.md R1). */
+.bar i { display: block; height: 100%; background: var(--data-fill) !important; }
+.mini b[style*="#"] { background: var(--data-fill) !important; }
 .bar.thin { opacity: .45; }
 .bar.prior { opacity: .25; }
 .val { display: inline-block; vertical-align: middle; margin-left: 6px; width: 32px; font-family: Consolas, monospace; font-size: 12px; }
@@ -48,7 +52,8 @@
 .field input[type=number], .field input[type=text] { background: var(--panel); color: var(--text); border: 1px solid var(--line);
   border-radius: 5px; padding: 5px 9px; font: inherit; }
 .field .row { margin: 0; flex-wrap: nowrap; }
-.err { color: #ff9a9a; font-size: 12px; min-height: 0; margin: 0 0 2px 128px; }
+.err { color: var(--status-critical-text); font-size: 12px; min-height: 0; margin: 0 0 2px 128px; }
+.err::before { content: "\2715\00a0"; color: var(--status-critical); }
 .err:empty { display: none; }
 .seat .err { margin-left: 0; }
 
