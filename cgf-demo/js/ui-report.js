@@ -86,7 +86,7 @@
       return last ? { sessions: [last.session_id], records: {} } : { error: `No history for ${qs.get('trainee')}.` };
     }
     const latest = [...new Set(H.trainees().map(t => (H.list(t).slice(-1)[0] || {}).session_id).filter(Boolean))].sort().reverse();
-    return { sessions: latest.slice(0, 2).reverse(), records: {} };   // the G1 pair: pane A first
+    return { sessions: latest.slice(0, 2).reverse(), records: {} };   // the G1 pair: older first
   }
 
   function entriesFor(sid, rec) {
@@ -221,7 +221,7 @@
     const entries = entriesFor(sid, rec);
     if (!entries.length) return `<section class="rp-session"><h2>${esc(sessionTitle(sid))}</h2><p>No report found for this session (${esc(sid)}).</p></section>`;
     const e0 = entries[0];
-    const meta = [rec && rec.pane ? `Pane ${rec.pane}` : null, sid, titleCase(e0.scenario), e0.mode, rec ? `seed ${rec.seed}` : null,
+    const meta = [sid, titleCase(e0.scenario), e0.mode, rec ? `seed ${rec.seed}` : null,
       rec ? dur(rec.duration_s) : null, rec ? `${titleCase(rec.platform)} crew of ${rec.crew.length}${R.partnersOf(rec).length ? ` (${R.partnersOf(rec).length} AI partner${R.partnersOf(rec).length === 1 ? '' : 's'})` : ''}` : null].filter(Boolean).join(' · ');
     return `<section class="rp-session">
       <h2>${esc(sessionTitle(sid))} <span class="rp-outcome ${outcomeCls(e0.outcome)}">${e0.outcome === 'success' ? '✓ Completed' : '✗ Failed'}</span></h2>

@@ -1,4 +1,4 @@
-// Scripted trainee crews (Sim task S3). Each seat of the pane's crew is driven by an agent profile file
+// Scripted trainee crews (Sim task S3). Each seat of the platform's crew is driven by an agent profile file
 // (trainees/*.js, the path given in the scenario config's crew[].agent_profile). The seat that owns a competency
 // (CGF.simEvents.seatFor) makes the decisions that competency is about:
 //   hail_discipline        answer warnings (H) or let them go unanswered

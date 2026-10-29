@@ -41,15 +41,15 @@
   // A ready selection: warship, one crew of three
   const sel = () => ({
     platform: { type: 'warship', model: 'formidable' },
-    crews: { A: { weapons: 'trainee_a', sensors: 'trainee_c01', navigation: 'trainee_c02' } },
-    agents: { A: { weapons: 'trainees/strong.js', sensors: 'trainees/strong.js', navigation: 'trainees/strong.js' } },
+    crew: { weapons: 'trainee_a', sensors: 'trainee_c01', navigation: 'trainee_c02' },
+    agents: { weapons: 'trainees/strong.js', sensors: 'trainees/strong.js', navigation: 'trainees/strong.js' },
     opts: clone(A.DEFAULTS)
   });
   // The same for any platform type, filled from the roster in order
   function filled(type, model) {
     const s = A.withPlatform(sel(), { type, model }, ids, domainOf), pool = F.profiles.map(p => p.trainee_id);
     let n = 0;
-    for (const c of A.SLOTS) for (const seat of A.seatsOf(type)) { s.crews[c][seat] = pool[n++]; s.agents[c][seat] = 'trainees/strong.js'; }
+    for (const seat of A.seatsOf(type)) { s.crew[seat] = pool[n++]; s.agents[seat] = 'trainees/strong.js'; }
     return s;
   }
 
@@ -127,12 +127,11 @@
   });
 
   // ---- the allocation (INTERFACES §3.1)
-  test('builds a valid allocation with one crew in slot A', () => {
+  test('builds a valid allocation with the crew held directly', () => {
     const a = build(sel());
     eq(C.validateAllocation(a, ctx), []);
-    eq(a.slots.map(s => s.pane), ['A']);
-    eq(a.slots.map(s => s.crew[0].trainee_id), ['trainee_a']);
-    eq(Object.keys(a), ['allocation_id', 'created_at_session', 'shared', 'slots']);
+    eq(a.crew.map(m => m.trainee_id), ['trainee_a', 'trainee_c01', 'trainee_c02']);
+    eq(Object.keys(a), ['allocation_id', 'created_at_session', 'shared', 'crew']);
     eq(a.created_at_session, null);
   });
   test('the allocation id is a valid id and follows the seed and platform', () => {
@@ -140,32 +139,30 @@
     eq(build(s).allocation_id, 'alloc_99_warship');
   });
   test('expandAllocation gives one valid scenario config', () => {
-    const c = cfgs(sel());
-    eq(c.length, 1);
-    c.forEach((x, i) => eq(C.validateScenarioConfig(x, ctx), [], 'config ' + i));
+    eq(C.validateScenarioConfig(cfgs(sel()), ctx), []);
   });
   test('the derived config carries the run settings and the crew, with the allocation id as scenario_id', () => {
-    const [a] = cfgs(sel()), al = build(sel());
-    eq(a.scenario_id, 'alloc_1234_warship_A');
+    const a = cfgs(sel()), al = build(sel());
+    eq(a.scenario_id, 'alloc_1234_warship');
     for (const k of ['scenario', 'platform', 'seed', 'mode', 'duration_s', 'eval_interval_s', 'envelope']) eq(a[k], al.shared[k], k);
-    eq(a.crew, al.slots[0].crew);
+    eq(a.crew, al.crew);
   });
   test('each seat keeps its own agent profile', () => {
-    const s = sel(); s.agents.A.navigation = 'trainees/weak_hail_discipline.js';
-    const [a] = cfgs(s);
+    const s = sel(); s.agents.navigation = 'trainees/weak_hail_discipline.js';
+    const a = cfgs(s);
     eq(a.crew.map(m => m.agent_profile), ['trainees/strong.js', 'trainees/strong.js', 'trainees/weak_hail_discipline.js']);
   });
   test('expanding does not share references with the allocation', () => {
-    const a = build(sel()), [c] = C.expandAllocation(a), max = F.envelopeDefault.aggression.max;
+    const a = build(sel()), c = C.expandAllocation(a), max = F.envelopeDefault.aggression.max;
     c.envelope.aggression.max = 0.5; c.crew[0].trainee_id = 'x'; c.platform.type = 'tank';
-    eq(a.shared.envelope.aggression.max, max); eq(a.slots[0].crew[0].trainee_id, 'trainee_a'); eq(a.shared.platform.type, 'warship');
+    eq(a.shared.envelope.aggression.max, max); eq(a.crew[0].trainee_id, 'trainee_a'); eq(a.shared.platform.type, 'warship');
   });
   test('config envelopes are copies of the fixture', () => {
     const before = F.envelopeDefault.aggression.max, a = build(sel()); a.shared.envelope.aggression.max = 0.5;
     eq(F.envelopeDefault.aggression.max, before);
   });
   test('breaking a derived config field makes validation fail', () => {
-    const [c] = cfgs(sel());
+    const c = cfgs(sel());
     const bad = mut => { const x = clone(c); mut(x); return C.validateScenarioConfig(x).length > 0; };
     ok(bad(x => { x.mode = 'easy'; }), 'mode');
     ok(bad(x => { x.seed = 1.5; }), 'seed');
@@ -180,22 +177,20 @@
     ok(bad(x => { x.extra = 1; }), 'extra field');
     ok(bad(x => { x.allocation_id = 'Bad Id'; }), 'id');
     ok(bad(x => { x.created_at_session = 5; }), 'created_at_session');
-    ok(bad(x => { x.slots.pop(); }), 'no slot');
-    ok(bad(x => { x.slots.push(clone(x.slots[0])); }), 'two slots');
-    ok(bad(x => { x.slots[0].pane = 'B'; }), 'pane B');
-    ok(bad(x => { x.slots[0].extra = 1; }), 'slot extra field');
+    ok(bad(x => { x.slots = [{ crew: x.crew }]; }), 'the old slots field');
+    ok(bad(x => { delete x.crew; }), 'no crew');
     ok(bad(x => { delete x.shared.seed; }), 'missing shared seed');
     ok(bad(x => { x.shared.extra = 1; }), 'shared extra field');
     ok(bad(x => { x.shared.seed = -1; }), 'shared seed');
     ok(bad(x => { x.shared = null; }), 'shared null');
-    ok(bad(x => { x.slots = null; }), 'slots null');
+    ok(bad(x => { x.crew = null; }), 'crew null');
   });
   test('the same selection builds byte-identical allocations', () => {
     eq(JSON.stringify(build(sel())), JSON.stringify(build(sel())));
   });
   test('selectionFrom restores what buildAllocation built', () => {
     const s = sel(); s.opts.seed = 99; s.opts.mode = 'fixed';
-    eq(A.selectionFrom(build(s), ctx), { platform: s.platform, crews: s.crews, agents: s.agents, partners: { A: {} }, opts: s.opts });   // no partner seats: an empty partners map
+    eq(A.selectionFrom(build(s), ctx), { platform: s.platform, crew: s.crew, agents: s.agents, partners: {}, opts: s.opts });   // no partner seats: an empty partners map
   });
 
   // ---- AI partner seats on the allocation page (INTERFACES §3.2)
@@ -203,52 +198,52 @@
     basis: { source: 'profile', sessions: 0, by_competency: { hail_discipline: 'profile' } } });
   const buildP = s => A.buildAllocation(s, F.envelopeDefault, stubParams);
   test('a partner seat is set, cleared, and replaced by seating a trainee', () => {
-    const s = A.setPartner(sel(), 'A', 'weapons', 'trainee_b');
-    eq([A.roleOf(s, 'A', 'weapons'), A.derivedOf(s, 'A', 'weapons'), s.crews.A.weapons, s.agents.A.weapons], ['partner', 'trainee_b', null, '']);
-    eq(A.roleOf(sel(), 'A', 'weapons'), 'trainee', 'a selection without partners has only trainee seats');
-    eq(A.roleOf(A.clearPartner(s, 'A', 'weapons'), 'A', 'weapons'), 'trainee');
-    const back = A.seatTrainee(s, 'A', 'weapons', 'trainee_c05', 'trainees/strong.js');
-    eq([A.roleOf(back, 'A', 'weapons'), back.crews.A.weapons], ['trainee', 'trainee_c05']);
+    const s = A.setPartner(sel(), 'weapons', 'trainee_b');
+    eq([A.roleOf(s, 'weapons'), A.derivedOf(s, 'weapons'), s.crew.weapons, s.agents.weapons], ['partner', 'trainee_b', null, '']);
+    eq(A.roleOf(sel(), 'weapons'), 'trainee', 'a selection without partners has only trainee seats');
+    eq(A.roleOf(A.clearPartner(s, 'weapons'), 'weapons'), 'trainee');
+    const back = A.seatTrainee(s, 'weapons', 'trainee_c05', 'trainees/strong.js');
+    eq([A.roleOf(back, 'weapons'), back.crew.weapons], ['trainee', 'trainee_c05']);
   });
   test('a partner seat counts as filled only once it knows whose runs it copies, and nextEmptySeat respects that', () => {
-    const open = A.setPartner(sel(), 'A', 'weapons', '');
-    eq(A.seatFilled(open, 'A', 'weapons'), false);
-    eq(A.seatFilled(A.setPartner(sel(), 'A', 'weapons', 'trainee_b'), 'A', 'weapons'), true);
-    eq(A.nextEmptySeat(open, { crew: 'A', seat: 'navigation' }), { crew: 'A', seat: 'weapons' });
+    const open = A.setPartner(sel(), 'weapons', '');
+    eq(A.seatFilled(open, 'weapons'), false);
+    eq(A.seatFilled(A.setPartner(sel(), 'weapons', 'trainee_b'), 'weapons'), true);
+    eq(A.nextEmptySeat(open, { seat: 'navigation' }), { seat: 'weapons' });
   });
   test('checkSelection: a partner needs a source, and at least one seat must be a trainee', () => {
-    ok('seat_A_weapons' in A.checkSelection(A.setPartner(sel(), 'A', 'weapons', ''), ctx), 'no source');
-    eq(A.checkSelection(A.setPartner(sel(), 'A', 'weapons', 'trainee_b'), ctx), {}, 'a partner with a source is ready');
-    let all = sel(); for (const seat of ['weapons', 'sensors', 'navigation']) all = A.setPartner(all, 'A', seat, 'trainee_b');
-    ok('crew_A' in A.checkSelection(all, ctx), 'all partners');
+    ok('seat_weapons' in A.checkSelection(A.setPartner(sel(), 'weapons', ''), ctx), 'no source');
+    eq(A.checkSelection(A.setPartner(sel(), 'weapons', 'trainee_b'), ctx), {}, 'a partner with a source is ready');
+    let all = sel(); for (const seat of ['weapons', 'sensors', 'navigation']) all = A.setPartner(all, seat, 'trainee_b');
+    ok('crew' in A.checkSelection(all, ctx), 'all partners');
   });
   test('a partner seat does not count as the same trainee twice, and may copy a trainee who is also in the crew', () => {
-    const s = A.setPartner(sel(), 'A', 'weapons', 'trainee_c01');   // trainee_c01 is in the sensors seat
+    const s = A.setPartner(sel(), 'weapons', 'trainee_c01');   // trainee_c01 is in the sensors seat
     eq(A.checkSelection(s, ctx), {});
   });
   test('buildAllocation turns a partner seat into a valid partner crew entry, and the allocation validates', () => {
-    const a = buildP(A.setPartner(sel(), 'A', 'weapons', 'trainee_b')), m = a.slots[0].crew[0];
+    const a = buildP(A.setPartner(sel(), 'weapons', 'trainee_b')), m = a.crew[0];
     eq(m, { seat: 'weapons', trainee_id: 'partner_weapons', role: 'partner', derived_from: { trainee_id: 'trainee_b' }, agent_params: stubParams() });
     eq(C.validateAllocation(a, { scenarios: ids, domainOf }), []);
-    eq(a.slots[0].crew[1].agent_profile, 'trainees/strong.js', 'trainee seats are unchanged');
+    eq(a.crew[1].agent_profile, 'trainees/strong.js', 'trainee seats are unchanged');
   });
   test('buildAllocation without a partner needs no parameter function, and with one but none available says so', () => {
     eq(C.validateAllocation(A.buildAllocation(sel(), F.envelopeDefault), { scenarios: ids, domainOf }), []);
-    let msg = ''; try { A.buildAllocation(A.setPartner(sel(), 'A', 'weapons', 'trainee_b'), F.envelopeDefault); } catch (e) { msg = e.message; }
+    let msg = ''; try { A.buildAllocation(A.setPartner(sel(), 'weapons', 'trainee_b'), F.envelopeDefault); } catch (e) { msg = e.message; }
     ok(/Assess\.partnerParams/.test(msg), msg);
   });
   test('selectionFrom restores a partner seat from a saved allocation', () => {
-    const s = A.setPartner(sel(), 'A', 'sensors', 'trainee_b');
+    const s = A.setPartner(sel(), 'sensors', 'trainee_b');
     const back = A.selectionFrom(buildP(s), ctx);
-    eq([A.roleOf(back, 'A', 'sensors'), A.derivedOf(back, 'A', 'sensors'), back.crews.A.sensors], ['partner', 'trainee_b', null]);
-    eq(back.crews.A.weapons, 'trainee_a');
+    eq([A.roleOf(back, 'sensors'), A.derivedOf(back, 'sensors'), back.crew.sensors], ['partner', 'trainee_b', null]);
+    eq(back.crew.weapons, 'trainee_a');
   });
   test('changing the platform keeps a partner seat whose seat id exists on the new platform', () => {
-    const s = A.setPartner(sel(), 'A', 'weapons', 'trainee_b');
+    const s = A.setPartner(sel(), 'weapons', 'trainee_b');
     const same = A.withPlatform(s, { type: 'warship', model: 'lcs-independence' }, ids, domainOf);
-    eq(A.derivedOf(same, 'A', 'weapons'), 'trainee_b');
+    eq(A.derivedOf(same, 'weapons'), 'trainee_b');
     const other = A.withPlatform(s, { type: 'tank', model: 'leopard2sg' }, ids, domainOf);
-    eq(Object.keys(other.partners.A), [], 'tank seats do not include weapons');
+    eq(Object.keys(other.partners), [], 'tank seats do not include weapons');
   });
   test('the runtime plays AI partners (D8), so Start is not held back for them (PARTNERS_RUN)', () => {
     eq(typeof A.PARTNERS_RUN, 'boolean');
@@ -261,12 +256,18 @@
     ok(/from 2 saved sessions/.test(A.describePartner({ rates: {}, basis: { source: 'history', sessions: 2 } }, 'X')));
     ok(/defaults \(no data on them yet\)/.test(A.describePartner({ rates: {}, basis: { source: 'default', sessions: 0 } }, 'X')));
   });
+  test('selectionFrom still reads an allocation saved in the old slots shape (read-only shim)', () => {
+    const s = sel(), a = build(s), old = clone(a); old.slots = [{ pane: 'A', crew: old.crew }]; delete old.crew;
+    ok(C.validateAllocation(old, ctx).length > 0, 'the validator stays strict');
+    eq(A.selectionFrom(old, ctx), A.selectionFrom(a, ctx));
+    eq(old.slots.length, 1, 'the saved object is not changed');
+  });
   test('selectionFrom returns null for bad input, including the older formats', () => {
     eq(A.selectionFrom(null, ctx), null); eq(A.selectionFrom('x', ctx), null); eq(A.selectionFrom([], ctx), null);
     eq(A.selectionFrom({}, ctx), null); eq(A.selectionFrom([{}, {}], ctx), null); eq(A.selectionFrom([null, undefined], ctx), null);
-    const older = cfgs(sel());                       // the earlier format: an array of per-pane configs
+    const older = [cfgs(sel())];                     // the earlier format: an array of configs
     eq(A.selectionFrom(older, ctx), null);
-    const oldest = older.map(c => { const o = clone(c); delete o.platform; delete o.crew;   // one trainee per pane
+    const oldest = older.map(c => { const o = clone(c); delete o.platform; delete o.crew;   // one trainee per config
       o.trainee = { trainee_id: 'trainee_a', agent_profile: 'trainees/strong.js' }; return o; });
     eq(A.selectionFrom(oldest, ctx), null);
   });
@@ -281,21 +282,21 @@
     for (const m of F.platformModels) {
       const s = filled(m.type, m.id), a = build(s);
       eq(A.checkSelection(s, ctx), {}, m.id);
-      a.slots.forEach(slot => eq(slot.crew.length, A.seatsOf(m.type).length, m.id));
+      eq(a.crew.length, A.seatsOf(m.type).length, m.id);
       eq(C.validateAllocation(a, ctx), [], m.id);
     }
   });
   test('a crew with the wrong number of seats is rejected', () => {
     const a = build(filled('tank', 'leopard2sg'));
-    a.slots[0].crew.push({ seat: 'gunner', trainee_id: 'trainee_c09', agent_profile: 'x' });
+    a.crew.push({ seat: 'gunner', trainee_id: 'trainee_c09', agent_profile: 'x' });
     ok(C.validateAllocation(a, ctx).length > 0, 'tank with 3');
-    const b = build(filled('tank', 'leopard2sg')); b.slots[0].crew.pop();
+    const b = build(filled('tank', 'leopard2sg')); b.crew.pop();
     ok(C.validateAllocation(b, ctx).length > 0, 'tank with 1');
   });
   test('seat ids must match the platform type and order', () => {
-    const a = build(sel()); a.slots[0].crew[0].seat = 'pilot';
+    const a = build(sel()); a.crew[0].seat = 'pilot';
     ok(C.validateAllocation(a, ctx).length > 0, 'pilot on a warship');
-    const b = build(sel()); [b.slots[0].crew[0], b.slots[0].crew[1]] = [b.slots[0].crew[1], b.slots[0].crew[0]];
+    const b = build(sel()); [b.crew[0], b.crew[1]] = [b.crew[1], b.crew[0]];
     ok(C.validateAllocation(b, ctx).length > 0, 'order');
   });
   test('an unknown platform type is rejected', () => {
@@ -303,7 +304,7 @@
     ok(C.validateAllocation(a, ctx).length > 0);
   });
   test('the same trainee in two seats of one crew is rejected', () => {
-    const a = build(sel()); a.slots[0].crew[1].trainee_id = a.slots[0].crew[0].trainee_id;
+    const a = build(sel()); a.crew[1].trainee_id = a.crew[0].trainee_id;
     ok(C.validateAllocation(a, ctx).length > 0);
   });
 
@@ -328,20 +329,20 @@
   });
 
   // ---- switching platform with crews partly filled
-  test('another model of the same type keeps the crews', () => {
+  test('another model of the same type keeps the crew', () => {
     const s = A.withPlatform(sel(), { type: 'warship', model: 'lcs-independence' }, ids, domainOf);
-    eq(s.crews, sel().crews); eq(s.agents, sel().agents); eq(s.platform.model, 'lcs-independence');
+    eq(s.crew, sel().crew); eq(s.agents, sel().agents); eq(s.platform.model, 'lcs-independence');
   });
   test('another platform type clears the seats that no longer exist', () => {
     const s = A.withPlatform(sel(), { type: 'tank', model: 'leopard2sg' }, ids, domainOf);
-    eq(s.crews, { A: { commander: null, driver: null } });
-    eq(s.agents, { A: { commander: '', driver: '' } });
+    eq(s.crew, { commander: null, driver: null });
+    eq(s.agents, { commander: '', driver: '' });
   });
   test('seat ids that exist in both platforms are carried over', () => {
     const base = A.withPlatform(sel(), { type: 'tank', model: 'leopard2sg' }, ids, domainOf);
-    base.crews.A.driver = 'trainee_a'; base.agents.A.driver = 'trainees/strong.js';
+    base.crew.driver = 'trainee_a'; base.agents.driver = 'trainees/strong.js';
     const again = A.withPlatform(base, { type: 'tank', model: 'm1a2sepv3' }, ids, domainOf);
-    eq(again.crews.A.driver, 'trainee_a'); eq(again.agents.A.driver, 'trainees/strong.js');
+    eq(again.crew.driver, 'trainee_a'); eq(again.agents.driver, 'trainees/strong.js');
   });
   test('changing the platform type moves the scenario to a matching domain', () => {
     const s = A.withPlatform(sel(), { type: 'fighter', model: 'f15e' }, ids, domainOf);
@@ -364,26 +365,26 @@
   // ---- seating trainees
   test('seating a trainee fills the seat and takes the default agent', () => {
     const s = A.withPlatform(sel(), { type: 'tank', model: 'leopard2sg' }, ids, domainOf);
-    const n = A.seatTrainee(s, 'A', 'commander', 'trainee_b', 'trainees/weak_hail_discipline.js');
-    eq(n.crews.A.commander, 'trainee_b'); eq(n.agents.A.commander, 'trainees/weak_hail_discipline.js');
+    const n = A.seatTrainee(s, 'commander', 'trainee_b', 'trainees/weak_hail_discipline.js');
+    eq(n.crew.commander, 'trainee_b'); eq(n.agents.commander, 'trainees/weak_hail_discipline.js');
   });
   test('seating a trainee who is already seated moves them', () => {
-    const n = A.seatTrainee(sel(), 'A', 'sensors', 'trainee_a', 'x');
-    eq(n.crews.A.sensors, 'trainee_a'); eq(n.crews.A.weapons, null); eq(n.agents.A.weapons, '');
-    const seated = A.SLOTS.flatMap(c => Object.values(n.crews[c])).filter(Boolean);
+    const n = A.seatTrainee(sel(), 'sensors', 'trainee_a', 'x');
+    eq(n.crew.sensors, 'trainee_a'); eq(n.crew.weapons, null); eq(n.agents.weapons, '');
+    const seated = Object.values(n.crew).filter(Boolean);
     eq(new Set(seated).size, seated.length);
   });
   test('reseating a seat keeps an agent already chosen for it', () => {
-    const n = A.seatTrainee(sel(), 'A', 'weapons', 'trainee_c20', 'trainees/weak_hail_discipline.js');
-    eq(n.agents.A.weapons, 'trainees/strong.js');
+    const n = A.seatTrainee(sel(), 'weapons', 'trainee_c20', 'trainees/weak_hail_discipline.js');
+    eq(n.agents.weapons, 'trainees/strong.js');
   });
   test('nextEmptySeat walks the seats and stays put when full', () => {
     let s = A.withPlatform(sel(), { type: 'fighter', model: 'f15e' }, ids, domainOf);
-    eq(A.nextEmptySeat(s, { crew: 'A', seat: 'pilot' }), { crew: 'A', seat: 'weapon' });   // all empty: the next seat
-    s = A.seatTrainee(s, 'A', 'pilot', 'trainee_a', 'x');
-    eq(A.nextEmptySeat(s, { crew: 'A', seat: 'pilot' }), { crew: 'A', seat: 'weapon' });
-    s = A.seatTrainee(s, 'A', 'weapon', 'trainee_b', 'x');
-    eq(A.nextEmptySeat(s, { crew: 'A', seat: 'weapon' }), { crew: 'A', seat: 'weapon' });
+    eq(A.nextEmptySeat(s, { seat: 'pilot' }), { seat: 'weapon' });   // all empty: the next seat
+    s = A.seatTrainee(s, 'pilot', 'trainee_a', 'x');
+    eq(A.nextEmptySeat(s, { seat: 'pilot' }), { seat: 'weapon' });
+    s = A.seatTrainee(s, 'weapon', 'trainee_b', 'x');
+    eq(A.nextEmptySeat(s, { seat: 'weapon' }), { seat: 'weapon' });
   });
 
   // ---- selection checks
@@ -391,15 +392,15 @@
   test('every empty seat blocks handoff, named by crew and seat', () => {
     const s = A.withPlatform(sel(), { type: 'tank', model: 'leopard2sg' }, ids, domainOf);
     eq(Object.keys(A.checkSelection(s, ctx)).filter(k => k.startsWith('seat_')).sort(),
-      ['seat_A_commander', 'seat_A_driver']);
+      ['seat_commander', 'seat_driver']);
   });
   test('the same trainee in two seats is flagged', () => {
-    const s = sel(); s.crews.A.navigation = 'trainee_a';
-    ok('seat_A_navigation' in A.checkSelection(s, ctx));
+    const s = sel(); s.crew.navigation = 'trainee_a';
+    ok('seat_navigation' in A.checkSelection(s, ctx));
   });
   test('a missing agent blocks handoff', () => {
-    const s = sel(); s.agents.A.sensors = '';
-    ok('agent_A_sensors' in A.checkSelection(s, ctx));
+    const s = sel(); s.agents.sensors = '';
+    ok('agent_sensors' in A.checkSelection(s, ctx));
   });
   test('an unknown model, or a model of another type, is flagged', () => {
     const s = sel(); s.platform.model = 'nope'; ok('platform' in A.checkSelection(s, ctx));
@@ -510,7 +511,7 @@
     for (const t of Object.keys(F.platformTypes)) {
       const r = A.suggestCrew(F.profiles, sums, t, focusOf(t), 'hail_discipline');
       ok(r, t + ' result');
-      const got = Object.values(r.crews.A);
+      const got = Object.values(r.crew);
       eq(got.length, A.seatsOf(t).length, t + ' seats'); eq(new Set(got).size, got.length, t + ' unique');
     }
   });
@@ -523,21 +524,21 @@
   });
   test('a suggested allocation is valid once agents are chosen', () => {
     const r = A.suggestCrew(F.profiles, sums, 'warship', focusOf('warship'), 'hail_discipline');
-    const s = sel(); s.crews = r.crews;
-    for (const c of A.SLOTS) for (const seat of Object.keys(s.crews[c])) s.agents[c][seat] = 'trainees/strong.js';
+    const s = sel(); s.crew = r.crew;
+    for (const seat of Object.keys(s.crew)) s.agents[seat] = 'trainees/strong.js';
     eq(A.checkSelection(s, ctx), {}); eq(C.validateAllocation(build(s), { scenarios: ids, domainOf }), []);
   });
 
   test('every platform type has a vehicle diagram with one marker per seat, in seat order', () => {
     for (const t of Object.keys(F.platformTypes)) {
       eq(CGF.vehicles.seatsOf(t), C.SEATS_BY_TYPE[t], t);
-      const svg = CGF.vehicles.svg(t, { [C.SEATS_BY_TYPE[t][0]]: { name: 'Aisha Rahman', active: true } }, 'A');
+      const svg = CGF.vehicles.svg(t, { [C.SEATS_BY_TYPE[t][0]]: { name: 'Aisha Rahman', active: true } });
       eq((svg.match(/class="seatDot"/g) || []).length, C.SEATS_BY_TYPE[t].length, t + ' markers');
       ok(svg.includes('>AR<'), t + ' initials');
     }
   });
   test('vehicle diagrams escape names', () => {
-    const svg = CGF.vehicles.svg('tank', { commander: { name: '<img onerror=x>', active: false } }, 'A');
+    const svg = CGF.vehicles.svg('tank', { commander: { name: '<img onerror=x>', active: false } });
     ok(!svg.includes('<img'), 'escaped');
   });
 
@@ -547,7 +548,7 @@
   const mkAdj = o => Object.assign({ adjustment_id: 'a_0009', t: 660, session_id: 's_x', force: 'hostile-state', setting: 'weight.ignoredWarning',
     old: 1, new: 1.25, requested: 1.25, clamped: false, target_competency: 'hail_discipline', seat: 'navigation', pressure_direction: 'up',
     source: 'engine', policy: 'rules_v1', evidence_event_ids: ['e_000143'], explanation: null }, o);
-  const mkRec = o => Object.assign({ session_id: 's_x', pane: 'B', scenario: 'strait-transit', seed: 42, mode: 'adaptive', platform: 'warship',
+  const mkRec = o => Object.assign({ session_id: 's_x', scenario: 'strait-transit', seed: 42, mode: 'adaptive', platform: 'warship',
     crew: [{ seat: 'weapons', trainee_id: 'trainee_c07' }, { seat: 'sensors', trainee_id: 'trainee_c03' }, { seat: 'navigation', trainee_id: 'trainee_b' }],
     outcome: 'success', duration_s: 2400, events: [mkEv()], adjustments: [mkAdj()] }, o);
   const bad = (errs, re) => ok(errs.length > 0 && (!re || errs.some(m => re.test(m))), 'expected an error' + (re ? ' ' + re : '') + ', got ' + JSON.stringify(errs));
@@ -591,10 +592,12 @@
     eq(C.validateAdjustment(mkAdj({ new: 2.0, requested: 2.0 }), { envelope: env }), []);
     bad(C.validateAdjustment(mkAdj({ new: 2.4, requested: 2.4 }), { envelope: env }), /outside the envelope/);
   });
-  test('validateSessionRecord accepts a full record, with a null pane for a local run', () => {
+  test('validateSessionRecord accepts a full record', () => {
     eq(C.validateSessionRecord(mkRec()), []);
-    eq(C.validateSessionRecord(mkRec({ pane: null })), []);
     eq(C.validateSessionRecord(mkRec({ events: [], adjustments: [] })), []);
+  });
+  test('validateSessionRecord rejects the removed field pane', () => {
+    ok(C.validateSessionRecord(mkRec({ pane: 'A' })).length > 0);
   });
   test('validateSessionRecord checks the crew, the platform and the cross-references', () => {
     bad(C.validateSessionRecord(mkRec({ platform: 'submarine' })), /platform/);
@@ -617,12 +620,12 @@
   const pParams = () => ({ rates: { hail_acknowledged: 0.26, safe_passage: 0.75 }, reaction_delay_s: 20,
     basis: { source: 'profile', sessions: 0, by_competency: { hail_discipline: 'profile' } } });
   const partnerEntry = (seat, from) => ({ seat, trainee_id: 'partner_' + seat, role: 'partner', derived_from: { trainee_id: from || 'trainee_b' }, agent_params: pParams() });
-  const cfgWith = (seat, entry) => { const c = cfgs(sel())[0]; c.crew = c.crew.map(m => m.seat === seat ? entry : m); return c; };
+  const cfgWith = (seat, entry) => { const c = cfgs(sel()); c.crew = c.crew.map(m => m.seat === seat ? entry : m); return c; };
   const bad2 = (errs, re) => ok(errs.length > 0 && (!re || errs.some(m => re.test(m))), 'expected ' + (re || 'an error') + ', got ' + JSON.stringify(errs));
 
   test('a crew with an AI partner in one seat validates, and so does the whole allocation', () => {
     eq(C.validateScenarioConfig(cfgWith('weapons', partnerEntry('weapons'))), []);
-    const a = build(sel()); a.slots[0].crew[0] = partnerEntry('weapons');
+    const a = build(sel()); a.crew[0] = partnerEntry('weapons');
     eq(C.validateAllocation(a, { scenarios: ids, domainOf }), []);
   });
   test('a partner needs its own partner_ id, a derived_from trainee and valid agent_params, and takes no agent_profile', () => {
@@ -637,7 +640,7 @@
   test('a trainee id may not look like a partner id, and a crew cannot be all partners', () => {
     const e = { seat: 'weapons', trainee_id: 'partner_x', agent_profile: 'trainees/strong.js' };
     bad2(C.validateScenarioConfig(cfgWith('weapons', e)), /partner/);
-    const all = cfgs(sel())[0]; all.crew = all.crew.map(m => partnerEntry(m.seat));
+    const all = cfgs(sel()); all.crew = all.crew.map(m => partnerEntry(m.seat));
     bad2(C.validateScenarioConfig(all), /at least one seat must be a trainee/);
   });
   test('agent_params checks the rates, the delay and the basis', () => {

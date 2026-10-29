@@ -181,22 +181,21 @@
     return errs;
   }
 
-  // INTERFACES §3.1. One crew per run (single crew since 2026-10-29): the run settings in `shared`, and exactly one slot, pane A.
+  // INTERFACES §3.1. One crew per run: the run settings in `shared` and the `crew`.
   //   { allocation_id, created_at_session, shared: {scenario, seed, mode, duration_s, eval_interval_s, envelope,
-  //     platform}, slots: [{pane: 'A', crew}] }
-  const PANES = ['A'];
+  //     platform}, crew }
   const SHARED_KEYS = ['scenario', 'seed', 'mode', 'duration_s', 'eval_interval_s', 'envelope', 'platform'];
 
-  // Pure. The §3 scenario configs, one per slot (one today). Call it on a structurally valid allocation.
+  // Pure. The §3 scenario config for the run. Call it on a structurally valid allocation.
   function expandAllocation(a) {
-    return a.slots.map(slot => Object.assign({ scenario_id: `${a.allocation_id}_${slot.pane}` },
-      JSON.parse(JSON.stringify(a.shared)), { crew: JSON.parse(JSON.stringify(slot.crew)) }));
+    return Object.assign({ scenario_id: a.allocation_id },
+      JSON.parse(JSON.stringify(a.shared)), { crew: JSON.parse(JSON.stringify(a.crew)) });
   }
 
   // Structure first, then every derived config against §3, then the checks that span the crew.
   function validateAllocation(a, opts) {
     if (!isObj(a)) return ['allocation: must be an object'];
-    const errs = extraKeys(a, ['allocation_id', 'created_at_session', 'shared', 'slots'], 'allocation');
+    const errs = extraKeys(a, ['allocation_id', 'created_at_session', 'shared', 'crew'], 'allocation');
     if (!isStr(a.allocation_id) || !ID_RE.test(a.allocation_id)) errs.push('allocation.allocation_id: lower-case id required');
     if (a.created_at_session !== null && !isStr(a.created_at_session)) errs.push('allocation.created_at_session: string or null');
     if (!isObj(a.shared)) errs.push('allocation.shared: must be an object');
@@ -204,13 +203,11 @@
       errs.push(...extraKeys(a.shared, SHARED_KEYS, 'allocation.shared'));
       for (const k of SHARED_KEYS) if (!(k in a.shared)) errs.push(`allocation.shared.${k}: required`);
     }
-    if (!Array.isArray(a.slots) || a.slots.length !== PANES.length || a.slots.some((s, i) => !isObj(s) || s.pane !== PANES[i]))
-      errs.push('allocation.slots: exactly one entry, pane A');
-    else a.slots.forEach(s => errs.push(...extraKeys(s, ['pane', 'crew'], `allocation.slots[${s.pane}]`)));
+    if (!Array.isArray(a.crew)) errs.push('allocation.crew: an array of seat entries required');
     if (errs.length) return errs;
 
-    expandAllocation(a).forEach((c, i) => errs.push(...validateScenarioConfig(c, opts).map(m => m)));
-    const ids = a.slots.flatMap(s => (Array.isArray(s.crew) ? s.crew : []).filter(isObj).map(m => m.trainee_id));
+    errs.push(...validateScenarioConfig(expandAllocation(a), opts));
+    const ids = a.crew.filter(isObj).map(m => m.trainee_id);
     if (new Set(ids).size !== ids.length) errs.push('allocation: a trainee cannot be in two seats');
     return errs;
   }
@@ -229,7 +226,7 @@
   const EVENT_KEYS = ['event_id', 't', 'session_id', 'trainee_id', 'seat', 'type', 'competency', 'outcome', 'unit_id', 'detail'];
   const ADJUSTMENT_KEYS = ['adjustment_id', 't', 'session_id', 'force', 'setting', 'old', 'new', 'requested', 'clamped',
     'target_competency', 'seat', 'pressure_direction', 'source', 'policy', 'evidence_event_ids', 'explanation'];
-  const RECORD_KEYS = ['session_id', 'pane', 'scenario', 'seed', 'mode', 'platform', 'crew', 'outcome', 'duration_s', 'events', 'adjustments'];
+  const RECORD_KEYS = ['session_id', 'scenario', 'seed', 'mode', 'platform', 'crew', 'outcome', 'duration_s', 'events', 'adjustments'];
   const ADJUSTMENT_SOURCES = ['engine', 'instructor_steer'], POLICIES = ['rules_v1', 'bandit_v2'], DIRECTIONS = ['up', 'down'];
   // Which of the three signals caused an adjustment (LANES D7): the trainee's live behaviour, their past training (the
   // profile and history), or cooperation between CGFs. Optional for now so the runtime can adopt it without breaking its
@@ -293,7 +290,6 @@
     const errs = extraKeys(r, RECORD_KEYS, 'record');
     for (const k of RECORD_KEYS) if (!(k in r)) errs.push(`record.${k}: required`);
     if (!isStr(r.session_id)) errs.push('record.session_id: required');
-    if (r.pane !== null && !(typeof r.pane === 'string' && /^[A-Z]$/.test(r.pane))) errs.push('record.pane: one capital letter (A or B on the host page), or null for a local run');
     if (!isStr(r.scenario)) errs.push('record.scenario: required');
     if (!Number.isInteger(r.seed) || r.seed < 0) errs.push('record.seed: integer >= 0 required');
     if (!MODES.includes(r.mode)) errs.push(`record.mode: one of ${MODES.join(', ')}`);
@@ -340,7 +336,7 @@
     return errs;
   }
 
-  CGF.contracts = { COMPETENCIES, MODES, PANES, SEATS_BY_TYPE, DOMAIN_BY_TYPE, SETTING_RANGES, WEIGHT_RANGE, PRIOR, EVIDENCE_MIN,
+  CGF.contracts = { COMPETENCIES, MODES, SEATS_BY_TYPE, DOMAIN_BY_TYPE, SETTING_RANGES, WEIGHT_RANGE, PRIOR, EVIDENCE_MIN,
     EVENT_TYPES, ROLES, CAUSES, MAX_REACTION_DELAY_S, validateEnvelope, validateProfile, validatePlatform, validateCrew, validateScenarioConfig,
     validateAllocation, expandAllocation, validateEvent, validateAdjustment, validateSessionRecord, validateAgentParams, validateDerivedFrom };
 })();

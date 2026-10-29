@@ -1,15 +1,15 @@
-// Runs an adaptive training session inside this runtime page (one pane): the bridge between the simulation and
+// Runs an adaptive training session inside this runtime page (one runtime): the bridge between the simulation and
 // the pure adaptation engine (js/adapt/adapt.js).
 //
-// A session starts when the link loads a scenario config (the 'link-init' event from link/pane.js), or from the
+// A session starts when the link loads a scenario config (the 'link-init' event from link/runtime-link.js), or from the
 // Reasoning tab for a local run without the host page. Then, every eval_interval_s of sim time:
 //   simulation events since the last cycle -> Adapt.evaluate -> CGF.apply(adjustments)
-// A training session always runs for its full duration_s, in both adaptive and fixed mode, so every pane gives
+// A training session always runs for its full duration_s, in both adaptive and fixed mode, so every run gives
 // the same amount of evidence. Reaching a failure state is logged (an exercise_failed event) instead of ending
 // the run early; at duration_s the run ends with outcome "fail" if that happened, otherwise "success".
 // When the run ends, the session record (INTERFACES §9.1) is built, emitted as 'session-record' and kept for export.
 //
-// Note: INTERFACES §11 puts the engine in the host page. It runs here instead, per pane, because the host does not
+// Note: INTERFACES §11 puts the engine in the host page. It runs here instead, in the runtime, because the host does not
 // relay events or adjustments yet; Adapt is pure, so moving it to the host later needs no change to it.
 (function () {
   'use strict';
@@ -40,9 +40,9 @@
   }
 
   // A session id that is unique per run. Wall-clock time is used here, outside the simulation, only for the id.
-  function newSessionId(pane) {
+  function newSessionId() {
     const d = new Date(), p = n => String(n).padStart(2, '0');
-    return `s_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}_${(pane || 'l').toLowerCase()}`;
+    return `s_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
   }
 
   // Loads any agent profile files the crew names that are not registered yet (they are plain scripts)
@@ -51,11 +51,11 @@
     for (const p of missing) await CGF.util.loadScript(p);
   }
 
-  // opts: { pane, session_id, scripted (default true) }. Returns the error list (empty when started).
+  // opts: { session_id, scripted (default true) }. Returns the error list (empty when started).
   function begin(config, opts) {
     const errs = CGF.contracts ? CGF.contracts.validateScenarioConfig(config) : [];
     if (errs.length) { CGF.log('Adaptive session not started: ' + errs.join('; '), 'alert'); return errs; }
-    const session_id = opts.session_id || newSessionId(opts.pane);
+    const session_id = opts.session_id || newSessionId();
     CGF.simEvents.configure({ session_id, crew: config.crew, platformType: config.platform.type });
 
     // Start every enveloped setting at its base (an initial setting, not an adjustment)
@@ -70,13 +70,13 @@
     const profiles = {};
     for (const m of config.crew.filter(c => c.role !== 'partner')) profiles[m.trainee_id] = profileFor(m.trainee_id);
     const adapt = CGF.Adapt.create({
-      config, profiles, seatFocus: CGF.simEvents.seatFocus(config.platform.type), session_id, pane: opts.pane || null,
+      config, profiles, seatFocus: CGF.simEvents.seatFocus(config.platform.type), session_id,
     });
     CGF.Adapt.current = adapt;
     // Run to the full duration: failure states are logged by the engine's freeplay rule, not ending the run
     CGF.sim.mode = 'freeplay';
     CGF.emit('mode');
-    session = { config, adapt, session_id, pane: opts.pane || null, nextEval: config.eval_interval_s, seen: 0, ended: false, failed: false };
+    session = { config, adapt, session_id, nextEval: config.eval_interval_s, seen: 0, ended: false, failed: false };
     CGF.log(`Adaptive session ${session_id}: ${config.mode} mode, ${config.crew.map(m => `${m.seat} ${m.trainee_id}`).join(', ')}.`, 'instr');
     CGF.emit('adapt:start', session);
     return [];
@@ -142,13 +142,13 @@
       ]
     };
     CGF.loadScenario(config.scenario, null, { mode: 'exercise' });
-    return start(config, { pane: null }).then(errs => {
+    return start(config, {}).then(errs => {
       if (!errs.length) { CGF.sim.running = true; CGF.emit('run'); }
       return errs;
     });
   }
 
-  CGF.on('link-init', config => { start(config, { pane: CGF.sim && CGF.sim.link ? CGF.sim.link.pane : null }); });
+  CGF.on('link-init', config => { start(config, {}); });
   CGF.on('sim:step', onStep);
   CGF.on('outcome', onOutcome);
   CGF.on('sim:fail', () => { if (session) session.failed = true; });

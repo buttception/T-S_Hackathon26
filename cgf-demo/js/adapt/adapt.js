@@ -1,8 +1,8 @@
 // In-run adaptation (PLAN E3 to E6, INTERFACES §5.1, §6, §7, §8, §9.1, §10). Pure: it reads only what it is
 // given (the scenario config, the crew's profiles and the simulation events) and returns adjustment records.
-// It never reads or writes the simulation, so it can run in a pane (js/adapt/runtime.js does) or in the host.
+// It never reads or writes the simulation, so it can run in the runtime (js/adapt/runtime.js does) or in the host.
 //
-//   const a = CGF.Adapt.create({ config, profiles, seatFocus, session_id, pane })
+//   const a = CGF.Adapt.create({ config, profiles, seatFocus, session_id })
 //   a.evaluate(events, now) -> Adjustment[]   every eval_interval_s of sim time
 //   a.steer(directive)                         instructor steering (§8), already schema-validated
 //   a.liveState()                              per-seat target, live signal and working profile
@@ -102,12 +102,12 @@
       }
       if (config.mode === 'fixed') { paneDirection = 'hold'; return []; }   // invariant 2: fixed mode never adjusts
 
-      // §5.1: any seat "down" wins; otherwise any "up" raises the pane
+      // §5.1: any seat "down" wins; otherwise any "up" raises the platform
       paneDirection = seats.some(s => s.direction === 'down') ? 'down' : seats.some(s => s.direction === 'up') ? 'up' : 'hold';
       const out = teamAdjustment(now);
       if (paneDirection === 'hold') return out;
 
-      // one request per setting: the single largest change among the seats moving the pane's way (never summed)
+      // one request per setting: the single largest change among the seats moving that way (never summed)
       const chosen = {};
       for (const s of seats) {
         if (s.direction !== paneDirection) continue;
@@ -177,7 +177,7 @@
 
     function steer(directive) {
       const hit = seats.filter(s => s.trainee_id === directive.trainee_id);
-      if (!hit.length) throw new Error(`trainee "${directive.trainee_id}" is not in this pane's crew`);
+      if (!hit.length) throw new Error(`trainee "${directive.trainee_id}" is not in this crew`);
       for (const s of hit) s.steer = { directive, start: null, active: false };
     }
 
@@ -201,7 +201,7 @@
     // §9.1 session record
     function endSession(outcome, duration_s) {
       return {
-        session_id: opts.session_id, pane: opts.pane || null, scenario: config.scenario, seed: config.seed, mode: config.mode,
+        session_id: opts.session_id, scenario: config.scenario, seed: config.seed, mode: config.mode,
         platform: config.platform.type,
         crew: config.crew.map(m => m.role === 'partner'
           ? { seat: m.seat, trainee_id: m.trainee_id, role: 'partner', derived_from: JSON.parse(JSON.stringify(m.derived_from)) }

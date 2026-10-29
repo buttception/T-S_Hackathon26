@@ -8,7 +8,7 @@
   .pass { color: #4dd17a; } .fail { color: #ff7b54; } h1 { font-size: 16px; }
   #summary { font-weight: 700; margin: 8px 0 12px; }
   /* Chrome stops animation frames in cross-origin iframes that are off screen, and the runtime ticks on them.
-     The frames sit in the viewport, as the panes do on host.html. */
+     The frames sit in the viewport, as the runtime frame does on host.html. */
   #frames { position: fixed; right: 0; top: 0; width: 700px; height: 420px; opacity: .9; }
   iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 1px solid #24364d; background: #0b1420; }
 </style>
@@ -49,12 +49,12 @@
     allocation_id: 'alloc_t', created_at_session: null,
     shared: { scenario: 'strait-transit', seed: 1, mode: 'adaptive', duration_s: 600, eval_interval_s: 30, envelope: clone(F.envelopeDefault),
       platform: { type: 'warship', model: 'formidable' } },
-    slots: [{ pane: 'A', crew: crew(['trainee_a', 'trainee_c01', 'trainee_c02'], C.SEATS_BY_TYPE.warship) }]
+    crew: crew(['trainee_a', 'trainee_c01', 'trainee_c02'], C.SEATS_BY_TYPE.warship)
   });
-  const msg = (type, payload) => L.message(type, 'T', payload);
+  const msg = (type, payload) => L.message(type, payload);
 
   // ---- protocol
-  test('a well-formed message of every pane type validates', () => {
+  test('a well-formed message of every runtime type validates', () => {
     eq(L.validateMessage(msg('hello', { api: { ok: true, missing: [] } })), []);
     eq(L.validateMessage(msg('ready', { scenario: 's', domain: 'sea', platform: {}, crew: [] })), []);
     eq(L.validateMessage(msg('status', { t: 5, running: true, outcome: null, stats: {} })), []);
@@ -70,7 +70,7 @@
     ok(L.validateMessage(msg('record', {})).length, 'missing');
     ok(L.validateMessage(msg('record', { record: [] })).length, 'array');
     ok(L.validateMessage(msg('record', { record: 'x' })).length, 'string');
-    eq(L.TYPES.record.from, 'pane');
+    eq(L.TYPES.record.from, 'runtime');
   });
   test('the reserved loop messages validate but are not sent yet', () => {
     eq(L.validateMessage(msg('events', { events: [] })), []);
@@ -81,14 +81,15 @@
     ok(L.validateMessage({}).length, 'empty');
     ok(L.validateMessage(Object.assign(msg('start'), { cgfLink: 2 })).length, 'wrong protocol version');
     ok(L.validateMessage(Object.assign(msg('start'), { type: 'nope' })).length, 'unknown type');
-    ok(L.validateMessage(Object.assign(msg('start'), { pane: 'ab' })).length, 'bad pane');
+    ok(L.validateMessage(Object.assign(msg('start'), { cgfLink: undefined })).length, 'no protocol tag');
+    eq(Object.keys(msg('start')), ['cgfLink', 'type'], 'a message carries no other tag');
     ok(L.validateMessage(msg('init', {})).length, 'init without config');
     ok(L.validateMessage(msg('status', { t: 'x', running: true, outcome: null, stats: {} })).length, 'status t');
     ok(L.validateMessage(msg('status', { t: NaN, running: true, outcome: null, stats: {} })).length, 'status NaN');
     ok(L.validateMessage(msg('hello', { api: [] })).length, 'api array');
   });
-  test('direction table: hello is from the pane, init is from the host', () => {
-    eq([L.TYPES.hello.from, L.TYPES.init.from, L.TYPES.start.from, L.TYPES.status.from], ['pane', 'host', 'host', 'pane']);
+  test('direction table: hello is from the runtime, init is from the host', () => {
+    eq([L.TYPES.hello.from, L.TYPES.init.from, L.TYPES.start.from, L.TYPES.status.from], ['runtime', 'host', 'host', 'runtime']);
   });
 
   // ---- host helpers
@@ -111,41 +112,45 @@
   test('parseAllocation reports nothing, bad JSON, and an invalid allocation', () => {
     eq(H.parseAllocation('', null), { allocation: null, source: null, errors: [] });
     ok(H.parseAllocation('?alloc=%7Bnope', null).errors.some(m => /not valid JSON/.test(m)));
-    const bad = allocation(); bad.slots.pop();
+    const bad = allocation(); bad.crew.pop();
     const r = H.parseAllocation('', JSON.stringify(bad));
     eq(r.allocation, null); ok(r.errors.length);
   });
   test('parseAllocation rejects the older array-of-configs format', () => {
-    const r = H.parseAllocation('', JSON.stringify(C.expandAllocation(allocation())));
+    const r = H.parseAllocation('', JSON.stringify([C.expandAllocation(allocation())]));
     eq(r.allocation, null); ok(r.errors.length);
   });
-  test('paneUrl points a pane at the runtime', () => eq(H.paneUrl('A'), 'runtime.html?pane=A'));
-  test('expandAllocation gives the one crew', () => {
+  test('parseAllocation reads an allocation saved in the old slots shape (read-only shim) and leaves the input alone', () => {
+    const a = allocation(), old = clone(a); old.slots = [{ pane: 'A', crew: old.crew }]; delete old.crew;
+    const r = H.parseAllocation('', JSON.stringify(old));
+    eq(r.errors, []); eq(r.allocation.crew, a.crew); ok(!('slots' in r.allocation), 'no slots in the result');
+  });
+  test('runtimeUrl points the host frame at the runtime, marked as linked', () => eq(H.runtimeUrl(), 'runtime.html?linked=1'));
+  test('expandAllocation gives the one config, with the allocation id as scenario_id', () => {
     const c = C.expandAllocation(allocation());
-    eq(c.length, 1);
-    eq(c[0].crew[0].trainee_id, 'trainee_a');
+    eq(c.crew[0].trainee_id, 'trainee_a'); eq(c.scenario_id, 'alloc_t');
   });
 
   // ---- session records on the host (INTERFACES §9.1)
-  const cfgA = () => C.expandAllocation(allocation())[0];
-  const recFor = (config, pane, over) => Object.assign({ session_id: 's_x', pane, scenario: config.scenario, seed: config.seed, mode: config.mode,
+  const cfgA = () => C.expandAllocation(allocation());
+  const recFor = (config, over) => Object.assign({ session_id: 's_x', scenario: config.scenario, seed: config.seed, mode: config.mode,
     platform: config.platform.type, crew: config.crew.map(m => ({ seat: m.seat, trainee_id: m.trainee_id })), outcome: 'success', duration_s: 600,
     events: [], adjustments: [] }, over || {});
-  test('checkRecord accepts a valid record that matches the config', () => eq(H.checkRecord(recFor(cfgA(), 'A'), cfgA(), 'A'), []));
+  test('checkRecord accepts a valid record that matches the config', () => eq(H.checkRecord(recFor(cfgA()), cfgA()), []));
   test('checkRecord matches a crew with an AI partner by seat, id, role and whose runs it copies, whatever the key order', () => {
     const c = cfgA(), p = { seat: 'weapons', trainee_id: 'partner_weapons', role: 'partner', derived_from: { trainee_id: 'trainee_b' },
       agent_params: { rates: { hail_acknowledged: 0.3 }, reaction_delay_s: 20, basis: { source: 'default', sessions: 0 } } };
     c.crew[0] = p;
     const plain = m => ({ seat: m.seat, trainee_id: m.trainee_id });
-    const rec = recFor(c, 'A', { crew: [{ derived_from: { trainee_id: 'trainee_b' }, role: 'partner', trainee_id: 'partner_weapons', seat: 'weapons' }, plain(c.crew[1]), plain(c.crew[2])] });
-    eq(H.checkRecord(rec, c, 'A'), []);
+    const rec = recFor(c, { crew: [{ derived_from: { trainee_id: 'trainee_b' }, role: 'partner', trainee_id: 'partner_weapons', seat: 'weapons' }, plain(c.crew[1]), plain(c.crew[2])] });
+    eq(H.checkRecord(rec, c), []);
     const other = clone(rec); other.crew[0].derived_from = { trainee_id: 'trainee_a' };
-    ok(H.checkRecord(other, c, 'A').some(m => /crew/.test(m)), 'a different source trainee is a different crew');
+    ok(H.checkRecord(other, c).some(m => /crew/.test(m)), 'a different source trainee is a different crew');
     const noRole = clone(rec); delete noRole.crew[0].role; delete noRole.crew[0].derived_from;
-    ok(H.checkRecord(noRole, c, 'A').length > 0, 'a partner recorded as a trainee is rejected');
+    ok(H.checkRecord(noRole, c).length > 0, 'a partner recorded as a trainee is rejected');
   });
   test('forReport passes the record through whole: the report lists AI partners itself and gives them no report', () => {
-    const c = cfgA(), rec = recFor(c, 'A');
+    const c = cfgA(), rec = recFor(c);
     eq(H.forReport(rec), rec, 'no partners: the same record');
     const withP = clone(rec); withP.crew[0] = { seat: 'weapons', trainee_id: 'partner_weapons', role: 'partner', derived_from: { trainee_id: 'trainee_b' } };
     const out = H.forReport(withP);
@@ -153,27 +158,26 @@
     eq(out.crew[0].role, 'partner');
     eq(H.forReport(null), null);
   });
-  test('checkRecord rejects a record for another pane, scenario, seed, mode, platform or crew', () => {
-    const c = cfgA(), has = (r, re) => ok(H.checkRecord(r, c, 'A').some(m => re.test(m)), 'expected ' + re + ' in ' + JSON.stringify(H.checkRecord(r, c, 'A')));
-    has(recFor(c, 'B'), /record\.pane/);
-    has(recFor(c, 'A', { scenario: 'sea-air' }), /record\.scenario/);
-    has(recFor(c, 'A', { seed: 99 }), /record\.seed/);
-    has(recFor(c, 'A', { mode: 'fixed' }), /record\.mode/);
-    has(recFor(c, 'A', { platform: 'tank', crew: [{ seat: 'commander', trainee_id: 'trainee_a' }, { seat: 'driver', trainee_id: 'trainee_c01' }] }), /record\.platform/);
-    has(recFor(c, 'A', { crew: recFor(c, 'A').crew.slice().reverse() }), /crew/);
+  test('checkRecord rejects a record for another scenario, seed, mode, platform or crew', () => {
+    const c = cfgA(), has = (r, re) => ok(H.checkRecord(r, c).some(m => re.test(m)), 'expected ' + re + ' in ' + JSON.stringify(H.checkRecord(r, c)));
+    has(Object.assign(recFor(c), { pane: 'A' }), /unknown field/);   // the removed field
+    has(recFor(c, { scenario: 'sea-air' }), /record\.scenario/);
+    has(recFor(c, { seed: 99 }), /record\.seed/);
+    has(recFor(c, { mode: 'fixed' }), /record\.mode/);
+    has(recFor(c, { platform: 'tank', crew: [{ seat: 'commander', trainee_id: 'trainee_a' }, { seat: 'driver', trainee_id: 'trainee_c01' }] }), /record\.platform/);
+    has(recFor(c, { crew: recFor(c).crew.slice().reverse() }), /crew/);
   });
   test('checkRecord rejects a malformed record and an adjustment outside the allocation\'s envelope', () => {
-    ok(H.checkRecord({}, cfgA(), 'A').length, 'empty');
-    ok(H.checkRecord(null, cfgA(), 'A').length, 'null');
+    ok(H.checkRecord({}, cfgA()).length, 'empty');
+    ok(H.checkRecord(null, cfgA()).length, 'null');
     const c = cfgA(), adj = { adjustment_id: 'a_1', t: 30, session_id: 's_x', force: 'all', setting: 'sensitivity', old: 1, new: 9, requested: 9, clamped: false,
       target_competency: 'hail_discipline', seat: 'navigation', pressure_direction: 'up', source: 'engine', policy: 'rules_v1', evidence_event_ids: [], explanation: null };
-    ok(H.checkRecord(recFor(c, 'A', { adjustments: [adj] }), c, 'A').some(m => /outside the envelope|hard range|inside/.test(m)), 'out of envelope');
+    ok(H.checkRecord(recFor(c, { adjustments: [adj] }), c).some(m => /outside the envelope|hard range|inside/.test(m)), 'out of envelope');
   });
-  test('mergeRun adds a pane, keeps the other, drops another allocation\'s records, and does not mutate', () => {
+  test('makeRun keeps the allocation id and the latest record, and does not mutate the record', () => {
     const a = { x: 1 }, b = { x: 2 };
-    const r1 = H.mergeRun(null, 'alloc_t', 'A', a); eq(r1, { allocation_id: 'alloc_t', records: { A: a } });
-    const r2 = H.mergeRun(r1, 'alloc_t', 'B', b); eq(Object.keys(r2.records), ['A', 'B']); eq(Object.keys(r1.records), ['A']);
-    eq(H.mergeRun(r2, 'alloc_other', 'A', a).records, { A: a });
+    const r1 = H.makeRun('alloc_t', a); eq(r1, { allocation_id: 'alloc_t', record: { x: 1 } });
+    const r2 = H.makeRun('alloc_t', b); eq(r2.record, { x: 2 }); eq(a, { x: 1 });
   });
 
   // ---- the real runtime, linked
@@ -188,7 +192,7 @@
     });
     return {
       frame: f, inbox,
-      send: (type, payload) => f.contentWindow.postMessage(L.message(type, 'T', payload), '*'),
+      send: (type, payload) => f.contentWindow.postMessage(L.message(type, payload), '*'),
       next: (match, ms) => new Promise((resolve, reject) => {
         waiting.push({ match, resolve });   // only messages that arrive after this call count
         setTimeout(() => reject(new Error('timed out waiting for a message')), ms || 8000);
@@ -196,7 +200,7 @@
     };
   }
 
-  const linked = openFrame('../runtime.html?pane=T');
+  const linked = openFrame('../runtime.html?linked=1');
   let hello;
   await atest('the runtime says hello once it has booted, and reports its API as complete', async () => {
     hello = await linked.next(m => m.type === 'hello', 20000);
@@ -208,7 +212,7 @@
     eq(linked.inbox.filter(m => m.type === 'hello').length, 1);
   });
 
-  const cfg = C.expandAllocation(allocation())[0];
+  const cfg = C.expandAllocation(allocation());
   await atest('an init for a scenario the runtime lacks is answered with an error', async () => {
     const bad = clone(cfg); bad.scenario = 'no-such-scenario';
     const p = linked.next(m => m.type === 'error'); linked.send('init', { config: bad });
@@ -226,7 +230,7 @@
     ok(/seats/.test((await p).message));
   });
   await atest('start before init is answered with an error', async () => {
-    const fresh = openFrame('../runtime.html?pane=T');
+    const fresh = openFrame('../runtime.html?linked=1');
     await fresh.next(m => m.type === 'hello', 20000);
     const p = fresh.next(m => m.type === 'error'); fresh.send('start');
     ok(/send init first/.test((await p).message));
@@ -254,23 +258,23 @@
     const s = await linked.next(m => m.type === 'status' && m.running === false && m.t === 0);
     eq(s.t, 0);
   });
-  await atest('a message for another pane letter is ignored', async () => {
+  await atest('a message of a runtime-to-host type sent to the runtime is ignored', async () => {
     const n = linked.inbox.length;
-    linked.frame.contentWindow.postMessage(L.message('start', 'Z'), '*');
+    linked.frame.contentWindow.postMessage(L.message('events', { events: [] }), '*');
     await sleep(1200);
-    ok(!linked.inbox.slice(n).some(m => m.type === 'status' && m.running === true), 'ran for the wrong pane');
+    ok(!linked.inbox.slice(n).some(m => m.type === 'error'), 'answered a message that was not for it');
   });
   await atest('a message that is not a link message is ignored', async () => {
     const n = linked.inbox.length;
-    linked.frame.contentWindow.postMessage({ type: 'start', pane: 'T' }, '*');
+    linked.frame.contentWindow.postMessage({ type: 'start' }, '*');
     linked.frame.contentWindow.postMessage('start', '*');
     await sleep(1200);
     ok(!linked.inbox.slice(n).some(m => m.type === 'status' && m.running === true), 'ran on a malformed message');
   });
 
   // ---- a finished run reaches the host as a session record
-  async function runToEnd(config) {   // a fresh linked pane, run to its duration; resolves with { ended, record }
-    const f = openFrame('../runtime.html?pane=T');
+  async function runToEnd(config) {   // a fresh linked runtime, run to its duration; resolves with { ended, record }
+    const f = openFrame('../runtime.html?linked=1');
     await f.next(m => m.type === 'hello', 20000);
     f.send('init', { config }); await f.next(m => m.type === 'ready', 15000);
     const ended = f.next(m => m.type === 'ended', 90000), record = f.next(m => m.type === 'record', 90000);
@@ -281,7 +285,7 @@
     const config = clone(cfg); config.duration_s = 120; config.eval_interval_s = 30;
     const r = await runToEnd(config);
     eq(L.validateMessage(r.record), []); eq(L.validateMessage(r.ended), []);
-    eq(H.checkRecord(r.record.record, config, 'T'), []);
+    eq(H.checkRecord(r.record.record, config), []);
     eq(r.inbox.filter(m => m.type === 'record').length, 1, 'exactly one record');
     ok(r.record.record.duration_s >= 120, 'ran the full duration');
     ok(r.record.record.adjustments.length > 0, 'an adaptive run adjusts');
@@ -289,12 +293,12 @@
   await atest('a fixed-mode run sends a valid record with no adjustments (invariant 2, through the link)', async () => {
     const config = clone(cfg); config.mode = 'fixed'; config.duration_s = 120; config.eval_interval_s = 30;
     const r = await runToEnd(config);
-    eq(H.checkRecord(r.record.record, config, 'T'), []);
+    eq(H.checkRecord(r.record.record, config), []);
     eq([r.record.record.mode, r.record.record.adjustments.length], ['fixed', 0]);
   });
 
   // ---- the runtime on its own stays untouched
-  await atest('runtime.html without ?pane= sends nothing and stays inert', async () => {
+  await atest('runtime.html without ?linked=1 sends nothing and stays inert', async () => {
     const alone = openFrame('../runtime.html');
     await sleep(3500);
     eq(alone.inbox.length, 0);

@@ -29,7 +29,7 @@ function adapt(over, opts) {
   const w = load(), CGF = w.CGF, cfg = config(over);
   const profiles = {};
   for (const m of cfg.crew) profiles[m.trainee_id] = w.CGF_FIXTURES.profiles.find(p => p.trainee_id === m.trainee_id) || null;
-  const a = CGF.Adapt.create(Object.assign({ config: cfg, profiles, seatFocus: w.CGF_FIXTURES.platformTypes.warship.seatFocus, session_id: 's_unit', pane: 'B' }, opts));
+  const a = CGF.Adapt.create(Object.assign({ config: cfg, profiles, seatFocus: w.CGF_FIXTURES.platformTypes.warship.seatFocus, session_id: 's_unit' }, opts));
   return { CGF, a, cfg };
 }
 let nEv = 0;
@@ -379,7 +379,7 @@ test('E6: a directive changes the target within one cycle and expires on time', 
 test('D5: the session record (§9.1) is emitted when the run reaches its duration', () => {
   const { record, CGF, cfg } = session({ duration_s: 1200 });
   assert.ok(record);
-  deq(Object.keys(record).sort(), ['session_id', 'pane', 'scenario', 'seed', 'mode', 'platform', 'crew', 'outcome', 'duration_s', 'events', 'adjustments'].sort());
+  deq(Object.keys(record).sort(), ['session_id', 'scenario', 'seed', 'mode', 'platform', 'crew', 'outcome', 'duration_s', 'events', 'adjustments'].sort());
   assert.equal(record.session_id, 's_test');
   assert.equal(record.scenario, 'strait-transit'); assert.equal(record.seed, cfg.seed); assert.equal(record.mode, 'adaptive');
   assert.equal(record.platform, 'warship');
@@ -391,14 +391,15 @@ test('D5: the session record (§9.1) is emitted when the run reaches its duratio
   assert.equal(CGF.adaptRuntime.lastRecord(), record);
 });
 
-test('D5: the link-init event from link/pane.js starts a session with that config', async () => {
+test('D5: the link-init event from link/runtime-link.js starts a session with that config', async () => {
   const w = load(), CGF = w.CGF, cfg = config({ duration_s: 300 });
   CGF.loadScenario('strait-transit');
-  CGF.sim.link = { pane: 'B', config: cfg };
+  CGF.sim.link = { config: cfg };
   CGF.emit('link-init', cfg);
   await new Promise(r => setTimeout(r, 0));
   const s = CGF.adaptRuntime.session();
-  assert.ok(s && s.pane === 'B');
+  assert.ok(s);
+  assert.match(s.session_id, /^s_\d{8}_\d{6}$/, 'a generated session id has no pane suffix');
   deq(s.config.crew, cfg.crew);
   assert.equal(CGF.params.sensitivity, cfg.envelope.sensitivity.base, 'settings start at the envelope base');
 });

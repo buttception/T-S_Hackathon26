@@ -3,7 +3,7 @@
 // had at the start (for competency_means_start) and the means after JL's update (competency_means_end,
 // null while the update has not run). History entries are built from these with Report.buildWith, so the
 // seeded facts come from the same code as live ones. The newest two sessions are the G1 pair: same seed,
-// trainee_a in pane A and trainee_b in pane B, each with a navigation crewmate.
+// trainee_a in one session and trainee_b in the other, each with a navigation crewmate.
 (function () {
   'use strict';
   const F = window.CGF_FIXTURES = window.CGF_FIXTURES || {};
@@ -44,7 +44,7 @@
       source: 'engine', policy: 'rules_v1',
       evidence_event_ids: events.filter(e => e.competency === target && e.t <= t).slice(-2).map(e => e.event_id), explanation: null
     }));
-    return { session_id: id, pane: o.pane, scenario: o.scenario || 'strait-transit', seed: o.seed, mode: o.mode,
+    return { session_id: id, scenario: o.scenario || 'strait-transit', seed: o.seed, mode: o.mode,
       platform: 'warship', crew: o.crew.map(([seat, trainee_id]) => ({ seat, trainee_id })), outcome: o.outcome,
       duration_s: o.duration, events, adjustments };
   }
@@ -81,13 +81,13 @@
     const adjust = mode === 'fixed' ? [] : [[300, 'weight.ignoredWarning', 1.0, 1.25, 'up', 'hail_discipline'], [600, 'aggression', 0.4, 0.5, 'up', 'hail_discipline']];
     const [ha, ca, ta, wa] = plays.a[i], [hb, cb, tb, wb] = plays.b[i];
     sessions.push({
-      record: session(idA, { pane: 'A', seed, mode, outcome: outA, duration: 900, crew: [['weapons', 'trainee_a']], adjust,
+      record: session(idA, { seed, mode, outcome: outA, duration: 900, crew: [['weapons', 'trainee_a']], adjust,
         plays: [['trainee_a', 'hail_discipline', ha, 120, 150], ['trainee_a', 'collision_avoidance', ca, 200, 200],
           ['trainee_a', 'territorial_awareness', ta, 350, 200], ['trainee_a', 'weapons_discipline', wa, 500, 150]] }),
       profile_start: { trainee_a: prof('trainee_a', A[i]) }, means_end: { trainee_a: means(A[i + 1]) }
     });
     sessions.push({
-      record: session(idB, { pane: 'B', seed, mode, outcome: outB, duration: outB === 'fail' ? 640 : 900, crew: [['weapons', 'trainee_b']], adjust,
+      record: session(idB, { seed, mode, outcome: outB, duration: outB === 'fail' ? 640 : 900, crew: [['weapons', 'trainee_b']], adjust,
         plays: [['trainee_b', 'hail_discipline', hb, 120, 140], ['trainee_b', 'collision_avoidance', cb, 200, 200],
           ['trainee_b', 'territorial_awareness', tb, 350, 200], ['trainee_b', 'weapons_discipline', wb, 500, 120]],
         peaks: outB === 'fail' ? [[600, 'trainee_b', 'ship_2']] : [] }),
@@ -98,7 +98,7 @@
   // The latest G1 pair: adaptive, seed 42. B's CGFs press hails early; B starts acknowledging mid-run and
   // the pressure eases. JL's competency update has not run yet, so means_end is null.
   sessions.push({
-    record: session('s_20261030_01', { pane: 'A', seed: 42, mode: 'adaptive', outcome: 'success', duration: 920,
+    record: session('s_20261030_01', { seed: 42, mode: 'adaptive', outcome: 'success', duration: 920,
       crew: [['weapons', 'trainee_a'], ['navigation', 'trainee_c08']],
       plays: [['trainee_a', 'hail_discipline', 'SSSS', 90, 160], ['trainee_a', 'weapons_discipline', 'SSS', 300, 180],
         ['trainee_c08', 'collision_avoidance', 'SFSSF', 150, 150], ['trainee_c08', 'territorial_awareness', 'SS', 420, 200]],
@@ -107,7 +107,7 @@
     profile_start: { trainee_a: prof('trainee_a', A[3]), trainee_c08: prof('trainee_c08', C08) }, means_end: {}
   });
   sessions.push({
-    record: session('s_20261030_02', { pane: 'B', seed: 42, mode: 'adaptive', outcome: 'success', duration: 920,
+    record: session('s_20261030_02', { seed: 42, mode: 'adaptive', outcome: 'success', duration: 920,
       crew: [['weapons', 'trainee_b'], ['navigation', 'trainee_c11']],
       plays: [['trainee_b', 'hail_discipline', 'FFFSFFSFSSF', 60, 75], ['trainee_b', 'weapons_discipline', 'SS', 500, 150],
         ['trainee_c11', 'collision_avoidance', 'SSS', 200, 200], ['trainee_c11', 'territorial_awareness', 'FSF', 300, 180]],

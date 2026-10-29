@@ -1,19 +1,19 @@
-// Pane adapter: lets a runtime page be driven by the host page (host.html). Loaded by one <script> tag at the end
-// of runtime.html. It does nothing unless the page is inside an iframe AND opened with ?pane=<letter>, so
+// Runtime link: lets a runtime page be driven by the host page (host.html). Loaded by one <script> tag at the end
+// of runtime.html. It does nothing unless the page is inside an iframe AND opened with ?linked=1, so
 // runtime.html on its own behaves exactly as before.
 //
 // This file only uses the runtime's public CGF API (listed in link/README.md). It never edits the runtime's files
 // or DOM, except for its own small overlay. Adaptation code subscribes to the 'link-init' event
 // (CGF.on('link-init', config => ...)) instead of editing this file.
 //
-// Protocol: contracts/link.js. Host -> pane: init, start, pause, restart. Pane -> host: hello, ready, status,
+// Protocol: contracts/link.js. Host -> runtime: init, start, pause, restart. Runtime -> host: hello, ready, status,
 // ended, record, error. `record` carries the session record (INTERFACES §9.1) that the runtime emits as the
 // 'session-record' event when an adaptive run ends; this file forwards it and does not look inside it.
 (function () {
   'use strict';
   const CGF = window.CGF;
-  const qs = new URLSearchParams(location.search), pane = qs.get('pane');
-  if (!CGF || !pane || window.parent === window) return;   // inert outside a linked pane
+  const qs = new URLSearchParams(location.search);
+  if (!CGF || qs.get('linked') !== '1' || window.parent === window) return;   // inert outside a linked runtime
 
   const REQUIRED = {   // the runtime API this adapter depends on; reported in `hello` when something is missing
     'CGF.loadScenario': () => typeof CGF.loadScenario === 'function',
@@ -32,7 +32,7 @@
 
   let config = null, lastStatus = '', overlay = null;
   const L = () => CGF.link;
-  const send = (type, payload) => window.parent.postMessage(L().message(type, pane, payload), '*');
+  const send = (type, payload) => window.parent.postMessage(L().message(type, payload), '*');
   const fail = message => send('error', { message });
 
   function apiReport() {
@@ -51,15 +51,15 @@
       document.body.appendChild(overlay);
     }
     const esc = CGF.util.esc, crew = config.crew.map(m => `${esc(m.seat)} <b>${esc(m.trainee_id)}</b>`).join(' · ');
-    overlay.innerHTML = `<b>Pane ${esc(pane)}</b> · ${esc(config.platform.type)} ${esc(config.platform.model)} · ${crew}`;
-    document.title = `Pane ${pane} · ${config.platform.model}`;
+    overlay.innerHTML = `<b>${esc(config.platform.type)} ${esc(config.platform.model)}</b> · ${crew}`;
+    document.title = `${config.platform.type} ${config.platform.model}`;
   }
 
   function load() {
     CGF.loadScenario(config.scenario);   // default exercise mode; the allocation's adaptive/fixed is a separate setting
     // Keep the link on the live sim object. The envelope is recorded, not applied: its values are on a different
     // scale from CGF.params, and applying them is the adaptation lane's job.
-    CGF.sim.link = { pane, config, seed: config.seed, adaptation: config.mode, envelope: config.envelope };
+    CGF.sim.link = { config, seed: config.seed, adaptation: config.mode, envelope: config.envelope };
     drawOverlay();
     lastStatus = '';   // a reloaded scenario always reports its fresh state, even if it looks like the last one
     CGF.emit('link-init', config);
@@ -80,7 +80,6 @@
     if (ev.source !== window.parent) return;   // origins are opaque under file://, so check the sender instead
     const msg = ev.data, errs = L().validateMessage(msg);
     if (errs.length || L().TYPES[msg.type].from !== 'host') return;
-    if (msg.pane !== pane) return;
     try {
       if (msg.type === 'init') return onInit(msg);
       if (!config) return fail(`${msg.type}: send init first`);
@@ -110,7 +109,7 @@
       await new Promise(r => setTimeout(r, 50));
     }
     window.addEventListener('message', onMessage);
-    CGF.on('reset', () => { if (config && CGF.sim && !CGF.sim.link) CGF.sim.link = { pane, config, seed: config.seed, adaptation: config.mode, envelope: config.envelope }; });
+    CGF.on('reset', () => { if (config && CGF.sim && !CGF.sim.link) CGF.sim.link = { config, seed: config.seed, adaptation: config.mode, envelope: config.envelope }; });
     CGF.on('outcome', (kind, text) => { if (kind) send('ended', { outcome: kind, text: String(text || '') }); });
     CGF.on('session-record', r => { if (r && typeof r === 'object' && !Array.isArray(r)) send('record', { record: r }); });
     setInterval(status, 500);

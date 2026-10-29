@@ -5,10 +5,10 @@
 #hostApp header h1 { margin: 0; }
 #hostApp a.btn { text-decoration: none; color: var(--text); }
 #hostApp main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px; }
-#hostApp .pane { display: flex; flex-direction: column; min-height: 0; min-width: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+#hostApp .runFrame { display: flex; flex-direction: column; min-height: 0; min-width: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
 #hostApp .info { background: var(--panel); padding: 6px 10px; border-bottom: 1px solid var(--line); }
 #hostApp iframe { flex: 1; width: 100%; border: 0; background: var(--bg); min-height: 0; }
-.paneTitle { display: flex; align-items: center; gap: 8px; }
+.runTitle { display: flex; align-items: center; gap: 8px; }
 .crewLine { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 2px 0; font-size: 12px; }
 .chip { font-size: 11px; padding: 1px 7px; border-radius: 9px; background: var(--panel2); border: 1px solid var(--line); color: var(--muted); }
 .chip.run { color: var(--text-on-accent); background: var(--accent); border-color: var(--accent); }

@@ -40,7 +40,7 @@ function load(extra) {
   return window;
 }
 
-// A §3 scenario config for one pane
+// A §3 scenario config for one run
 function config(over) {
   return Object.assign({
     scenario_id: 'test_B', scenario: 'strait-transit', seed: 1234, mode: 'adaptive', duration_s: 1200, eval_interval_s: 30,

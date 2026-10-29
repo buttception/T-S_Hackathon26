@@ -39,7 +39,7 @@
     type, competency, outcome, unit_id: 'ship_2', detail: {} });
   const hailFail = (n, id) => ev(n, id, 'navigation', 'hail_ignored', 'hail_discipline', 'fail');
   const hailOk = (n, id) => ev(n, id, 'navigation', 'hail_acknowledged', 'hail_discipline', 'success');
-  const record = (events, sid) => ({ session_id: sid || 's_t1', pane: null, scenario: 'strait-transit', seed: 1, mode: 'adaptive', platform: 'warship',
+  const record = (events, sid) => ({ session_id: sid || 's_t1', scenario: 'strait-transit', seed: 1, mode: 'adaptive', platform: 'warship',
     crew: [{ seat: 'weapons', trainee_id: 'trainee_a' }, { seat: 'sensors', trainee_id: 'trainee_c01' }, { seat: 'navigation', trainee_id: 'trainee_b' }],
     outcome: 'success', duration_s: 900, events, adjustments: [] });
   const hail = p => p.competencies.hail_discipline;

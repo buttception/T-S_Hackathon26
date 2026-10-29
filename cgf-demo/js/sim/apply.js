@@ -13,7 +13,7 @@
 
   const isSetting = s => !!PARAMS[s] || WEIGHT_RE.test(s);
 
-  // force: 'all' or a harness id ("hostile-state"). Parameters are shared by every force in a pane, so a
+  // force: 'all' or a harness id ("hostile-state"). Parameters are shared by every force in a run, so a
   // harness-specific parameter change applies to all of them; weights can be set per harness.
   function get(setting, force) {
     if (PARAMS[setting]) return CGF.params[PARAMS[setting]];
@@ -46,7 +46,7 @@
       sim.applied.push(a);
       const arrow = a.pressure_direction === 'up' ? 'raised' : a.pressure_direction === 'down' ? 'eased' : 'set';
       CGF.record(null, `Adaptation: ${a.setting} ${arrow}`, `${a.old} → ${a.new}${a.clamped ? ' (capped by the envelope)' : ''}`,
-        `${a.source === 'instructor_steer' ? 'instructor steering' : 'adaptation'} · ${a.seat || 'pane'} · target ${a.target_competency || 'none'}`);
+        `${a.source === 'instructor_steer' ? 'instructor steering' : 'adaptation'} · ${a.seat || 'platform'} · target ${a.target_competency || 'none'}`);
     }
     if (paramsChanged) CGF.emit('params');   // the Setup sliders follow
     if (adjustments && adjustments.length) CGF.emit('adapt:applied', adjustments);

@@ -61,7 +61,7 @@
 
   // people: { seat: { name, active } } for the seats that have a trainee or are the active seat.
   // Returns an SVG string. The seat markers carry data-seat so the page can make them clickable.
-  function svg(type, people, crew) {
+  function svg(type, people) {
     const t = TYPES[type];
     if (!t) return '';
     people = people || {};
@@ -78,7 +78,7 @@
     const sims = t.simulated.map(([x, y, label]) =>
       `<g><title>${esc(label)}</title><circle cx="${x}" cy="${y}" r="7" style="fill:none;stroke:var(--muted);stroke-width:1;stroke-dasharray:2 2"/>` +
       `<text x="${x}" y="${y + 3}" style="font-size:8px;text-anchor:middle;fill:var(--muted)">S</text></g>`).join('');
-    return `<svg class="vehicle" viewBox="${t.box}" width="100%" role="img" aria-label="${esc(t.title)}, crew ${esc(crew || '')}" data-type="${esc(type)}">` +
+    return `<svg class="vehicle" viewBox="${t.box}" width="100%" role="img" aria-label="${esc(t.title)}, crew" data-type="${esc(type)}">` +
       t.shapes.join('') + sims + dots + '</svg>';
   }
 

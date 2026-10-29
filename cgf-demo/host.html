@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Side-by-side run</title>
+<title>Training run</title>
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="link/host.css">
 </head>
@@ -35,14 +35,14 @@
 
   <main id="stage">
     <!-- One crew, one runtime (J8). The inline style spans the whole width; Eevee can move it into link/host.css, whose grid has two columns. -->
-    <section class="pane" style="grid-column: 1 / -1"><div id="infoA" class="info"></div><iframe id="frameA" title="Runtime"></iframe></section>
+    <section class="runFrame" style="grid-column: 1 / -1"><div id="info" class="info"></div><iframe id="frame" title="Runtime"></iframe></section>
   </main>
 </div>
 
 <script src="js/util.js"></script>
 <script src="contracts/contracts.js"></script>
 <script src="contracts/link.js"></script>
-<!-- Glenda's report lane: when a pane's session record arrives, Report.finishSession builds the reports, appends the
+<!-- Glenda's report lane: when the session record arrives, Report.finishSession builds the reports, appends the
      history entries and gives the report page URL. The host only calls it. -->
 <script src="fixtures/profiles/roster.js"></script>
 <script src="js/report/report.js"></script>

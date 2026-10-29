@@ -99,7 +99,7 @@
     : `<span class="cause-tag cause-${esc(a.cause || 'live')}" title="${esc(CAUSE[a.cause] || '')}">${esc(a.cause || 'live')}</span>`;
 
   function renderSeats(live) {
-    if (!live) return '<div class="muted">No adaptive session. In a linked pane it starts when the host sends the allocation; here you can start a local one below.</div>';
+    if (!live) return '<div class="muted">No adaptive session. In a linked run it starts when the host sends the allocation; here you can start a local one below.</div>';
     return live.seats.map(s => {
       // only the seat's own competencies (INTERFACES §1.1), plus the target if it falls outside them
       const shown = Object.entries(s.workingProfile).filter(([c]) => (s.focus || []).includes(c) || c === s.target);

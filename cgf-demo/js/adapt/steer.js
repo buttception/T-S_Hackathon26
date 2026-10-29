@@ -5,7 +5,7 @@
 //   CGF.adaptSteer.parse(text, crew)        keyword parser, always available (the template fallback)
 //   CGF.adaptSteer.interpret(text, crew)    local LLM if enabled, keyword parser otherwise or on failure
 //   CGF.adaptSteer.validate(directive, crew) -> errors[]
-// crew: the pane's crew [{seat, trainee_id}], so a directive can only name a trainee who is in it.
+// crew: the run's crew [{seat, trainee_id}], so a directive can only name a trainee who is in it.
 (function () {
   'use strict';
   const CGF = window.CGF;
@@ -35,7 +35,7 @@
     if (!d || typeof d !== 'object' || Array.isArray(d)) return ['directive: must be an object'];
     const errs = Object.keys(d).filter(k => !FIELDS.includes(k)).map(k => `directive: unknown field "${k}"`);
     if (typeof d.raw_text !== 'string' || !d.raw_text.trim()) errs.push('directive.raw_text: required');
-    if (!(crew || []).some(m => m.trainee_id === d.trainee_id)) errs.push(`directive.trainee_id: "${d.trainee_id}" is not in this pane's crew`);
+    if (!(crew || []).some(m => m.trainee_id === d.trainee_id)) errs.push(`directive.trainee_id: "${d.trainee_id}" is not in this crew`);
     if (!COMPETENCIES.includes(d.competency)) errs.push(`directive.competency: one of ${STEERABLE.join(', ')}`);
     else if (!STEERABLE.includes(d.competency)) errs.push(`directive.competency: "${d.competency}" is not measured by the simulator yet, so it cannot be steered`);
     if (!INTENSITIES.includes(d.intensity)) errs.push(`directive.intensity: one of ${INTENSITIES.join(', ')}`);
