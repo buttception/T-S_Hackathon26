@@ -186,6 +186,7 @@
       duration_s: Math.max(120, parseInt($('rsnDuration').value, 10) || 2400)
     }).then(errs => { if (errs.length) $('rsnStatus').textContent = 'Not started: ' + errs.join('; '); render(); });
     $('rsnLlm').onchange = e => { useLlm = e.target.checked; };
+    if (new URLSearchParams(location.search).get('llm') === '1') { $('rsnLlm').checked = true; useLlm = true; }   // run-demo.bat
     const parseSteer = async () => {
       const sess = CGF.adaptRuntime.session();
       if (!sess || sess.ended) { showDirective({ directive: { raw_text: $('steerText').value }, errors: ['no adaptive session is running'], via: 'not sent' }); return; }

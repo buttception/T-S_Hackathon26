@@ -19,6 +19,8 @@
     catch (e) { return Object.assign({}, DEFAULTS); }
   }
   const settings = loadSettings();
+  // runtime.html?llm=1 (run-demo.bat): use the local model for prompts, keyword fallback on, for this page only (not saved)
+  try { if (new URLSearchParams(location.search).get('llm') === '1') Object.assign(settings, { enabled: true, fallback: true }); } catch (e) { /* no location */ }
   function saveSettings() { try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch (e) { /* storage unavailable */ } }
 
   const OPS = ['escalate', 'calm', 'force', 'set_harness', 'spawn', 'radio', 'malfunction', 'repair', 'fog', 'restart', 'load', 'mode'];

@@ -14,12 +14,32 @@
 //   speed    simulation speed for this step (time scale, sim seconds per real second): fast through quiet
 //            stretches, slow at the moments that matter
 //   focus    camera target for this step: a unit name, 'own', or {x, y}; zoom: the view half-width to glide to
+//   spot     a panel element (CSS selector) the step talks about: its tab is opened and highlighted, and the element
+//            scrolled into view and highlighted until the next step
 (function () {
   'use strict';
   const CGF = window.CGF, U = CGF.util;
   const TYPE_MS = 45; // per character, so the audience can read the prompt as it is typed
 
+  // Demo highlight on the panel: the tab a demo switches to, and the element a step is about (step "spot").
+  // The look uses the AI-source tokens (as #cmd.typing does) until Eevee styles .demo-focus / .demo-spot in CSS.
+  const HL = { outline: '2px solid var(--source-ai)', boxShadow: '0 0 0 4px var(--source-ai-bg)', outlineOffset: '1px' };
+  const lit = new Set();
+  function highlight(el, cls) {
+    if (!el) return;
+    el.classList.add(cls); Object.assign(el.style, HL); lit.add(el);
+  }
+  function unhighlight(cls) {
+    for (const el of [...lit]) if (el.classList.contains(cls)) { el.classList.remove(cls); for (const k of Object.keys(HL)) el.style[k] = ''; lit.delete(el); }
+  }
+  function focusTab(name) {
+    unhighlight('demo-focus');
+    highlight(document.querySelector(`.tab[data-tab="${name}"]`), 'demo-focus');
+  }
+
   // Demo-level fields (besides id, name, scenario, mode, params, steps):
+  //   pace:   play the demo this many times faster in real time: holds, timeouts, prompt typing and the pages after it
+  //           are divided by it, and each step's simulation speed multiplied by it (the same sim time passes per step)
   //   places: { <scenario id>: [x, y, hdg] }  where BLUE-1 starts whenever the demo loads or restarts that scenario,
   //           nearer the action than the scenario's default start (the maps are large)
   //   view:   { zoom }  the camera follows BLUE-1 at this half-width when a scenario loads (default: whole map)
@@ -36,6 +56,8 @@
   });
 
   const R = { active: null, idx: -1, startReal: 0, steerTo: null, steerUnit: null, loop: false, typing: null };
+
+  const pace = () => (R.active && R.active.pace) || 1;
 
   function clearSteer() { R.steerTo = null; R.steerUnit = null; }
 
@@ -57,7 +79,7 @@
     heading(h) { clearSteer(); CGF.sim.own.ordHdg = h; },
     speed(v) { CGF.sim.own.ordSpd = v; },
     select(u) { if (u) CGF.sim.selected = u; },
-    tab(name) { CGF.emit('demo-tab', name); },
+    tab(name) { CGF.emit('demo-tab', name); if (R.active) focusTab(name); },
     params(p) { Object.assign(CGF.params, p); CGF.emit('params'); },
     // Camera: glide to and follow an entity of interest (unit, unit name, 'own' or {x, y}); half = zoom
     focus(target, half) { if (CGF.render && CGF.render.focus) CGF.render.focus(target, { half }); },
@@ -103,16 +125,66 @@
     R.startReal = performance.now();
     if (st.caption != null) caption(st.caption);
     if (st.do) st.do(api);
-    if (st.speed) api.timeScale(st.speed);
+    if (st.speed) api.timeScale(st.speed * pace());
     if (st.focus) api.focus(st.focus, st.zoom);
     else if (st.zoom) api.focus('own', st.zoom);
     if (st.prompt) { api.tab('instructor'); R.typing = { text: st.prompt, fallback: st.fallback, shown: 0, nextAt: performance.now() + 400 }; }
+    unhighlight('demo-spot');
+    if (st.spot) spot(st.spot);
+  }
+
+  // Open the tab that holds this panel element, then bring it into view and highlight it for the step
+  function spot(sel) {
+    const el = document.querySelector(sel); if (!el) return;
+    const pane = el.closest('[data-pane]');
+    if (pane) api.tab(pane.dataset.pane);
+    highlight(el, 'demo-spot');
+    setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 50);   // after the tab is shown
+  }
+
+  // After the last step: other pages full-screen over the runtime, one after another (demo field "after":
+  // [{ url, seconds, caption, record }]). record: true passes the demo's last adaptive session record in the link,
+  // the way report.html reads it (#record=...). The pages are not changed; Esc closes the overlay.
+  let overlay = null, overlayTimer = null;
+  CGF.on('session-record', r => { if (R.active && r && r.mode !== 'fixed') R.record = r; });
+  function closeOverlay() {
+    if (!overlay) return;
+    clearTimeout(overlayTimer);
+    const cap = document.getElementById('caption');
+    cap.style.top = cap.style.bottom = '';
+    document.getElementById('mapWrap').appendChild(cap);   // the caption goes back over the map
+    overlay.remove(); overlay = null; caption('');
+  }
+  function showAfter(list, record, done) {
+    const box = document.createElement('div'), frame = document.createElement('iframe');
+    Object.assign(box.style, { position: 'fixed', inset: '0', zIndex: 50, background: 'var(--surface-bg)' });
+    Object.assign(frame.style, { width: '100%', height: '100%', border: '0' });
+    const cap = document.getElementById('caption');
+    Object.assign(cap.style, { top: 'auto', bottom: '16px' });   // over the page's footer, not its title
+    box.appendChild(frame); box.appendChild(cap); document.body.appendChild(box);
+    overlay = box;
+    let i = -1;
+    (function step() {
+      if (overlay !== box) return;
+      const p = list[++i];
+      if (!p) { closeOverlay(); done(); return; }
+      frame.src = p.url + (p.record && record ? '#record=' + encodeURIComponent(JSON.stringify(record)) : '');
+      caption(p.caption || '');
+      overlayTimer = setTimeout(step, (p.seconds || 20) * 1000 / pace());
+    })();
   }
 
   function finish() {
     const d = R.active;
+    if (d && d.after && !R.afterShown) {   // the demo stays active (Esc still stops it) while the pages show
+      R.afterShown = true; R.idx = 1e9;
+      if (CGF.sim.running) CGF.actions.toggleRun();
+      unhighlight('demo-spot'); unhighlight('demo-focus');
+      showAfter(d.after, R.record, () => { if (R.active === d) finish(); });
+      return;
+    }
     if (R.loop && d) { setTimeout(() => { if (R.active === d) CGF.demo.start(d.id, { loop: true }); }, 4000); R.idx = 1e9; return; }
-    R.active = null; clearSteer(); R.typing = null;
+    R.active = null; clearSteer(); R.typing = null; unhighlight('demo-spot'); unhighlight('demo-focus');
     if (CGF.sim.running) CGF.actions.toggleRun();
     CGF.emit('demo', false);
   }
@@ -121,7 +193,8 @@
     start(id, opts) {
       const d = CGF.demos[id];
       if (!d) { CGF.log(`Unknown demo: ${id}`, 'alert'); return; }
-      R.active = d; R.idx = -1; R.loop = !!(opts && opts.loop); clearSteer(); R.typing = null;
+      closeOverlay();
+      R.active = d; R.idx = -1; R.loop = !!(opts && opts.loop); clearSteer(); R.typing = null; R.record = null; R.afterShown = false;
       CGF.loadScenario(d.scenario, d.harnesses, { mode: d.mode || 'exercise' });
       api.params(Object.assign({ aggression: 1, sensitivity: 1, reaction: 30, decay: 1, detection: 20 }, d.params || {}));
       CGF.sim.running = true; CGF.emit('run');
@@ -129,8 +202,9 @@
       next();
     },
     stop() {
+      closeOverlay();
       if (!R.active) return;
-      R.active = null; clearSteer(); R.typing = null;
+      R.active = null; clearSteer(); R.typing = null; unhighlight('demo-spot'); unhighlight('demo-focus');
       caption('');
       CGF.log('Demo stopped. You have control.', 'sys');
       CGF.emit('demo', false);
@@ -150,7 +224,7 @@
       if (R.typing) {
         const T = R.typing;
         if (T.sent) return; // waiting for the model
-        while (now >= T.nextAt && T.shown < T.text.length) { T.shown++; T.nextAt += TYPE_MS; }
+        while (now >= T.nextAt && T.shown < T.text.length) { T.shown++; T.nextAt += TYPE_MS / pace(); }
         CGF.ui.showTyping(T.text.slice(0, T.shown), false);
         if (T.shown >= T.text.length && now >= T.nextAt + 500) {
           T.sent = true;
@@ -180,8 +254,8 @@
       if (R.steerTo) sim.own.ordHdg = Math.round(U.bearing(CGF.displayedOwn(), R.steerTo));
       if (sim.outcome && !st.allowOutcome) { finish(); return; }
       const elapsed = (now - R.startReal) / 1000;
-      const ready = (!st.until || st.until(api)) && elapsed >= (st.hold || 0);
-      if (ready || (st.timeout && elapsed >= st.timeout)) next();
+      const ready = (!st.until || st.until(api)) && elapsed >= (st.hold || 0) / pace();
+      if (ready || (st.timeout && elapsed >= st.timeout / pace())) next();
     }
   };
 })();
