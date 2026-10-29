@@ -35,6 +35,23 @@
   CGF.emit = (evt, ...args) => (listeners[evt] || []).forEach(fn => fn(...args));
   CGF.log = (text, cls) => CGF.emit('log', text, cls || 'sys');
 
+  // Mission brief (design R26): { objective, situation: [..], constraints }, or a plain string (shown as one paragraph).
+  // text is the plain-sentence form (the log line); structured says which layout the panel uses.
+  CGF.briefOf = S => {
+    const b = S && S.brief;
+    if (b && typeof b === 'object') {
+      const situation = (Array.isArray(b.situation) ? b.situation : b.situation ? [b.situation] : []).map(String);
+      const objective = b.objective ? String(b.objective) : '', constraints = b.constraints ? String(b.constraints) : '';
+      return { structured: true, objective, situation, constraints, text: [objective, ...situation, constraints].filter(Boolean).join(' ') };
+    }
+    return { structured: false, objective: '', situation: [], constraints: '', text: b ? String(b) : '' };
+  };
+  // Scenario line (design R25): a short name and a domain label; they fall back to the full name and to the engine's domain
+  CGF.scenarioInfo = S => {
+    const d = String((S && S.domain) || 'sea');
+    return { shortName: (S && (S.shortName || S.name)) || '', domain: d.charAt(0).toUpperCase() + d.slice(1) };
+  };
+
   CGF.registerScenario = s => {
     if (!s || !s.id) throw new Error('a scenario needs an id');
     CGF.scenarios[s.id] = s; CGF.emit('registry');
@@ -256,7 +273,7 @@
     CGF.sim.units = S.units.map(makeUnit);
     CGF.sim.selected = CGF.cgfs().find(u => CGF.affiliationOf(u) !== 'neutral') || CGF.cgfs()[0] || null;
     CGF.emit('reset');
-    CGF.log(`Scenario loaded: ${S.name}. ${S.brief || ''}`);
+    CGF.log(`Scenario loaded: ${S.name}. ${CGF.briefOf(S).text}`);
     for (const k of CGF.forcesWithHarness()) {
       const H = CGF.sim.forceHarness[k];
       CGF.log(`${S.forces[k].label}: ${H.name}`);

@@ -12,7 +12,12 @@
     id: 'sea-air',
     name: 'SEA + AIR · Strait transit with air activity',
     domain: 'sea',
-    brief: 'BLUE-1 transits north with BLUE-2 (patrol aircraft) overhead. Red force ships and fighters hold the west; Black force boats and a drone claim the reef to the east. Merchant ships below and airliners above share the area. Avoid escalation.',
+    shortName: 'Strait transit, sea and air',
+    brief: {
+      objective: 'BLUE-1 transits north to the Exit point, with BLUE-2 (patrol aircraft) overhead.',
+      situation: ['Red ships and fighters hold the west.', 'Black boats and a drone claim the reef to the east.', 'Merchant ships below and airliners above share the area.'],
+      constraints: 'Avoid escalation.'
+    },
     terms: { area: 'waters and airspace', ownType: 'warship' },
     view: { half: 80, grid: 10 },   // the map is twice the original size
 

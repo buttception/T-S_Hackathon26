@@ -12,7 +12,12 @@
     view: { half: 60, grid: 10 },   // the map is twice the original size
     name: 'LAND · Border road patrol',
     domain: 'land',
-    brief: 'BLUE-1 drives north along the border road to Checkpoint North. Red force holds the territory to the west; Black force militia hold the hills to the east; bandits operate from the forest. Keep the road open and avoid escalation.',
+    shortName: 'Border road patrol',
+    brief: {
+      objective: 'BLUE-1 drives north along the border road to Checkpoint North.',
+      situation: ['Red holds the territory to the west.', 'Black militia hold the hills to the east.', 'Bandits operate from the forest.'],
+      constraints: 'Keep the road open. Avoid escalation.'
+    },
     terms: { area: 'territory', ownType: 'patrol' },
 
     forces: {

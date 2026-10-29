@@ -7,7 +7,13 @@
     id: 'piracy-drill',
     view: { half: 72, grid: 10 },   // the map is twice the original size
     name: 'Piracy drill (high-risk area transit)',
-    brief: 'BLUE-1 transits a high-risk area alongside merchant traffic. Pirate skiffs are opportunistic: keep speed up, manoeuvre and protect the merchants.',
+    shortName: 'Piracy drill',
+    domain: 'sea',
+    brief: {
+      objective: 'BLUE-1 transits the high-risk area and protects the merchant ships.',
+      situation: ['Pirate skiffs are opportunistic.', 'Merchant traffic shares the corridor.'],
+      constraints: 'Keep speed up, manoeuvre and keep weapons visible.'
+    },
     forces: {
       blue:   { label: 'Blue force (Singapore)', tag: 'BLU', kind: 'state', color: '#00a8dc' },
       pirate: { label: 'Pirate group', tag: 'PIR', kind: 'non-state', color: '#ff9f1c', harness: 'raiders' },

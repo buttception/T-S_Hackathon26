@@ -11,7 +11,12 @@
     view: { half: 300, grid: 50, rings: [50, 100] },   // the map is twice the original size
     name: 'AIR · Airspace patrol',
     domain: 'air',
-    brief: 'BLUE-1 flies north to its patrol station. Red force airspace and its air defence identification zone lie to the west; Black force claims an air defence zone around its island to the east. Airliners use the airways. Avoid escalation.',
+    shortName: 'Airspace patrol',
+    brief: {
+      objective: 'BLUE-1 flies north to the Patrol station.',
+      situation: ['Red airspace and its air defence identification zone lie to the west.', 'Black claims an air defence zone around its island to the east.', 'Airliners use the airways.'],
+      constraints: 'Avoid escalation.'
+    },
     terms: { area: 'airspace', ownType: 'aircraft' },
 
     forces: {

@@ -9,7 +9,13 @@
     id: 'strait-transit',
     view: { half: 72, grid: 10 },   // the map is twice the original size
     name: 'Strait transit (Red, Black, pirates, neutral shipping)',
-    brief: 'BLUE-1 transits north to the exit point. Red force holds the western coast; Black force claims the reef to the east; a pirate group operates to the south-east. Keep the sea lanes open and avoid escalation.',
+    shortName: 'Strait transit',
+    domain: 'sea',
+    brief: {
+      objective: 'BLUE-1 transits north to the Exit point.',
+      situation: ['Red holds the western coast.', 'Black claims the reef to the east.', 'Pirates operate to the south-east.', 'Merchant ships use both sea lanes.'],
+      constraints: 'Keep the sea lanes open. Avoid escalation.'
+    },
 
     // Every side taking part. "harness" = the behaviour each non-Blue force starts with (swappable live).
     // kind: state | non-state | civil (a force only accepts harnesses of its own kind).
