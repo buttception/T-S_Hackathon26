@@ -261,4 +261,4 @@ Present r as a sensitivity range, not a claimed result.
 
 ## 13. Not now
 
-Out of scope for the hackathon: real simulator integration, HLA/DIS implementation, multi-trainee teams, voice, VR, conversational CGFs, user accounts, a server or database, persistence beyond `localStorage` and seeded fixture files, new scenarios before G2.
+Out of scope for the hackathon: real simulator integration, HLA/DIS implementation, team-level competencies and crew-level targeting (crews exist, adaptation is per seat; the crew view is planned in INTERFACES §5.2), voice, VR, conversational CGFs, user accounts, a server or database, persistence beyond `localStorage` and seeded fixture files, new scenarios before G2.

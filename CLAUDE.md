@@ -66,4 +66,4 @@ Report: what you were doing, what blocked you, the exact error or missing field,
 
 ## Not now
 
-Do not build: real simulator integration, HLA/DIS, multi-trainee teams, voice, VR, conversational CGFs, user accounts, a server or database, new scenarios before G2. See `cgf-demo/docs/PLAN.md` section 13.
+Do not build: real simulator integration, HLA/DIS, team-level competencies and crew-level targeting (adaptation is per seat; see `docs/INTERFACES.md` §5.1 and §5.2), voice, VR, conversational CGFs, user accounts, a server or database, new scenarios before G2. See `cgf-demo/docs/PLAN.md` section 13.

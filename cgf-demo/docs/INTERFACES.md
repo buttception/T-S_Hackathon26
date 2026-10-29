@@ -124,6 +124,7 @@ Handoff: the page writes the `Allocation` to `localStorage` under `cgf.allocatio
   "t": 642.0,
   "session_id": "s_20261030_01",
   "trainee_id": "trainee_b",
+  "seat": "navigation",
   "type": "hail_ignored",
   "competency": "hail_discipline",
   "outcome": "fail",
@@ -149,6 +150,8 @@ Handoff: the page writes the `Allocation` to `localStorage` under `cgf.allocatio
 
 Events with `competency: null` do not update the profile. They feed the live signal.
 
+**`seat` (added 2026-10-29, per-seat adaptation).** Every event that updates a competency names the seat that caused it, and `trainee_id` is the crew member in that seat. The runtime decides the seat from who controls the thing the event is about; Devin maps each event type to a seat (for example hail events to the seat that answers hails). `seat` is `null` for events that belong to the whole crew (`tension_peak`, `exercise_failed`). A competency event with `seat: null` is invalid.
+
 ## 5. Trainee profile (JL owned, `js/assess/`; Devin's policy reads it)
 
 Seeded profiles ship as `fixtures/profiles/*.js` (assigning to `window.CGF_FIXTURES`), because `fetch` fails on `file://`. Live profiles persist in `localStorage` under `cgf.profile.<trainee_id>`.
@@ -170,6 +173,21 @@ Seeded profiles ship as `fixtures/profiles/*.js` (assigning to `window.CGF_FIXTU
 Mean is `alpha / (alpha + beta)`. Prior for a new competency is `alpha = 1, beta = 1`. A competency counts as having enough evidence once `alpha + beta >= 8`.
 
 The profile is the **prior**. During a session the engine keeps a working copy that each event updates, so the target can change within the session. The stored profile changes only at `end_session`.
+
+### 5.1 Per-seat adaptation (decided 2026-10-29)
+
+Adaptation runs per seat. The profile stays per trainee, so a trainee's history follows them between seats and platforms.
+
+- **Working copy:** one per seat of a pane, started from the profile of the trainee in that seat and updated only by events with that `seat`.
+- **Target:** for each seat, the weakest competency with enough evidence among that seat's focus competencies (`seatFocus` in `fixtures/platforms.js`, provisional). If none of them has enough evidence, the weakest competency with enough evidence overall.
+- **Combining seats:** all of a pane's seats can have a target at once. For each setting the pane's CGFs receive, the engine applies the single largest requested change among the seats and ignores the others for that cycle. Changes are never summed. The adjustment record says which seat it served.
+- **Live signal:** the window and the challenge band (section 6) are kept per seat. A pane's overall pressure follows its seats: any seat `up` raises the pane only if no seat is `down`; any seat `down` wins.
+- **Fixed mode** gives no adjustments for any seat.
+- **Reports and the profile strip** show results per seat and per trainee.
+
+### 5.2 Crew view (planned, not G1)
+
+Team-based training is the wider use, so the per-seat data is kept in a form a crew view can roll up: every event has a `seat`, and a session record lists the crew. Not built for the hackathon: team competencies (coordination, communication), a crew-level target, and a crew-level report. Adding them needs new event types, a crew aggregate over the per-seat working copies, and one more row in the report; none of it changes sections 3 to 5.
 
 ## 6. Live signal (engine internal, shown in the console)
 
@@ -197,6 +215,7 @@ The policy raises settings toward the envelope maximum on `up`, moves them back 
   "requested": 1.25,
   "clamped": false,
   "target_competency": "hail_discipline",
+  "seat": "navigation",
   "pressure_direction": "up",
   "source": "engine",
   "policy": "rules_v1",
@@ -323,7 +342,7 @@ Each pane is an iframe of `runtime.html?pane=<letter>` (the page was `index.html
 
 The pane does not change `CGF.params` or any harness on `init`. It records the allocation's envelope on `CGF.sim.link.envelope` and fires a `link-init` event; the adaptation code subscribes to that event.
 
-The Engine runs in the host page. With crews there is one working profile per seat, not per pane (open question for the Lead: how a crew's target competency is chosen).
+The Engine runs in the host page. With crews there is one working profile per seat, not per pane. Targets are chosen per seat (section 5.1).
 
 Ownership and the runtime API the link depends on: `cgf-demo/link/README.md` in the repo.
 
