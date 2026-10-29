@@ -1,0 +1,80 @@
+/* Design tokens: colour. Owner: Eevee (design/PRINCIPLES.md, design/ui-audit.md finding A).
+   Loaded by css/style.css (@import), so every page that links style.css gets these.
+
+   Colours are split into groups that never stand in for each other:
+   - force identity: who a unit is (MIL-STD-2525 / APP-6). Map, symbols and force names only.
+   - status: something needs attention. Panel chrome only, and always with an icon or word.
+   - source and mode: who acted (AI, instructor, the CGF itself) and whether adaptation is on.
+   - data: neutral scales for measurements such as competency bars and the cohort heatmap.
+   Normal states carry no colour ("dark cockpit"), so colour always means "look here". */
+
+:root {
+  /* Surfaces and text */
+  --surface-bg: #0b1420;        /* page background */
+  --surface-panel: #111c2b;     /* side panels, headers */
+  --surface-raised: #16243a;    /* cards, inputs, buttons */
+  --surface-sunken: #0d1726;    /* logs, code, charts */
+  --border: #24364d;
+  --border-strong: #3a5577;
+  --text: #d6e2f0;              /* 13.7:1 on panel */
+  --text-strong: #e6edf5;
+  --text-muted: #8aa0b8;        /* 6.4:1 on panel */
+  --text-on-accent: #04121f;
+
+  /* Interactive: buttons, focus, selection (blue = interactive, as on the web) */
+  --ui-accent: #4da6ff;         /* 6.7:1 on panel */
+  --ui-accent-strong: #2f6db0;
+  --ui-accent-bg: #1d4a7a;
+  --ui-selected-bg: #13263d;
+
+  /* Force identity, mirrors CGF.style.identity in js/engine.js. Never used for status. */
+  --force-friend: #00a8dc;   --force-friend-light: #80e0ff;
+  --force-hostile: #ff3031;  --force-hostile-light: #ff8080;
+  --force-neutral: #00e200;  --force-neutral-light: #aaffaa;
+  --force-unknown: #ffff00;  --force-unknown-light: #ffff80;
+  /* Text in panels uses the -light values (7:1 or better on panel). */
+
+  /* Status: hues chosen to sit apart from the force colours. Pair with an icon or word. */
+  --status-critical: #ff5fc8;      /* magenta: failure, error, blocking problem. 6.3:1 */
+  --status-critical-bg: #3a1233;
+  --status-critical-text: #ffd1ef;
+  --status-caution: #ffa94d;       /* orange: needs attention soon (malfunction, hail pending). 9:1 */
+  --status-caution-bg: #3d2610;
+  --status-caution-text: #ffe1c2;
+  --status-done: #e6edf5;          /* complete or normal: no hue, shown with a check icon */
+  --status-done-bg: #1c2b40;
+
+  /* Source of an action (CGF log, reasoning panel) */
+  --source-ai: #b58cff;            /* engine adaptation and LLM-parsed commands. 6.7:1 */
+  --source-ai-bg: #251a3d;
+  --source-ai-text: #e6d9ff;
+  --source-instructor: var(--ui-accent);   /* a person did it */
+  --source-cgf: var(--text-muted);         /* the CGF's own behaviour */
+
+  /* Mode: adaptation on or off */
+  --mode-adaptive: var(--source-ai);       /* the AI is shaping the run */
+  --mode-adaptive-bg: var(--source-ai-bg);
+  --mode-fixed: var(--text-strong);        /* standardised, nothing adapts; shown with a lock icon */
+  --mode-fixed-bg: #1c2b40;
+
+  /* Data: one neutral hue, so a low value never reads as hostile or as failure */
+  --data-track: #1c2b40;
+  --data-fill: #9fb3c8;            /* 8:1 on panel */
+  --data-thin: 0.45;               /* opacity when evidence is thin */
+  --data-prior: 0.25;              /* opacity when there is no evidence yet */
+  --data-focus: var(--source-ai);  /* outline on the competency the AI is targeting */
+  --data-0: #22324a;               /* sequential scale for the cohort heatmap, low to high */
+  --data-1: #3a5577;
+  --data-2: #5d82a8;
+  --data-3: #8fb3d6;
+  --data-4: #c9def2;
+
+  /* Legacy names used by style.css, allocate.css and host.css today */
+  --bg: var(--surface-bg);
+  --panel: var(--surface-panel);
+  --panel2: var(--surface-raised);
+  --line: var(--border);
+  --muted: var(--text-muted);
+  --accent: var(--ui-accent);
+  --warn: var(--status-caution);
+}
