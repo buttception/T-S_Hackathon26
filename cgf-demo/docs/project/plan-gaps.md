@@ -159,7 +159,7 @@ Gaps #7 and #8 (identical panes, two panes from `file://`) now read as: one runt
 
 **New findings**
 
-- A 2400 s run with the scripted crew produces only about two hail events, so the comparison reports "too few events to compare" and every run ends `fail`. The demo cannot yet show a measured change. Needs Devin (richer scripted behaviour or more hails). See `replies-to-devin-decisions.md`.
+- **Resolved 2026-10-29 (Devin's measurements, seeds 1 to 6, `strait-transit`, weak-hail trainee in the navigation seat):** a 2400 s run gives 5 to 6 hail events (weak) and 3 to 5 (strong); `compare.html` needs at least 3 in each run, so use 2400 s and do not go below about 1500 s. First hail comes 256 to 550 s in; adaptive runs make 9 to 18 adjustments.
 - `origin/main` was force-updated once (dropped three commits; restored by a merge). Rules against force-push are in `CLAUDE.md`.
 
 **Still open**: #13, #18, #19, #20 to #25 (event length, pre-written code rule, IT checks, second owner for the deck, savings figures, run-of-show, HLA/DIS slides, fallback and replay), #29 to #33 (cooperating CGFs, Devin), #36 and #37 (partner agents in the runtime; seeded history for partners), the demo platform (waiting on Devin). The deck outline is in `docs/pitch/deck-outline.md`.

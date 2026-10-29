@@ -99,6 +99,22 @@
   --escalation-3: var(--status-caution);
   --escalation-4: var(--status-critical);
 
+  /* Type: one scale, four levels of hierarchy (title, section, body, caption). Sizes are for a laptop or a projector at
+     the back of a room (audit finding C), so nothing an instructor must read is below 12px. Mono is for figures only. */
+  --font-ui: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+  --font-mono: Consolas, ui-monospace, Menlo, monospace;
+  --fs-title: 18px;      /* page title */
+  --fs-heading: 15px;    /* a named item: a contact, a force */
+  --fs-body: 14px;       /* reading text, controls */
+  --fs-section: 12px;    /* section labels, uppercase */
+  --fs-caption: 12px;    /* meta lines, hints, units */
+  --lh-body: 1.5;
+  --lh-tight: 1.3;
+  --fw-regular: 400; --fw-medium: 600; --fw-bold: 700;
+
+  /* Spacing: 4px steps. Space between sections is three times the space inside them, so groups read as groups (Gestalt). */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px;
+
   /* Legacy names used by style.css, allocate.css and host.css today */
   --bg: var(--surface-bg);
   --panel: var(--surface-panel);

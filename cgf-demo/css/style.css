@@ -52,6 +52,33 @@ select { max-width: 100%; appearance: none; -webkit-appearance: none; padding-ri
   background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
   background-position: calc(100% - 15px) 55%, calc(100% - 10px) 55%; background-size: 5px 5px; background-repeat: no-repeat; }
 select:hover { border-color: var(--accent); }
+/* Transport controls (runtime, scoped to #panelHead: allocate.html has its own #btnReset): Start/Pause, Restart and speed read as one player bar, like a video player.
+   Icons sit beside the words, never instead of them: an instructor under pressure, or on a projector, reads the word (P2, P5).
+   The play/pause icon needs data-state on #btnRun from js/ui.js (request R22); until then the button shows its word only. */
+#panelHead #btnRun, #panelHead #btnReset { margin-right: -7px; border-radius: 0; }          /* -7px cancels the row gap and overlaps the borders */
+#panelHead #btnRun { border-radius: 999px 0 0 999px; min-width: 104px; padding-left: 14px; font-weight: 600; position: relative; z-index: 1; }
+#panelHead #speedSel { border-radius: 0 999px 999px 0; font-variant-numeric: tabular-nums; padding-left: 12px; }
+#panelHead #btnReset:hover, #panelHead #speedSel:hover { position: relative; z-index: 1; }
+#panelHead #modeSel { margin-left: 10px; }                                       /* not part of the player bar */
+#panelHead #btnRun::before, #panelHead #btnReset::before { display: inline-block; width: 1.1em; margin-right: 6px; text-align: center; font-size: .9em; }
+#panelHead #btnReset::before { content: "\21BA"; font-size: 1.05em; }
+#panelHead #btnRun[data-state="play"]::before { content: "\25B6"; }
+#panelHead #btnRun[data-state="pause"]::before { content: ""; width: .6em; height: .75em; vertical-align: -.05em; margin-left: .25em; margin-right: calc(6px + .25em);
+  background: linear-gradient(90deg, currentColor 0 35%, transparent 35% 65%, currentColor 65%); }   /* two bars, drawn: the glyph merges into one block */
+#panelHead #btnRun[data-state="finished"]::before { content: "\25A0"; }
+#panelHead #btnRun[data-state="finished"] { background: var(--surface-raised); border-color: var(--border); color: var(--text-muted); }
+/* Two-option toggle (segmented control): both choices always visible, the chosen one filled. Used for how a run ends
+   (request R23: Exercise/Freeplay). Markup: .segToggle[role=radiogroup] > .segLabel + button[role=radio][aria-checked].
+   The selected option uses the selection colour, not the primary blue, so it never looks like Start. */
+.segToggle { display: inline-flex; align-items: center; gap: 0; }
+.segLabel { color: var(--text-muted); font-size: 12px; margin-right: 8px; white-space: nowrap; }
+.segToggle button { border-radius: 0; margin-left: -1px; color: var(--text-muted); white-space: nowrap; }
+.segToggle button:first-of-type { border-radius: 5px 0 0 5px; margin-left: 0; }
+.segToggle button:last-of-type { border-radius: 0 5px 5px 0; }
+.segToggle button[aria-checked="true"] { background: var(--ui-selected-bg); border-color: var(--accent); color: var(--text-strong);
+  font-weight: 600; position: relative; z-index: 1; }
+.segToggle button[aria-checked="true"]::before { content: "\2713\00a0"; color: var(--accent); }   /* a tick, so the choice doesn't rely on colour alone */
+.segToggle button:hover { position: relative; z-index: 2; }
 .grow { flex: 1; min-width: 0; }
 /* LLM command preview: AI-sourced, so it uses the AI colours */
 .preview { border: 1px solid var(--source-ai); background: var(--source-ai-bg); border-radius: 6px; padding: 8px; margin: 6px 0; font-size: 12px; }
@@ -111,6 +138,44 @@ select:hover { border-color: var(--accent); }
 kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; font-size: 11px; }
 .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 8px; font-size: 12px; }
 .hidden { display: none !important; }
+
+/* ---- Runtime panel: type hierarchy and spacing (tokens.css). Scoped to #app/#panel so the other pages that load
+   style.css keep their own sizes. Four levels: title, section label, body, caption; sections separated by space,
+   not only by lines (P2: cluster, not clutter). */
+#app { grid-template-columns: 1fr 440px; }                 /* 40px wider: fewer wrapped controls and labels */
+#panel { font: var(--fs-body)/var(--lh-body) var(--font-ui); }
+#panelHead { padding: var(--space-4) var(--space-4) 0; }
+#panelBody { padding: var(--space-1) var(--space-4) var(--space-5); }
+#panel h1 { font-size: var(--fs-title); font-weight: var(--fw-bold); line-height: var(--lh-tight); color: var(--text-strong); margin: 0; }
+#panel h1 small { font-size: var(--fs-caption); font-weight: var(--fw-regular); }
+#panel h2 { font-size: var(--fs-section); font-weight: var(--fw-bold); letter-spacing: .08em; color: var(--text-muted);
+  margin: var(--space-5) 0 var(--space-2); padding-bottom: var(--space-1); }
+#panel h2:first-child { margin-top: var(--space-4); }
+#panel .row { gap: var(--space-2); margin: var(--space-2) 0; }
+#panel button, #panel select, #panel input[type=text], #panel input[type=number], #panel textarea { padding: 6px 10px; }
+#panel select { padding-right: 28px; }
+#panel .small, #panel .muted.small { font-size: var(--fs-caption); line-height: var(--lh-tight); }
+#panel p { margin: 0 0 var(--space-2); }
+/* Tabs: bigger targets, and the open tab is marked by an accent underline as well as the fill */
+#panel .tabs { gap: var(--space-1); margin-top: var(--space-3); }
+#panel .tab { padding: var(--space-2) 10px; font-weight: var(--fw-medium); white-space: nowrap; }
+#panel .tab.active { color: var(--text-strong); box-shadow: inset 0 -2px 0 var(--accent); }
+/* Lists and cards */
+#panel .contact { padding: var(--space-2) var(--space-3); margin: var(--space-2) 0; gap: 2px var(--space-2); }
+#panel .contact b { font-size: var(--fs-heading); }
+#panel .contact .meta, #panel .act .cause, #panel .preview .meta { font-size: var(--fs-caption); }
+#panel .logbox { font: var(--fs-caption)/var(--lh-body) var(--font-mono); padding: var(--space-2) var(--space-3); }
+#panel .act { padding: var(--space-2) 0; }
+#panel .slider { grid-template-columns: 120px 1fr 56px; gap: var(--space-2); margin: var(--space-2) 0; }
+#panel .slider span:last-child, #panel .factor span:last-child, #panel .aar span:nth-child(even) { font-family: var(--font-mono); }
+#panel .forceRow { gap: var(--space-2); margin: var(--space-2) 0; }
+#panel .factor { font-size: var(--fs-caption); gap: var(--space-2); margin: var(--space-1) 0; }
+#panel .aar, #panel .keys { font-size: var(--fs-caption); gap: var(--space-1) var(--space-2); }
+#panel .preview { padding: var(--space-2) var(--space-3); margin: var(--space-2) 0; font-size: var(--fs-caption); }
+#panel .llmGrid { gap: var(--space-2); }
+#panel details { margin: var(--space-3) 0; }
+#panel summary { cursor: pointer; font-weight: var(--fw-medium); }
+#panel kbd { font-size: var(--fs-caption); }
 @media (max-width: 1000px) {
   #app { grid-template-columns: 1fr; grid-template-rows: 65vh auto; height: auto; }
   #panel { border-left: none; border-top: 1px solid var(--line); }

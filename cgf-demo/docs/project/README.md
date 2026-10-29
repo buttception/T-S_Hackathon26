@@ -6,12 +6,14 @@ Instructors define CGFs and set the bounds within which each one may adapt. Each
 
 ## What the demo shows
 
-1. Same strait, same seed, two trainees side by side. CGFs facing the trainee with weak hail discipline press hails; CGFs facing the strong trainee do not.
-2. A profile strip per trainee. While the weak trainee keeps missing hails the pressure eases; when they answer, it rises.
-3. A live log explaining every adjustment and the evidence behind it.
-4. The instructor types "test trainee B's collision avoidance" and the CGFs shift.
-5. A toggle to fixed mode for assessment runs.
-6. An end-of-session report and a cohort heatmap.
+The beat-by-beat script is `docs/pitch/run-of-show.md`. In short:
+
+1. One crew on a warship in a strait transit. The trainee with weak hail discipline sits in the navigation seat, and the CGFs press hails there because that is the history-based target.
+2. An instructor panel explains every adjustment (setting, old and new value, evidence, and a cause tag `live`, `history` or `team`). The pressure follows how the trainee is doing now.
+3. CGFs in one force share what they know and respond together.
+4. The instructor steers in plain language; the parsed directive is shown before it applies.
+5. A switch to "Fixed assessment" stops all adjustments.
+6. An end-of-training report, a profile that updates for the next session, a fixed-versus-adaptive comparison, and a cohort view for improving the curriculum.
 
 ## Ground rules
 
