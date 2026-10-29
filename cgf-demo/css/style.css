@@ -46,7 +46,12 @@ textarea::placeholder, input::placeholder { color: var(--text-muted); }
 button:hover, .btn:hover { border-color: var(--accent); }
 button.primary { background: var(--ui-accent-bg); border-color: var(--ui-accent-strong); }
 button.on { background: var(--status-caution-bg); border-color: var(--status-caution); color: var(--status-caution-text); }
-select { max-width: 100%; }
+/* Dropdowns draw their own arrow so it keeps a fixed 10px gap from the right border in every browser
+   (the native arrow ignores padding and sits against the edge). Two gradient triangles make a chevron in the muted text colour. */
+select { max-width: 100%; appearance: none; -webkit-appearance: none; padding-right: 28px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 55%, calc(100% - 10px) 55%; background-size: 5px 5px; background-repeat: no-repeat; }
+select:hover { border-color: var(--accent); }
 .grow { flex: 1; min-width: 0; }
 /* LLM command preview: AI-sourced, so it uses the AI colours */
 .preview { border: 1px solid var(--source-ai); background: var(--source-ai-bg); border-radius: 6px; padding: 8px; margin: 6px 0; font-size: 12px; }
