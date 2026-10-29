@@ -25,4 +25,6 @@ R4 (glossary) is still open on Devin's side until `design/glossary.md` exists.
 - `.aarGroups`, `.aarGroup` and `.aarGroup h3`
 - `details.keysRef` and `details.advanced`, with their `summary`
 - `.envelope` and `.clamped`
+- `.tab.demo-focus` (the tab a demo has just switched to) and `.demo-spot` (the panel section a demo step is talking about). Until you style them, `js/demo.js` sets an inline outline and glow with your tokens `--source-ai` / `--source-ai-bg` (the same look as `#cmd.typing`). Once the CSS exists, the inline style can go (constant `HL` in `js/demo.js`).
+- While the vision demo shows the debrief and the cohort page at the end, they sit in a full-screen iframe over the runtime, with `#caption` moved to the bottom.
 - The Instructor tab now starts with `#whyTitle`, `#why`, the posture row, `#postureBar` and `#chart`, above "Force harnesses".
