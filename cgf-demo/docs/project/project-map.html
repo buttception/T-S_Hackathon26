@@ -8,55 +8,71 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-/* Layout: one wide flow diagram on top (left to right, a loop back along the bottom), then a page-to-files map, then the findings on unused files. */
+/* Layout: how one session runs. First the messages between pages, then the two loops inside the simulator, then where data is kept, which files each page loads, and unused files. */
 :root {
   --bg: #f4f6f8; --surface: #ffffff; --fg: #1b2530; --muted: #5a6877; --line: #cfd7df; --soft: #e8edf2;
-  --jl: #0b7a75; --devin: #b05a12; --glenda: #6a4bb5; --eevee: #b83a64; --store: #3f5b78;
+  --page: #0b7a75; --sim: #b05a12; --adapt: #6a4bb5; --store: #3f5b78;
   --ok: #2a7a3b; --warn: #a8570f; --flag: #b3261e;
   --font-body: "IBM Plex Sans", system-ui, sans-serif; --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #11181f; --surface: #19232d; --fg: #e4ebf2; --muted: #9aa9b8; --line: #34444f; --soft: #202c37;
-    --jl: #4cc3bc; --devin: #f0a15a; --glenda: #b49cf0; --eevee: #f08aac; --store: #8fb0d3;
+    --page: #4cc3bc; --sim: #f0a15a; --adapt: #b49cf0; --store: #8fb0d3;
     --ok: #6fcf86; --warn: #f0b25f; --flag: #ff8f86; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #11181f; --surface: #19232d; --fg: #e4ebf2; --muted: #9aa9b8; --line: #34444f; --soft: #202c37;
-  --jl: #4cc3bc; --devin: #f0a15a; --glenda: #b49cf0; --eevee: #f08aac; --store: #8fb0d3;
+  --page: #4cc3bc; --sim: #f0a15a; --adapt: #b49cf0; --store: #8fb0d3;
   --ok: #6fcf86; --warn: #f0b25f; --flag: #ff8f86; color-scheme: dark;
 }
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--fg); font: 15px/1.55 var(--font-body); margin: 0;
   padding-block: 28px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-main { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 36px; }
+main { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
 h1 { font-size: 28px; line-height: 1.2; margin: 0 0 6px; font-weight: 600; text-wrap: balance; }
 h2 { font-size: 19px; margin: 0 0 4px; font-weight: 600; }
+h3 { font-size: 15px; margin: 0 0 2px; }
 p { margin: 0; max-width: 68ch; }
-.lede { color: var(--muted); max-width: 70ch; }
-.sub { color: var(--muted); font-size: 13.5px; margin-bottom: 14px; max-width: 72ch; }
+.lede { color: var(--muted); max-width: 72ch; }
+.sub { color: var(--muted); font-size: 13.5px; margin-bottom: 14px; max-width: 74ch; }
 .mono { font-family: var(--font-mono); font-size: 12.5px; }
-.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 14px 0 0; font-size: 13px; }
-.legend span { display: inline-flex; align-items: center; gap: 7px; }
-.sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
 .scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
-svg { display: block; min-width: 1000px; width: 100%; height: auto; }
+svg { display: block; min-width: 900px; width: 100%; height: auto; }
 svg text { font-family: var(--font-body); fill: var(--fg); }
+svg .t-title { font-size: 13.5px; font-weight: 600; }
 svg .t-mono { font-family: var(--font-mono); font-size: 10.5px; fill: var(--muted); }
-svg .t-title { font-size: 14px; font-weight: 600; }
-svg .t-lane { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
-svg .t-lbl { font-family: var(--font-mono); font-size: 10px; fill: var(--muted); }
+svg .t-lbl { font-family: var(--font-mono); font-size: 11px; }
+svg .t-num { font-family: var(--font-mono); font-size: 10.5px; fill: var(--muted); }
+svg .t-note { font-family: var(--font-mono); font-size: 10.5px; fill: var(--fg); }
+svg .t-loop { font-size: 13px; font-weight: 600; fill: var(--sim); }
 svg .box { fill: var(--surface); stroke-width: 1.6; }
+svg .c-page { stroke: var(--page); } svg .c-sim { stroke: var(--sim); } svg .c-store { stroke: var(--store); }
+svg .life { stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 4 4; }
 svg .arrow { fill: none; stroke: var(--muted); stroke-width: 1.5; }
-svg .loop { fill: none; stroke: var(--store); stroke-width: 1.5; stroke-dasharray: 5 4; }
-.c-jl { stroke: var(--jl); } .c-devin { stroke: var(--devin); } .c-glenda { stroke: var(--glenda); } .c-eevee { stroke: var(--eevee); } .c-store { stroke: var(--store); }
-.f-jl { fill: var(--jl) !important; } .f-devin { fill: var(--devin) !important; } .f-glenda { fill: var(--glenda) !important; } .f-eevee { fill: var(--eevee) !important; } .f-store { fill: var(--store) !important; }
+svg .note-box { fill: var(--soft); stroke: var(--line); }
+svg .loop-box { fill: none; stroke: var(--sim); stroke-width: 1.6; stroke-dasharray: 6 4; }
+.loops { display: grid; gap: 16px; }
+.loop { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px 18px; border-top-width: 3px; }
+.loop.fast { border-top-color: var(--sim); } .loop.slow { border-top-color: var(--adapt); }
+.loop h3 { font-size: 16px; margin-bottom: 2px; }
+.loop .when { color: var(--muted); font-size: 13.5px; margin-bottom: 12px; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; counter-reset: s; }
+.steps li { display: flex; gap: 10px; align-items: flex-start; background: var(--soft); border-radius: 6px; padding: 10px 12px; min-width: 0; }
+.steps .n { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 600 12px var(--font-mono); background: var(--surface); border: 1.5px solid var(--muted); }
+.fast .steps .n { border-color: var(--sim); } .slow .steps .n { border-color: var(--adapt); }
+.steps b { font-size: 14px; }
+.steps p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.link { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--muted); padding-left: 4px; }
+.link .tag { font-family: var(--font-mono); font-size: 12px; color: var(--fg); background: var(--soft); border-radius: 4px; padding: 2px 8px; }
+.link .arr { font-size: 18px; line-height: 1; }
+.input, .output { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; font-size: 13.5px; max-width: none; }
+.input b, .output b { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 2px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
-.card h3 { margin: 0 0 2px; font-size: 15px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
-.card .own { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
-.card .what { color: var(--muted); font-size: 13.5px; margin: 0 0 8px; }
+.card h3 { font-family: var(--font-mono); font-size: 14px; }
+.card .what { color: var(--muted); font-size: 13.5px; margin: 2px 0 8px; }
 .card ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 6px; }
 .card li { font-family: var(--font-mono); font-size: 11.5px; background: var(--soft); border-radius: 4px; padding: 1px 6px; }
 .tbl-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
@@ -69,180 +85,147 @@ td.file { font-family: var(--font-mono); font-size: 12.5px; white-space: nowrap;
 .p-remove { color: var(--flag); } .p-decide { color: var(--warn); } .p-keep { color: var(--ok); }
 .note { background: var(--soft); border-radius: 8px; padding: 12px 16px; font-size: 13.5px; color: var(--muted); max-width: 90ch; }
 .note b { color: var(--fg); }
-.stats { display: flex; flex-wrap: wrap; gap: 8px 28px; margin-top: 12px; font-size: 13.5px; color: var(--muted); }
-.stats b { color: var(--fg); font-size: 17px; font-variant-numeric: tabular-nums; }
-:focus-visible { outline: 2px solid var(--jl); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--page); outline-offset: 2px; }
 </style>
 
 <main>
   <header>
-    <h1>Adaptive CGF Trainer: how the project fits together</h1>
-    <p class="lede">An instructor allocates a crew, the simulator runs it while an engine adapts the computer-generated forces, a report is written, and the trainee's profile is updated for next time. This map follows the repo <span class="mono">buttception/T-S_Hackathon26</span> as of <span class="mono">470774f</span>, folder <span class="mono">cgf-demo/</span>.</p>
-    <div class="legend" aria-label="Lane colours">
-      <span><i class="sw" style="background:var(--jl)"></i>JL: allocation, hand-off, competency update</span>
-      <span><i class="sw" style="background:var(--devin)"></i>Devin: simulator and adaptation</span>
-      <span><i class="sw" style="background:var(--glenda)"></i>Glenda: report and history</span>
-      <span><i class="sw" style="background:var(--eevee)"></i>Eevee: look and feel</span>
-      <span><i class="sw" style="background:var(--store)"></i>Stored in the browser</span>
-    </div>
+    <h1>Adaptive CGF Trainer: how the program runs</h1>
+    <p class="lede">A training session is a short exchange of messages between three pages, a simulator that steps through time, and a slower loop that adjusts the computer-generated forces from what the trainee does. When the run ends, the result flows back into stored profiles. This map follows <span class="mono">cgf-demo/</span> in the repo as of <span class="mono">470774f</span>.</p>
   </header>
 
-  <section aria-labelledby="flow">
-    <h2 id="flow">The flow of one training session</h2>
-    <p class="sub">Read left to right. The dashed line is the loop that makes the next session different: the update step writes the profile, and the allocation page reads it. The runtime gets each seat's profile in the <span class="mono">link-init</span> message.</p>
+  <section aria-labelledby="seq">
+    <h2 id="seq">1. One session, message by message</h2>
+    <p class="sub">Time runs downward. Each arrow is a call or a <span class="mono">postMessage</span>; the simulator talks only to the host page. The orange dashed box is where the run happens, drawn in the next section. Everything is saved in the browser, so it all works from <span class="mono">file://</span>.</p>
     <div class="scroll">
-      <svg viewBox="0 0 1100 560" role="img" aria-labelledby="flowT flowD">
-        <title id="flowT">Flow from allocation to hand-off, run, report and competency update</title>
-        <desc id="flowD">Allocation page passes an allocation to the host page, which sends each seat's config to the runtime. The runtime sends a session record back to the host. The host builds the report, and the competency update writes the profile that the allocation page and runtime read next time.</desc>
-        <defs>
-          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--muted)"/></marker>
-          <marker id="ahs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--store)"/></marker>
-        </defs>
-
-        <!-- 1 allocate -->
-        <rect class="box c-jl" x="20" y="60" width="200" height="150" rx="8"/>
-        <text class="t-lane f-jl" x="34" y="82">JL</text>
-        <text class="t-title" x="34" y="102">1  Allocate</text>
-        <text class="t-mono" x="34" y="122">allocate.html</text>
-        <text class="t-mono" x="34" y="137">js/ui-allocate.js</text>
-        <text class="t-mono" x="34" y="152">js/adapt/predict.js</text>
-        <text class="t-mono" x="34" y="172">reads fixtures: roster,</text>
-        <text class="t-mono" x="34" y="187">platforms, envelope</text>
-
-        <!-- 2 host -->
-        <rect class="box c-jl" x="290" y="60" width="190" height="150" rx="8"/>
-        <text class="t-lane f-jl" x="304" y="82">JL</text>
-        <text class="t-title" x="304" y="102">2  Hand off</text>
-        <text class="t-mono" x="304" y="122">host.html</text>
-        <text class="t-mono" x="304" y="137">link/host.js</text>
-        <text class="t-mono" x="304" y="172">checks every message</text>
-        <text class="t-mono" x="304" y="187">with contracts/</text>
-
-        <!-- 3 runtime -->
-        <rect class="box c-devin" x="550" y="60" width="250" height="150" rx="8"/>
-        <text class="t-lane f-devin" x="564" y="82">Devin</text>
-        <text class="t-title" x="564" y="102">3  Run and adapt</text>
-        <text class="t-mono" x="564" y="122">runtime.html + link/pane.js</text>
-        <text class="t-mono" x="564" y="137">engine, factors, scenarios</text>
-        <text class="t-mono" x="564" y="152">js/sim/  scripted crews, team</text>
-        <text class="t-mono" x="564" y="167">js/adapt/  policy, clamp, steer</text>
-        <text class="t-mono" x="564" y="182">js/ui-reasoning.js  why</text>
-        <text class="t-mono" x="564" y="197">live | history | team tags</text>
-
-        <!-- 4 report -->
-        <rect class="box c-glenda" x="870" y="60" width="200" height="150" rx="8"/>
-        <text class="t-lane f-glenda" x="884" y="82">Glenda</text>
-        <text class="t-title" x="884" y="102">4  Report</text>
-        <text class="t-mono" x="884" y="122">report.html</text>
-        <text class="t-mono" x="884" y="137">js/report/  facts, narrative</text>
-        <text class="t-mono" x="884" y="152">js/history/  per-trainee log</text>
-        <text class="t-mono" x="884" y="172">code computes every number</text>
-        <text class="t-mono" x="884" y="187">LLM may only rephrase</text>
-
-        <!-- arrows row 1 -->
-        <path class="arrow" d="M220 135 L288 135" marker-end="url(#ah)"/>
-        <text class="t-lbl" x="254" y="125" text-anchor="middle">Allocation</text>
-        <text class="t-lbl" x="254" y="152" text-anchor="middle">crew + seed</text>
-        <path class="arrow" d="M480 135 L548 135" marker-end="url(#ah)"/>
-        <text class="t-lbl" x="514" y="125" text-anchor="middle">link-init</text>
-        <text class="t-lbl" x="514" y="152" text-anchor="middle">seat config</text>
-
-        <!-- record back to host -->
-        <path class="arrow" d="M675 210 C 675 262, 385 262, 385 212" marker-end="url(#ah)"/>
-        <text class="t-lbl" x="530" y="270" text-anchor="middle">record: session events,</text>
-        <text class="t-lbl" x="530" y="283" text-anchor="middle">adjustments, outcome</text>
-
-        <!-- host -> report over the top -->
-        <path class="arrow" d="M385 60 L385 34 L970 34 L970 58" marker-end="url(#ah)"/>
-        <text class="t-lbl" x="680" y="26" text-anchor="middle">Report.finishSession(record)</text>
-
-        <!-- 5 update -->
-        <rect class="box c-jl" x="550" y="330" width="250" height="100" rx="8"/>
-        <text class="t-lane f-jl" x="564" y="352">JL</text>
-        <text class="t-title" x="564" y="372">5  Update competency</text>
-        <text class="t-mono" x="564" y="392">js/assess/assess.js</text>
-        <text class="t-mono" x="564" y="407">Assess.update: one estimate</text>
-        <text class="t-mono" x="564" y="420">per competency, per seat</text>
-        <path class="arrow" d="M940 210 L940 380 L802 380" marker-end="url(#ah)"/>
-        <text class="t-lbl" x="906" y="305" text-anchor="end">report facts</text>
-
-        <!-- store -->
-        <rect class="box c-store" x="290" y="340" width="190" height="80" rx="8" stroke-dasharray="0"/>
-        <text class="t-title f-store" x="304" y="364">Profile store</text>
-        <text class="t-mono" x="304" y="383">localStorage, plus seeded</text>
-        <text class="t-mono" x="304" y="398">fixtures/profiles/roster.js</text>
-        <path class="arrow" d="M550 380 L482 380" marker-end="url(#ah)"/>
-        <text class="t-lbl" x="516" y="370" text-anchor="middle">writes</text>
-        <path class="loop" d="M290 380 L120 380 L120 212" marker-end="url(#ahs)"/>
-        <text class="t-lbl" x="205" y="371" text-anchor="middle">bars + predicted target</text>
-
-        <!-- compare / cohort -->
-        <rect class="box c-jl" x="870" y="340" width="200" height="110" rx="8"/>
-        <text class="t-lane f-jl" x="884" y="362">JL</text>
-        <text class="t-title" x="884" y="382">Read-only views</text>
-        <text class="t-mono" x="884" y="402">compare.html  fixed vs adaptive</text>
-        <text class="t-mono" x="884" y="417">cohort.html   curriculum view</text>
-        <text class="t-mono" x="884" y="437">js/assess/runs.js</text>
-        <path class="arrow" d="M800 410 L868 410" marker-end="url(#ah)"/>
-
-        <!-- eevee -->
-        <rect class="box c-eevee" x="20" y="490" width="1050" height="48" rx="8"/>
-        <text class="t-lane f-eevee" x="34" y="510">Eevee</text>
-        <text class="t-mono" x="34" y="527">Look and feel of every page above: css/tokens.css and the page style sheets, design/ for rules and requests. No logic.</text>
-      </svg>
+<svg viewBox="0 0 980 988" role="img" aria-labelledby="seqT seqD"><title id="seqT">Messages during one training session</title><desc id="seqD">The allocation page saves an allocation and opens the host page. The host loads the runtime in an iframe and the two exchange hello, init, ready and start. The runtime runs the simulation, then sends ended and a session record. The host validates it, builds the report, updates the profiles and saves the run.</desc><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--muted)"/></marker></defs>
+<rect class="box c-page" x="18" y="14" width="184" height="52" rx="8"/><text class="t-title" x="110" y="36" text-anchor="middle">allocate.html</text><text class="t-mono" x="110" y="54" text-anchor="middle">Allocation page</text>
+<line class="life" x1="110" y1="66" x2="110" y2="936"/>
+<rect class="box c-page" x="268" y="14" width="184" height="52" rx="8"/><text class="t-title" x="360" y="36" text-anchor="middle">host.html</text><text class="t-mono" x="360" y="54" text-anchor="middle">Host page</text>
+<line class="life" x1="360" y1="66" x2="360" y2="936"/>
+<rect class="box c-sim" x="528" y="14" width="184" height="52" rx="8"/><text class="t-title" x="620" y="36" text-anchor="middle">runtime.html</text><text class="t-mono" x="620" y="54" text-anchor="middle">Simulator, in an iframe</text>
+<line class="life" x1="620" y1="66" x2="620" y2="936"/>
+<rect class="box c-store" x="768" y="14" width="184" height="52" rx="8"/><text class="t-title" x="860" y="36" text-anchor="middle">localStorage</text><text class="t-mono" x="860" y="54" text-anchor="middle">Browser storage</text>
+<line class="life" x1="860" y1="66" x2="860" y2="936"/>
+<path class="arrow" d="M854 134 L116 134" marker-end="url(#ah)"/>
+<text class="t-lbl" x="485.0" y="128" text-anchor="middle">profiles: bars, predicted first target</text>
+<text class="t-num" x="96" y="138" text-anchor="end">1</text>
+<path class="arrow" d="M116 172 L854 172" marker-end="url(#ah)"/>
+<text class="t-lbl" x="485.0" y="166" text-anchor="middle">save the Allocation (cgf.allocation)</text>
+<text class="t-num" x="96" y="176" text-anchor="end">2</text>
+<path class="arrow" d="M116 210 L354 210" marker-end="url(#ah)"/>
+<text class="t-lbl" x="235.0" y="204" text-anchor="middle">Start run: opens host.html</text>
+<text class="t-num" x="96" y="214" text-anchor="end">3</text>
+<path class="arrow" d="M854 248 L366 248" marker-end="url(#ah)"/>
+<text class="t-lbl" x="610.0" y="242" text-anchor="middle">read the Allocation, validate it</text>
+<text class="t-num" x="346" y="252" text-anchor="end">4</text>
+<rect class="note-box" x="250.0" y="268" width="220" height="32" rx="6"/>
+<text class="t-note" x="360" y="286" text-anchor="middle">loads runtime.html in an iframe</text>
+<path class="arrow" d="M614 326 L366 326" marker-end="url(#ah)"/>
+<text class="t-lbl" x="490.0" y="320" text-anchor="middle">hello  { api }</text>
+<text class="t-num" x="346" y="330" text-anchor="end">5</text>
+<path class="arrow" d="M366 364 L614 364" marker-end="url(#ah)"/>
+<text class="t-lbl" x="490.0" y="358" text-anchor="middle">init  { config }</text>
+<text class="t-num" x="346" y="368" text-anchor="end">6</text>
+<path class="arrow" d="M854 402 L626 402" marker-end="url(#ah)"/>
+<text class="t-lbl" x="740.0" y="396" text-anchor="middle">profile of each seat's trainee</text>
+<text class="t-num" x="606" y="406" text-anchor="end">7</text>
+<rect class="note-box" x="495.0" y="422" width="250" height="68" rx="6"/>
+<text class="t-note" x="620" y="440" text-anchor="middle">validate config, set envelope bases,</text>
+<text class="t-note" x="620" y="458" text-anchor="middle">start the scripted crew, create the</text>
+<text class="t-note" x="620" y="476" text-anchor="middle">adaptation engine</text>
+<path class="arrow" d="M614 516 L366 516" marker-end="url(#ah)"/>
+<text class="t-lbl" x="490.0" y="510" text-anchor="middle">ready</text>
+<text class="t-num" x="346" y="520" text-anchor="end">8</text>
+<path class="arrow" d="M366 554 L614 554" marker-end="url(#ah)"/>
+<text class="t-lbl" x="490.0" y="548" text-anchor="middle">start  (instructor presses Start)</text>
+<text class="t-num" x="346" y="558" text-anchor="end">9</text>
+<rect class="loop-box" x="500" y="574" width="240" height="66" rx="8"/>
+<text class="t-loop" x="620" y="600" text-anchor="middle">simulation loop until duration_s</text>
+<text class="t-note" x="620" y="620" text-anchor="middle">(next diagram)</text>
+<path class="arrow" d="M614 666 L366 666" marker-end="url(#ah)"/>
+<text class="t-lbl" x="490.0" y="660" text-anchor="middle">status  (clock, counts), repeated</text>
+<text class="t-num" x="346" y="670" text-anchor="end">10</text>
+<path class="arrow" d="M614 704 L366 704" marker-end="url(#ah)"/>
+<text class="t-lbl" x="490.0" y="698" text-anchor="middle">ended  { outcome }</text>
+<text class="t-num" x="346" y="708" text-anchor="end">11</text>
+<path class="arrow" d="M614 742 L366 742" marker-end="url(#ah)"/>
+<text class="t-lbl" x="490.0" y="736" text-anchor="middle">record  { session record }</text>
+<text class="t-num" x="346" y="746" text-anchor="end">12</text>
+<path class="arrow" d="M366 780 L854 780" marker-end="url(#ah)"/>
+<text class="t-lbl" x="610.0" y="774" text-anchor="middle">validate; keep latest run (cgf.lastRun)</text>
+<text class="t-num" x="346" y="784" text-anchor="end">13</text>
+<path class="arrow" d="M366 818 L854 818" marker-end="url(#ah)"/>
+<text class="t-lbl" x="610.0" y="812" text-anchor="middle">build report, append history (cgf.history.*)</text>
+<text class="t-num" x="346" y="822" text-anchor="end">14</text>
+<path class="arrow" d="M366 856 L854 856" marker-end="url(#ah)"/>
+<text class="t-lbl" x="610.0" y="850" text-anchor="middle">update competencies (cgf.profile.*)</text>
+<text class="t-num" x="346" y="860" text-anchor="end">15</text>
+<path class="arrow" d="M366 894 L854 894" marker-end="url(#ah)"/>
+<text class="t-lbl" x="610.0" y="888" text-anchor="middle">save run for comparison (cgf.runs)</text>
+<text class="t-num" x="346" y="898" text-anchor="end">16</text>
+<text class="t-note" x="490" y="962" text-anchor="middle" style="fill:var(--muted)">Later: allocate.html shows the new profiles, report.html reads the history, compare.html reads the saved runs, cohort.html reads the profiles.</text>
+</svg>
     </div>
-    <div class="stats">
-      <span><b>4</b> pages in the main loop</span>
-      <span><b>2</b> read-only views</span>
-      <span><b>3</b> signals behind each CGF change: <span class="mono">live</span>, <span class="mono">history</span>, <span class="mono">team</span></span>
-      <span><b>0</b> servers: it all opens from <span class="mono">file://</span></span>
+  </section>
+
+  <section aria-labelledby="inside">
+    <h2 id="inside">2. Inside the simulator: two loops</h2>
+    <p class="sub">The fast loop is the simulation. The slow loop watches its events and changes how the CGFs score the trainee's behaviour. The run ends when simulated time reaches the duration (2400 s by default) in both adaptive and fixed mode, so every run gathers the same amount of evidence.</p>
+    <div class="loops">
+      <div class="input"><b>Starts from</b>The config from <span class="mono">init</span>: scenario, crew, seed, mode (adaptive or fixed), the instructor's envelope (min, base and max for each setting), duration and cycle length. Each setting begins at its base.</div>
+      <div class="loop fast">
+        <h3>Fast loop: the simulation</h3>
+        <p class="when">Every frame in the browser, in steps of at most 2 s of simulated time. Same seed and inputs give the same events.</p>
+        <ol class="steps"><li><span class="n">1</span><div><b>Advance time</b><p>Every frame, <span class="mono">CGF.tick</span> turns real time into simulated time (60 times faster by default) and cuts it into steps of at most 2 s.</p></div></li><li><span class="n">2</span><div><b>Move the own ship</b><p>Orders come from the trainee at the keyboard, or from the scripted crew agent in a linked run. Malfunctions act here.</p></div></li><li><span class="n">3</span><div><b>Score each CGF unit</b><p>Factors such as proximity, closest point of approach, territorial waters and ignored warnings, each times its weight multiplier, add up to a tension that decays toward a baseline.</p></div></li><li><span class="n">4</span><div><b>Pick a state and act</b><p>Tension selects the unit's state (Patrol, Shadow, Warn, Harass, Weapons ready), after a reaction delay. The unit steers, hails or warns.</p></div></li><li><span class="n">5</span><div><b>Share with the force</b><p>Units of one force share the last known fix and alerts, and escalate together. How much depends on the force's teamwork setting.</p></div></li><li><span class="n">6</span><div><b>Record what happened</b><p>Hails acknowledged or ignored, safe passages and close quarters become events, each tagged with the seat that caused it.</p></div></li></ol>
+      </div>
+      <div class="link"><span class="arr">↓</span><span class="tag">events</span> from step 6 feed the slow loop</div>
+      <div class="loop slow">
+        <h3>Slow loop: adaptation</h3>
+        <p class="when">Every 30 s of simulated time.</p>
+        <ol class="steps"><li><span class="n">1</span><div><b>Collect events</b><p>The events logged since the last cycle. The cycle runs every 30 s of simulated time.</p></div></li><li><span class="n">2</span><div><b>Pick the target</b><p>Per seat (AI partners are skipped): the weakest focus competency with enough evidence in the working profile. The working profile starts from history and is updated by this run's events.</p></div></li><li><span class="n">3</span><div><b>Read the live signal</b><p>Success rate over the last 10 target events, against a band of 40 to 70 per cent. Above it: raise the pressure. Below it: ease off. Too few events: raise exposure.</p></div></li><li><span class="n">4</span><div><b>Choose settings</b><p>The settings that exercise that competency, for example the weight on ignored warnings. Each change is tagged <span class="mono">live</span>, <span class="mono">history</span> or <span class="mono">team</span>.</p></div></li><li><span class="n">5</span><div><b>Clamp to the envelope</b><p>No value leaves the instructor's min and max. In fixed assessment mode the cycle returns no adjustments at all.</p></div></li><li><span class="n">6</span><div><b>Apply</b><p><span class="mono">CGF.apply</span> sets parameters and weight multipliers. It never moves a unit or changes the score or outcome. The reasoning panel lists the change, its evidence and its cause.</p></div></li></ol>
+      </div>
+      <div class="link"><span class="arr">↑</span><span class="tag">new settings</span> change how step 3 scores units from the next step on</div>
+      <div class="output"><b>When time is up</b>The run ends with outcome success, or fail if a failure state was reached. The engine builds the session record (events, adjustments, outcome, seed, config) and sends <span class="mono">ended</span> and <span class="mono">record</span> to the host. The instructor can also act at any time: injects and typed steering go through a validated directive, never straight to the engine.</div>
+    </div>
+  </section>
+
+  <section aria-labelledby="data">
+    <h2 id="data">3. Where the data is kept</h2>
+    <p class="sub">There is no server. Pages pass data by writing and reading the browser's local storage; seeded fixtures stand in when storage is empty.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Key</th><th>Written by</th><th>Read by</th><th>Holds</th></tr></thead>
+        <tbody><tr><td class="file">cgf.allocation</td><td>allocate.html</td><td>host.html</td><td>The crew, scenario, seed, mode and envelope for the run</td></tr><tr><td class="file">cgf.profile.&lt;id&gt;</td><td>Assess.update, after a run</td><td>allocate.html, runtime (at start), report.html, cohort.html</td><td>One estimate per competency for a trainee</td></tr><tr><td class="file">cgf.history.&lt;id&gt;</td><td>Report.finishSession</td><td>report.html, AI partner parameters</td><td>One entry per finished session</td></tr><tr><td class="file">cgf.lastRun</td><td>host.html</td><td>nothing else reads it today</td><td>A copy of the valid records of the latest run</td></tr><tr><td class="file">cgf.runs</td><td>Runs.save (host)</td><td>compare.html</td><td>The last ten session records, for fixed against adaptive</td></tr><tr><td class="file">cgf.assessed</td><td>Assess.update</td><td>Assess.update</td><td>Which sessions were already applied, so none counts twice</td></tr></tbody>
+      </table>
     </div>
   </section>
 
   <section aria-labelledby="pages">
-    <h2 id="pages">Which files each page loads</h2>
-    <p class="sub">Taken from the script and style tags in each page, not from the docs. Shared helpers (<span class="mono">js/util.js</span>, <span class="mono">css/style.css</span>, <span class="mono">contracts/</span>) appear on most pages and are left out below.</p>
-    <div class="grid">
-      <article class="card"><h3>allocate.html <span class="own f-jl" style="color:var(--jl)">JL</span></h3>
-        <p class="what">Pick platform, crew, scenario, seed, mode. Shows each trainee's competencies and the likely first target.</p>
-        <ul><li>js/ui-allocate.js</li><li>js/ui-allocate-vehicles.js</li><li>js/adapt/predict.js</li><li>js/assess/assess.js</li><li>js/history/history.js</li><li>fixtures/platforms.js</li><li>fixtures/profiles/roster.js</li><li>fixtures/envelope-default.js</li><li>css/allocate*.css</li></ul></article>
-      <article class="card"><h3>host.html <span class="own" style="color:var(--jl)">JL</span></h3>
-        <p class="what">Frames the runtime, relays messages, validates the record, saves the run, builds the report. Shows the mode badge.</p>
-        <ul><li>link/host.js</li><li>contracts/link.js</li><li>js/assess/assess.js</li><li>js/assess/runs.js</li><li>js/report/report.js</li><li>js/history/history.js</li><li>link/host.css</li></ul></article>
-      <article class="card"><h3>runtime.html <span class="own" style="color:var(--devin)">Devin</span></h3>
-        <p class="what">The simulator and the instructor's controls. Runs inside the host's frame, or on its own for the captioned demos.</p>
-        <ul><li>js/engine.js</li><li>js/factors.js</li><li>js/behaviours.js</li><li>js/malfunctions.js</li><li>js/render.js</li><li>js/ui.js</li><li>js/llm.js</li><li>js/main.js</li><li>js/sim/ (5 files)</li><li>js/adapt/ (6 files)</li><li>js/ui-reasoning.js</li><li>trainees/ (2)</li><li>link/pane.js</li><li>config.js + harnesses, scenarios, plugins</li></ul></article>
-      <article class="card"><h3>report.html <span class="own" style="color:var(--glenda)">Glenda</span></h3>
-        <p class="what">End-of-training report per trainee, with charts, a debrief on why the CGFs acted, and the history.</p>
-        <ul><li>js/ui-report.js</li><li>js/report/report.js</li><li>js/report/charts.js</li><li>js/report/debrief.js</li><li>js/history/history.js</li><li>fixtures/history/demo.js</li><li>css/report.css</li></ul></article>
-      <article class="card"><h3>compare.html <span class="own" style="color:var(--jl)">JL</span></h3>
-        <p class="what">Same seed and crew, fixed run against adaptive run. Counts what changed; says so when there are too few events.</p>
-        <ul><li>js/ui-compare.js</li><li>js/assess/runs.js</li><li>css/compare.css</li></ul></article>
-      <article class="card"><h3>cohort.html <span class="own" style="color:var(--jl)">JL</span></h3>
-        <p class="what">Where the whole intake is developing. Written for improving the curriculum, never for ranking.</p>
-        <ul><li>js/ui-cohort.js</li><li>js/assess/assess.js</li><li>css/cohort.css</li></ul></article>
-    </div>
+    <h2 id="pages">4. Which files each page loads</h2>
+    <p class="sub">Taken from the script and style tags in each page. Shared helpers (<span class="mono">js/util.js</span>, <span class="mono">css/style.css</span>, <span class="mono">contracts/</span>) appear on most pages and are left out.</p>
+    <div class="grid"><article class="card"><h3>allocate.html</h3><p class="what">Pick platform, crew, scenario, seed and mode. Shows each trainee's competencies and the likely first target.</p><ul><li>js/ui-allocate.js</li><li>js/ui-allocate-vehicles.js</li><li>js/adapt/predict.js</li><li>js/assess/assess.js</li><li>js/history/history.js</li><li>fixtures/platforms.js</li><li>fixtures/profiles/roster.js</li><li>fixtures/envelope-default.js</li><li>css/allocate*.css</li></ul></article><article class="card"><h3>host.html</h3><p class="what">Frames the simulator, relays messages, validates the record, saves the run and builds the report. Shows the mode badge.</p><ul><li>link/host.js</li><li>contracts/link.js</li><li>js/assess/assess.js</li><li>js/assess/runs.js</li><li>js/report/report.js</li><li>js/history/history.js</li><li>link/host.css</li></ul></article><article class="card"><h3>runtime.html</h3><p class="what">The simulator and the instructor's controls. Runs inside the host frame, or on its own for the captioned demos.</p><ul><li>js/engine.js</li><li>js/factors.js</li><li>js/behaviours.js</li><li>js/malfunctions.js</li><li>js/render.js</li><li>js/ui.js</li><li>js/llm.js</li><li>js/main.js</li><li>js/sim/ (5 files)</li><li>js/adapt/ (6 files)</li><li>js/ui-reasoning.js</li><li>trainees/ (2)</li><li>link/pane.js</li><li>config.js, harnesses, scenarios, plugins</li></ul></article><article class="card"><h3>report.html</h3><p class="what">End-of-training report per trainee, with charts, a debrief on why the CGFs acted, and the history.</p><ul><li>js/ui-report.js</li><li>js/report/report.js</li><li>js/report/charts.js</li><li>js/report/debrief.js</li><li>js/history/history.js</li><li>fixtures/history/demo.js</li><li>css/report.css</li></ul></article><article class="card"><h3>compare.html</h3><p class="what">Same seed and crew, fixed run against adaptive run. Counts what changed; says so when there are too few events.</p><ul><li>js/ui-compare.js</li><li>js/assess/runs.js</li><li>css/compare.css</li></ul></article><article class="card"><h3>cohort.html</h3><p class="what">Where the whole intake is developing. For improving the curriculum, never for ranking.</p><ul><li>js/ui-cohort.js</li><li>js/assess/assess.js</li><li>css/cohort.css</li></ul></article></div>
   </section>
 
   <section aria-labelledby="unused">
-    <h2 id="unused">Files nothing uses</h2>
-    <p class="sub">Of 144 tracked files (not counting the 36 design preview images), 73 are reachable from a page through script, style or link references. The rest are tests, docs, the test runner, the pitch deck source (13 slides, loaded by name from <span class="mono">deck.json</span>) and the items below. Nothing in <span class="mono">js/</span>, <span class="mono">css/</span>, <span class="mono">harnesses/</span>, <span class="mono">scenarios/</span>, <span class="mono">fixtures/</span>, <span class="mono">contracts/</span> or <span class="mono">trainees/</span> is orphaned. The earlier orphan, the allocation v2 preview, was folded into <span class="mono">allocate.css</span> and removed by Eevee.</p>
+    <h2 id="unused">5. Files nothing uses</h2>
+    <p class="sub">Of 144 tracked files (not counting the 36 design preview images), 73 are reachable from a page through script, style or link references. The rest are tests, docs, the test runner, the pitch deck source (13 slides, loaded by name from <span class="mono">deck.json</span>) and the items below. Nothing in <span class="mono">js/</span>, <span class="mono">css/</span>, <span class="mono">harnesses/</span>, <span class="mono">scenarios/</span>, <span class="mono">fixtures/</span>, <span class="mono">contracts/</span> or <span class="mono">trainees/</span> is orphaned.</p>
     <div class="tbl-wrap">
       <table>
         <thead><tr><th>File</th><th>Finding</th><th>Suggestion</th></tr></thead>
         <tbody>
           <tr><td class="file">design/tokens-preview.html</td><td>A colour-token preview page. Nothing links to it. Still useful as a reference sheet.</td><td><span class="pill p-keep">Keep</span> or drop with the previews</td></tr>
-          <tr><td class="file">design/previews/ (24 of 36 images)</td><td>24 images are not mentioned in <span class="mono">requests.md</span> or <span class="mono">ui-audit.md</span> (the colour-token, R2, R17, dropdown and allocation v2 shots). The folder is 4.3 MB in a public repo.</td><td><span class="pill p-decide">Eevee decides</span> prune once the requests are closed</td></tr>
-          <tr><td class="file">NOTES-FOR-EEVEE.md<br>js/adapt/REQUESTS-FOR-EEVEE.md</td><td>Hand-off notes marked temporary. They list the class names to style. Referenced only by other notes.</td><td><span class="pill p-remove">Remove</span> after Eevee updates <span class="mono">design/requests.md</span></td></tr>
+          <tr><td class="file">design/previews/ (24 of 36 images)</td><td>24 images are not mentioned in <span class="mono">requests.md</span> or <span class="mono">ui-audit.md</span> (the colour-token, R2, R17, dropdown and v2 shots). The folder is 4.3 MB in a public repo.</td><td><span class="pill p-decide">Design owner decides</span> prune once the requests are closed</td></tr>
+          <tr><td class="file">NOTES-FOR-EEVEE.md<br>js/adapt/REQUESTS-FOR-EEVEE.md</td><td>Hand-off notes marked temporary. They list the class names to style. Referenced only by other notes.</td><td><span class="pill p-remove">Remove</span> after <span class="mono">design/requests.md</span> is updated</td></tr>
           <tr><td class="file">SETUP.md</td><td>Nothing links to it. It repeats the start-up steps in <span class="mono">RUNNING.md</span>.</td><td><span class="pill p-remove">Remove</span> or merge into RUNNING.md</td></tr>
-          <tr><td class="file">docs/project/allocation-page.md<br>docs/project/allocation-run-link.md</td><td>Build notes from the first version, when there were two panes. Nothing links to them. They are partly out of date.</td><td><span class="pill p-decide">JL decides</span> refresh or remove</td></tr>
-          <tr><td class="file">docs/project/repo-vs-plan.md</td><td>A comparison written before the merge, at the first commit. Linked once from the project README. History, not a guide.</td><td><span class="pill p-decide">JL decides</span> archive or remove</td></tr>
-          <tr><td class="file">docs/project/ hand-off notes (5)</td><td>Replies and requests to Devin and Glenda, all done. Code comments and DECISIONS.md still point to some of them.</td><td><span class="pill p-keep">Keep for now</span> remove after fixing those comments</td></tr>
+          <tr><td class="file">docs/project/allocation-page.md<br>docs/project/allocation-run-link.md</td><td>Build notes from the first version, when there were two panes. Nothing links to them. They are partly out of date.</td><td><span class="pill p-decide">Decide</span> refresh or remove</td></tr>
+          <tr><td class="file">docs/project/repo-vs-plan.md</td><td>A comparison written before the merge, at the first commit. Linked once from the project README. History, not a guide.</td><td><span class="pill p-decide">Decide</span> archive or remove</td></tr>
+          <tr><td class="file">docs/project/ hand-off notes (5)</td><td>Replies and requests, all done. Code comments and DECISIONS.md still point to some of them.</td><td><span class="pill p-keep">Keep for now</span> remove after fixing those comments</td></tr>
         </tbody>
       </table>
     </div>
     <div class="note" style="margin-top:14px">
-      <b>How this was checked.</b> A script read every tracked file and counted a file as used when another file's text names it, starting from the six pages plus <span class="mono">config.js</span>. That finds files nothing refers to. It cannot prove a referenced file is exercised at run time: a script that is loaded but never called would still count as used. Node test files (<span class="mono">tests/**/*.test.js</span>) are run by <span class="mono">node --test</span> and are not orphans.
+      <b>How this was checked.</b> A script read every tracked file and counted a file as used when another file's text names it, starting from the six pages plus <span class="mono">config.js</span>. That finds files nothing refers to. It cannot prove a referenced file is exercised at run time. Node test files (<span class="mono">tests/**/*.test.js</span>) are run by <span class="mono">node --test</span> and are not orphans. Re-run it with <span class="mono">node runner/find-unused.js . out.json</span>.
     </div>
   </section>
 </main>
