@@ -11,6 +11,10 @@
   'use strict';
   const CGF = window.CGF, U = CGF.util, C = CGF.contracts;
 
+  // The runtime does not play AI partner seats yet (LANES D8, Devin). Until it does, an allocation with a partner can be
+  // built, saved and exported but not started, so nobody meets a broken run. Flip this when D8 lands.
+  const PARTNERS_RUN = false;
+
   const STORE_KEY = 'cgf.allocation';         // localStorage: one config per crew
   const SLOTS = ['A'];                         // one crew per run (single crew since 2026-10-29)
   const DEFAULTS = { scenario: 'strait-transit', seed: 1234, mode: 'adaptive', duration_s: 2400, eval_interval_s: 30 };   // 2400 s: the ownship meets its first hails about 15 min in (Devin, decision B)
@@ -285,7 +289,7 @@
   CGF.allocate = { STORE_KEY, SLOTS, DEFAULTS, DEFAULT_PLATFORM, LONG, mean, seatsOf, summarise, nameOf, describe,
     previewTarget, describePrediction, suggestCrew, nextSeed, domainOfIn,
     defaultScenarioFor, emptyCrews, withPlatform, seatTrainee, nextEmptySeat, checkSelection, buildAllocation,
-    selectionFrom, handoffUrl, roleOf, derivedOf, seatFilled, setPartner, clearPartner, describePartner };
+    selectionFrom, handoffUrl, roleOf, derivedOf, seatFilled, setPartner, clearPartner, describePartner, PARTNERS_RUN };
 
   // ------------------------------------------------------------ page
   if (!document.getElementById('allocApp')) return;   // loaded by the test page: functions only
@@ -343,7 +347,8 @@
   const seatLabel = seat => { const m = modelInfo(); return (m && m.seats[seat] && m.seats[seat].label) || seat; };
   const seatOf = id => { for (const c of SLOTS) for (const s of seatsOf(st.platform.type)) if (st.crews[c][s] === id) return { crew: c, seat: s }; return null; };
 
-  const FOCUS_MARK = '<span class="focusMark" title="Focus area: the lowest competency with enough evidence">◆</span>';
+  // ◎, not ◆: a diamond is the hostile or suspect frame in MIL-STD-2525 (design/requests.md R15)
+  const FOCUS_MARK = '<span class="focusMark" title="Focus area: the lowest competency with enough evidence">◎</span>';
   function barHtml(s, isFocusArea) {
     const cls = `bar${s.prior ? ' prior' : s.enough ? '' : ' thin'}${isFocusArea ? ' bar--focus' : ''}`;
     return `<span class="${cls}"><i class="${s.prior ? '' : barClass(s.mean)}" style="width:${(s.mean * 100).toFixed(0)}%"></i></span>`;
@@ -508,9 +513,12 @@
       cErrs = C.validateAllocation(alloc, { scenarios: st.scenarioIds, domainOf: st.domainOf });
     }
     const ok = ready && !cErrs.length;
-    $('btnStart').disabled = $('btnSave').disabled = $('btnExport').disabled = !ok;
+    const hasPartner = SLOTS.some(c => seatsOf(st.platform.type).some(s => roleOf(selection(), c, s) === 'partner'));
+    const blocked = ok && hasPartner && !PARTNERS_RUN;   // valid, but the runtime cannot play it yet
+    $('btnStart').disabled = !ok || blocked; $('btnSave').disabled = $('btnExport').disabled = !ok;
     $('output').textContent = ok ? JSON.stringify(alloc, null, 2) : '';
-    $('outputNote').innerHTML = ok ? `A valid allocation (INTERFACES §3.1): one crew, ${typeInfo().seats.length} seats.`
+    $('outputNote').innerHTML = blocked ? 'A valid allocation, but the runtime does not play AI partners yet (D8), so it cannot be started. You can save or export it, or switch the partner seat back to a trainee.'
+      : ok ? `A valid allocation (INTERFACES §3.1): one crew, ${typeInfo().seats.length} seats.`
       : cErrs.length ? cErrs.map(esc).join('<br>')
       : empty ? `<span class="muted">${empty} seat${empty > 1 ? 's' : ''} still to fill.</span>`
       : '<span class="muted">Fix the marked fields to build the allocation.</span>';

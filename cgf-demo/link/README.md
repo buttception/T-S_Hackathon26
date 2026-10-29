@@ -70,7 +70,9 @@ When an adaptive run reaches its duration, Devin's runtime emits the `session-re
 2. keeps only valid records, in `localStorage` under `cgf.lastRun` as `{ allocation_id, records: { A, B } }` (`hostLink.mergeRun`), and shows invalid ones with their first errors and "not saved";
 3. calls Glenda's `Report.finishSession(record)`, which builds each crew member's report, appends the history entries and returns the report page URL, shown as "Open report for pane A";
 4. fires `cgf:session-record` on the host window (`detail: { pane, record, errors, run }`) for anything that wants to react, such as the competency update;
-5. offers "Export session records" to download the run as JSON.
+5. offers "Export session records" to download the run as JSON;
+6. saves the record with `Runs.save` (`js/assess/runs.js`) and links `compare.html`, which sets a fixed-mode run beside an adaptive one on the same seed and crew;
+7. leaves AI partners out of the crew it gives the report builder (`hostLink.forReport`), so a partner never gets a report or history entries.
 
 A restart clears a pane's record on the page. The stored run is replaced when the next valid record for that pane arrives.
 

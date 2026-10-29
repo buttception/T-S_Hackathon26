@@ -57,7 +57,15 @@
     return { allocation_id, records: Object.assign({}, same ? prev.records : {}, { [pane]: record }) };
   }
 
-  CGF.hostLink = { STORE_KEY, RUN_KEY, parseAllocation, paneUrl, checkRecord, mergeRun };
+  // The record as the report builder should see it: trainees only. An AI partner is not assessed and must not get a report
+  // or history entries of its own (INTERFACES §3.2); Glenda's builder makes one report per crew entry, so partners are
+  // left out until it lists them as "AI partner, based on ..." itself.
+  function forReport(record) {
+    if (!record || !Array.isArray(record.crew) || !record.crew.some(m => m && m.role === 'partner')) return record;
+    return Object.assign({}, record, { crew: record.crew.filter(m => !(m && m.role === 'partner')) });
+  }
+
+  CGF.hostLink = { STORE_KEY, RUN_KEY, parseAllocation, paneUrl, checkRecord, mergeRun, forReport };
 
   // ------------------------------------------------------------ page
   if (!document.getElementById('hostApp')) return;   // loaded by the test page: functions only
@@ -125,7 +133,7 @@
       if (!p.recordErrors.length) {   // only valid records are kept
         run = mergeRun(run, allocationId, pane, msg.record); saveRun();
         if (CGF.Report && typeof CGF.Report.finishSession === 'function') {   // Glenda's lane: reports, history entries, page URL
-          try { p.reportUrl = CGF.Report.finishSession(msg.record).url; } catch (e) { p.reportError = 'The report could not be built: ' + e.message; }
+          try { p.reportUrl = CGF.Report.finishSession(forReport(msg.record)).url; } catch (e) { p.reportError = 'The report could not be built: ' + e.message; }
         }
         // Keep the run so it can be compared with a fixed baseline (compare.html); a fixed run is the baseline itself
         if (CGF.Runs && typeof CGF.Runs.save === 'function') {

@@ -125,3 +125,23 @@ Gaps #7 and #8 (identical panes, two panes from `file://`) now read as: one runt
 7. Add the invariant test harness (#4, #9).
 8. Triage `eevee/ui-audit` requests (#17).
 9. Start the savings-figure request and the second owner for the deck (#20, #21).
+
+## D5. Status after the assess, runner and partner pass (2026-10-29, JL)
+
+**Cleared**
+
+| Gap | How |
+|---|---|
+| #17 triage of Eevee's requests | `docs/project/eevee-requests-triage.md`. R7, R15 and R16 done; R1, R5, R6 done earlier; R3, R4 and R9 need a decision or Eevee; the rest are Devin's |
+| #4, #9 (no command-line test run; no Node) | `runner/run-tests.ps1` runs every browser test page headless and exits non-zero on failure: allocate 104, assess 35, g1 9, link 36 |
+| #30 (no contract for the cause of an adjustment) | `adjustment.cause`: `live`, `history`, `team`, optional until Devin emits it (INTERFACES §7) |
+| #35, #38 (partners: no source, validators) | `Assess.partnerParams`, partner crew validators, `Assess.update` and the host skip partners. The report still needs Glenda (`requests-for-glenda-partners.md`) |
+| #39 (demo proof of adaptation) | `compare.html`: a fixed baseline beside an adaptive run on the same seed and crew. Rehearsed end to end through the real host and runtime |
+| J6 cohort view | `cohort.html` |
+
+**New findings**
+
+- A 2400 s run with the scripted crew produces only about two hail events, so the comparison reports "too few events to compare" and every run ends `fail`. The demo cannot yet show a measured change. Needs Devin (richer scripted behaviour or more hails). See `replies-to-devin-decisions.md`.
+- `origin/main` was force-updated once (dropped three commits; restored by a merge). Rules against force-push are in `CLAUDE.md`.
+
+**Still open**: #13, #18, #19, #20 to #25 (event length, pre-written code rule, IT checks, second owner for the deck, savings figures, run-of-show, HLA/DIS slides, fallback and replay), #29 to #33 (cooperating CGFs, Devin), #36 and #37 (partner agents in the runtime; seeded history for partners), the demo platform (waiting on Devin). The deck outline is in `docs/pitch/deck-outline.md`.

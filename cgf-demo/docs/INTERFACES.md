@@ -16,6 +16,8 @@ Everything marked **provisional** is confirmed or corrected by Sim (task S2) aga
 | Adjustment source | `engine`, `instructor_steer` |
 | Directive intensity | `low`, `medium`, `high` |
 | Policy | `rules_v1`, `bandit_v2` |
+| Adjustment cause | `live` (the trainee's current behaviour), `history` (their past training: the profile and saved sessions), `team` (cooperation between CGFs) |
+| Crew role | `trainee` (default), `partner` (an AI crewmate, section 3.2) |
 
 ### 1.1 Competencies by seat (decided 2026-10-29)
 
@@ -136,11 +138,11 @@ The allocation page's "Suggest demo crew" fills each seat, in seat order, with t
 
 Handoff: the page writes the `Allocation` to `localStorage` under `cgf.allocation` (the Lead confirms the key). The URL-encoded fallback carries the same object.
 
-**If AI partners are confirmed (tentative, section 3.2):** a crew entry gains `role`, and `derived_from` and `agent_params` for partners. The wrapper does not change.
+**AI partners (section 3.2):** a crew entry may have `role: "partner"`, with `derived_from` and `agent_params`. The wrapper does not change.
 
-### 3.2 AI partners (TENTATIVE, proposed 2026-10-29)
+### 3.2 AI partners (JL's side built 2026-10-29; Devin's D8 pending)
 
-**TENTATIVE (JL, 2026-10-29): build only after the outstanding core items are cleared. Single crew is decided; AI partners are not.** Do not implement `role: "partner"`, `derived_from` or `agent_params` yet; all crew entries are trainees.
+**Status (JL, 2026-10-29): the contract, the validators, `Assess.partnerParams` and the allocation page are built and tested.** The runtime does not play partner seats yet (Devin, D8: `docs/project/requests-for-devin-cause-and-partners.md`), so a run with a partner seat will not behave correctly until D8 lands. Until then, partner seats are for the allocation and the contract, and the demo uses trainee seats only.
 
 A `partner` seat is an AI crewmate. It lets one trainee practise with a full crew, with crewmates who behave as a person did in older runs.
 
@@ -149,13 +151,16 @@ A `partner` seat is an AI crewmate. It lets one trainee practise with a full cre
 | `role` | `"partner"` |
 | `trainee_id` | The partner's own id in this run, such as `partner_<seat>`. It appears in events as the seat's actor |
 | `derived_from` | `{trainee_id, session_ids?}`: whose older runs shape the partner. `session_ids` is optional (default: all of that trainee's sessions) |
-| `agent_params` | `{rates, reaction_delay_s, basis}`. `rates` maps an event type of section 4 to a success rate from 0 to 1. `basis.source` is `history`, `profile` or `default`, and `basis.sessions` is how many session records were used. Computed by `Assess.partnerParams(derived_from)` (JL), never by the LLM |
+| `agent_params` | `{rates, reaction_delay_s, basis}`. `rates` maps the **success** event type of a measured competency (`hail_acknowledged`, `safe_passage`, `left_territorial`, `fc_restraint`, `pirate_speed_response`) to the chance the partner takes it, from 0 to 1; the failure type is the rest. `reaction_delay_s` is 0 to 300 (today always 20: no event records a delay yet). `basis.source` is `history`, `profile` or `default`, `basis.sessions` is how many saved sessions were used, and `basis.by_competency` says which source each rate came from. Computed by `Assess.partnerParams(derived_from)` (JL), never by the LLM |
 
 Rules:
 - Partners are not adapted to. They have no working copy and no target (section 5.1), and no adjustment may name a partner seat as its cause.
 - Partners are not assessed. `Assess.update` and `History.append` skip them. The report lists them as "AI partner, based on <trainee_id>".
 - Partners are deterministic: the same `agent_params` and `seed` give the same actions (invariant 3).
-- Sources, in order: past session records via `History.entries(trainee_id)`; else the profile means (section 5); else a default `strong`-like set. The allocation page shows which source was used.
+- Sources, per competency, in order: the counted events in the chosen saved sessions (`History.list`; at least 3 events, rate = (successes + 1) / (events + 2)); else the profile mean when the profile has enough evidence (section 5); else 0.5. The allocation page shows in words which source was used. The rule is in `js/assess/assess.js` (`MIN_HISTORY_EVENTS`).
+- A crew needs at least one `trainee` seat. A partner's `trainee_id` starts with `partner_`, and no trainee's id may. A partner's `derived_from` names a trainee, never another partner, and may name a trainee who is in the crew.
+- A partner has no `agent_profile`. In the session record its crew entry carries `role: "partner"` and `derived_from` (section 9.1); the host matches that against the config.
+- `CGF.contracts.validateCrew`, `validateAgentParams` and `validateDerivedFrom` check all of this; `validateSessionRecord` rejects an adjustment whose `seat` is a partner seat.
 - Partners do not change the scenario outcome rules. Adjustments still change CGF settings only (invariant 8).
 
 ## 4. Simulation event (sim to engine)
@@ -274,6 +279,8 @@ The policy raises settings toward the envelope maximum on `up`, moves them back 
 
 `requested` is the value before clamping; `new` is the value after. `force` of `"all"` applies to every force. The instructor reasoning panel (Devin, `js/ui-reasoning.js`) fills `explanation` from a template; the adaptation policy always leaves it `null`. `pressure_direction` `up` is a rise in difficulty or hostility, and `down` is a fall. The panel shows the direction, the setting change, the evidence events and the reason for every adjustment.
 
+**`cause` (added 2026-10-29, optional for now; LANES D7).** Which of the three signals caused the adjustment: `live` (the trainee's current behaviour, the live success rate), `history` (their past training: the profile and saved sessions picked the target) or `team` (cooperation between CGFs, LANES D6). The reasoning panel shows it as a tag. It is **optional** in `validateAdjustment` so Devin's runtime can adopt it without its records being rejected; it becomes required once the runtime emits it everywhere (`docs/project/requests-for-devin-cause-and-partners.md`). When present it must be `live`, `history` or `team`.
+
 ## 8. Steering directive (console to engine)
 
 ```json
@@ -332,7 +339,7 @@ Owner: Glenda (report lane). The report is built from the session record (§9.1)
 }
 ```
 
-`events` are §4 events, and each carries a `seat`. `adjustments` are §7 records. `mode` is `adaptive` or `fixed`. `platform` is the platform **type** string (`warship`), not the `{type, model}` object of §3. `crew` has one entry per seat of that type, in seat order, with `seat`, `role` and `trainee_id` (no `agent_profile`). `pane` is `A`, `B`, or `null` for a local run.
+`events` are §4 events, and each carries a `seat`. `adjustments` are §7 records. `mode` is `adaptive` or `fixed`. `platform` is the platform **type** string (`warship`), not the `{type, model}` object of §3. `crew` has one entry per seat of that type, in seat order, with `seat`, `role` and `trainee_id` (no `agent_profile`). A partner seat has `role: "partner"`, a `partner_<seat>` id and `derived_from: {trainee_id, session_ids?}`; the report lists it as "AI partner, based on <trainee_id>" and neither the report nor `Assess.update` treats it as a trainee. `pane` is `A`, `B`, or `null` for a local run.
 
 `CGF.contracts.validateSessionRecord(record, {envelope})` checks all of this, including that every event and adjustment carries the record's `session_id`, that every event's trainee sits in the seat it names, and, when an envelope is given, that every adjusted value is inside it. It was checked against full sessions from Devin's runtime (adaptive, fixed and the earlier challenge mode): no errors.
 

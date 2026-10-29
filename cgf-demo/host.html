@@ -22,6 +22,12 @@
 
   <div id="empty" hidden>
     <h2>No allocation to run</h2>
+    <!-- The whole flow, with the current step marked in words as well as by class (design/requests.md R7) -->
+    <ol class="flowSteps" aria-label="The steps of a training run">
+      <li class="flowStep flowStep--current" aria-current="step"><b>1. Allocate</b> <span class="muted small">choose the platform and the crew · you are here</span></li>
+      <li class="flowStep"><b>2. Run</b> <span class="muted small">watch the crew and the AI's adjustments</span></li>
+      <li class="flowStep"><b>3. Report</b> <span class="muted small">debrief, competency update and a comparison with a baseline</span></li>
+    </ol>
     <p id="emptyWhy" class="muted"></p>
     <p><a class="btn primary" href="allocate.html">Open the allocation page</a></p>
   </div>
