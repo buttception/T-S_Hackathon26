@@ -29,6 +29,7 @@ The beat-by-beat script is `docs/pitch/run-of-show.md`. In short:
 3. `docs/INTERFACES.md`: frozen contracts between lanes.
 4. `CLAUDE.md`: rules for Claude Code sessions. Claude Code loads it automatically.
 5. `repo-vs-plan.md`: why the two designs were merged and what each side contributed.
+6. `project-map.html`: a picture of how the pages, lanes and files fit together, and the files nothing uses. Open it in a browser. `node runner/find-unused.js . out.json` (from `cgf-demo/`) re-runs the unused-file check.
 
 ## Layout (inside `cgf-demo/`)
 
