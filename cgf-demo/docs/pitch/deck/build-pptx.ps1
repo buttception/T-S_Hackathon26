@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $wasRunning = [bool](Get-Process POWERPNT -ErrorAction SilentlyContinue)
 
 # characters kept as escapes so the script survives any file encoding
-$ap = [char]0x2019; $up = [char]0x25B2; $dn = [char]0x25BC; $dot = [char]0x00B7; $dsh = [char]0x2013; $chk = [char]0x2713; $mul = [char]0x00D7; $ell = [char]0x2026
+$ap = [char]0x2019; $up = [char]0x25B2; $dn = [char]0x25BC; $dot = [char]0x00B7; $dsh = [char]0x2013; $chk = [char]0x2713; $mul = [char]0x00D7; $arr = [char]0x2192; $ell = [char]0x2026
 
 function C([string]$h) { [Convert]::ToInt32($h.Substring(0,2),16) + 256*[Convert]::ToInt32($h.Substring(2,2),16) + 65536*[Convert]::ToInt32($h.Substring(4,2),16) }
 $SANS = 'Segoe UI'; $MONO = 'Consolas'
@@ -151,23 +151,86 @@ Card $s 492 180 420 220 ('CURRENT BEHAVIOUR  ·  HOW HARD'.Replace('  ·  ', "  
 Footer $s 'ADAPTIVE CGF TRAINER' $VIOL
 Notes $s "The core idea in one sentence. The profile decides which competency to exercise. This run${ap}s behaviour decides how hard to push it. Today${ap}s evidence also updates the profile, so a trainee who improves stops being the target."
 
-# ---------------------------------------------------------------- 4 loop
-$s = NewSlide $BG 'Allocate, run, report, update' 40 62 864 60 $STRONG
+# ---------------------------------------------------------------- loop
+$s = NewSlide $BG 'Each session makes the next one better aimed' 36 62 864 100 $STRONG
 Eyebrow $s "The loop" $ACCENT
-$w = 186; $g = 40; $y = 190
-$steps = @(@('allocate.html', 'Allocate', 'Platform, crew, limits.', $false), @('runtime.html', 'Run', 'The CGFs adapt and say why.', $false), @('report.html', 'Report', 'A debrief for each trainee.', $false), @('profile + history', 'Update', 'The next session starts from it.', $true))
+$w = 186; $g = 40; $y = 150; $ch = 170
+$steps = @(
+  @('allocate.html', 'Allocate', "Starts from each trainee${ap}s profile and shows the likely first target.", $false),
+  @('runtime.html', 'Run', 'Pressure follows the profile first, then what the trainee does.', $false),
+  @('report.html', 'Report', "Facts computed from this run${ap}s events, one debrief per trainee.", $false),
+  @('profile + history', 'Learn', 'Every event adds to the estimate. The history is saved.', $true))
 for ($i = 0; $i -lt 4; $i++) {
   $x = 48 + $i * ($w + $g); $st = $steps[$i]; $ai = $st[3]
-  [void](Box $s $x $y $w 190 $(if ($ai) { $AIBG } else { $RAISED }) $(if ($ai) { $AILINE } else { $BORDER }))
-  [void](T $s ($x + 16) ($y + 18) ($w - 32) 20 $st[0] 12 $(if ($ai) { $VIOL } else { $ACCENT }) $false $MONO)
-  [void](T $s ($x + 16) ($y + 48) ($w - 32) 34 $st[1] 24 $(if ($ai) { 'F3ECFF' } else { $STRONG }) $true)
-  [void](T $s ($x + 16) ($y + 94) ($w - 32) 80 $st[2] 16 $(if ($ai) { $AITEXT } else { $TEXT }))
-  if ($i -lt 3) { $a = Box $s ($x + $w + 8) ($y + 87) 24 16 $BORDER2 $null 33 }
+  [void](Box $s $x $y $w $ch $(if ($ai) { $AIBG } else { $RAISED }) $(if ($ai) { $AILINE } else { $BORDER }))
+  [void](T $s ($x + 16) ($y + 16) ($w - 32) 20 $st[0] 12 $(if ($ai) { $VIOL } else { $ACCENT }) $false $MONO)
+  [void](T $s ($x + 16) ($y + 42) ($w - 32) 34 $st[1] 24 $(if ($ai) { 'F3ECFF' } else { $STRONG }) $true)
+  [void](T $s ($x + 16) ($y + 84) ($w - 32) 80 $st[2] 14 $(if ($ai) { $AITEXT } else { $TEXT }))
+  if ($i -lt 3) { [void](Box $s ($x + $w + 8) ($y + 77) 24 16 $BORDER2 $null 33) }
 }
-[void](T $s 48 420 864 30 'Every page opens from a file. No server, no install.' 18 $MUTED)
+# the return path: what was learned is where the next session starts
+$x4 = 48 + 3 * ($w + $g) + $w / 2; $x1 = 48 + $w / 2; $yb = $y + $ch
+foreach ($seg in @(@($x4, $yb, $x4, ($yb + 34)), @($x4, ($yb + 34), $x1, ($yb + 34)), @($x1, ($yb + 34), $x1, ($yb + 2)))) {
+  $ln = $s.Shapes.AddLine($seg[0], $seg[1], $seg[2], $seg[3]); $ln.Line.ForeColor.RGB = (C $VIOL); $ln.Line.Weight = 2.25
+}
+$ln.Line.EndArrowheadStyle = 2
+[void](T $s 250 ($yb + 42) 460 24 'What was learned is where the next session starts' 16 $AITEXT $true $SANS 2)
+$fw = Box $s 48 408 864 70 $AIDEEP $AILINE
+[void](T $s 68 432 824 30 "More sessions  $arr  more evidence  $arr  a sharper picture of each trainee  $arr  better-aimed practice" 18 'F3ECFF' $true $SANS 2)
 Footer $s 'ADAPTIVE CGF TRAINER' $MUTED
-Notes $s "Four steps, each a page that opens from a file. The report feeds the competency update, which writes the trainee${ap}s history, so the loop closes. Next slides walk through the steps."
-
+Notes $s "This is the loop that makes the trainer improve with use. Allocate shows the likely first target from the profile. The run presses that competency, then follows what the trainee does. The report is computed from the run's events, and the same events update the profile, so the next session starts from what this one learned. Each pass adds evidence, so the picture of each trainee gets sharper and the practice is better aimed. Next slide shows it on real seeded history."
+# ---------------------------------------------------------------- learn
+$s = NewSlide $PANEL 'The more it is used, the better it knows each trainee' 36 62 864 100 $STRONG
+Eyebrow $s "Learning over time" $ACCENT
+$ab = @(@(3, 10), @(3, 12), @(4, 13), @(5, 14), @(9, 21))
+$cats = @('Start', 'After run 1', 'After run 2', 'After run 3', 'After run 4')
+[void](T $s 48 168 480 22 "Ben Ong: estimated hail discipline, with a $([char]0x00B1)1 SD range" 14 $STRONG $true)
+# drawn from shapes (PowerPoint's chart cache does not refresh from its workbook under automation); same real numbers
+$px = @(124, 214, 304, 394, 484); $top = 204; $bot = 396; $sc = ($bot - $top) / 0.5
+function YV([double]$v) { $bot - $v * $sc }
+foreach ($g in 0, 0.1, 0.2, 0.3, 0.4, 0.5) {
+  $ly = YV $g
+  $gl = $s.Shapes.AddLine(96, $ly, 512, $ly); $gl.Line.ForeColor.RGB = (C $BORDER); $gl.Line.Weight = 0.75
+  [void](T $s 52 ($ly - 8) 38 16 ($g.ToString('0.0', [Globalization.CultureInfo]::InvariantCulture)) 12 $MUTED $false $SANS 3)
+}
+$mean = @(); $hi = @(); $lo = @()
+for ($i = 0; $i -lt 5; $i++) {
+  $a = $ab[$i][0]; $b = $ab[$i][1]; $nev = $a + $b; $mm = $a / $nev; $sd = [math]::Sqrt($a * $b / ($nev * $nev * ($nev + 1)))
+  $mean += $mm; $hi += ($mm + $sd); $lo += ($mm - $sd)
+}
+$ff = $s.Shapes.BuildFreeform(1, $px[0], (YV $hi[0]))
+for ($i = 1; $i -lt 5; $i++) { $ff.AddNodes(0, 0, $px[$i], (YV $hi[$i])) }
+for ($i = 4; $i -ge 0; $i--) { $ff.AddNodes(0, 0, $px[$i], (YV $lo[$i])) }
+$ff.AddNodes(0, 0, $px[0], (YV $hi[0]))
+$band = $ff.ConvertToShape(); $band.Fill.Solid(); $band.Fill.ForeColor.RGB = (C '3A2A6B'); $band.Fill.Transparency = 0.25; $band.Line.Visible = 0; $band.Name = 'Range band'
+$band.AlternativeText = "Range of one standard deviation around Ben Ong's hail discipline estimate; it narrows over five points"
+for ($i = 0; $i -lt 4; $i++) {
+  $seg = $s.Shapes.AddLine($px[$i], (YV $mean[$i]), $px[$i + 1], (YV $mean[$i + 1])); $seg.Line.ForeColor.RGB = (C $VIOL); $seg.Line.Weight = 3.5
+}
+for ($i = 0; $i -lt 5; $i++) {
+  $dot = $s.Shapes.AddShape(9, $px[$i] - 6, (YV $mean[$i]) - 6, 12, 12); $dot.Fill.Solid(); $dot.Fill.ForeColor.RGB = (C $VIOL); $dot.Line.ForeColor.RGB = (C $PANEL); $dot.Line.Weight = 1.5
+}
+$xl = @('Start', 'After run 1', 'After run 2', 'After run 3', 'After run 4')
+for ($i = 0; $i -lt 5; $i++) {
+  [void](T $s ($px[$i] - 44) 402 88 16 $xl[$i] 12 $MUTED $false $SANS 2)
+  [void](T $s ($px[$i] - 44) 420 88 16 ("$($ab[$i][0] + $ab[$i][1]) events") 12 $STRONG $false $SANS 2)
+}
+$lg = $s.Shapes.AddLine(60, 454, 84, 454); $lg.Line.ForeColor.RGB = (C $VIOL); $lg.Line.Weight = 3.5
+[void](T $s 92 446 90 16 'Estimate' 12 $TEXT)
+[void](Box $s 190 447 24 14 '3A2A6B' $null 1)
+[void](T $s 222 446 300 16 'Range of one standard deviation' 12 $TEXT)
+$right = @(
+  @('A sharper picture', "Each event adds to the estimate. The range around Ben${ap}s hail discipline narrows from $([char]0x00B1)0.11 to $([char]0x00B1)0.08 as the evidence grows."),
+  @('Targets that hold up', "A competency counts only with at least 8 events. More sessions turn $([char]0x201C)no evidence yet$([char]0x201D) into a real target."),
+  @('Truer AI partners', "A partner seat is played from a trainee${ap}s own past runs, so it gets more lifelike as runs accumulate."))
+for ($i = 0; $i -lt 3; $i++) {
+  $y = 168 + $i * 96
+  [void](T $s 560 $y 352 26 $right[$i][0] 18 $STRONG $true)
+  [void](T $s 560 ($y + 28) 352 64 $right[$i][1] 14 $TEXT)
+}
+[void](T $s 560 458 352 34 "Planned, not built: the policy learns which adjustments work." 14 $CAUTION)
+Footer $s "SEEDED HISTORY FOR ONE SYNTHETIC TRAINEE" $MUTED
+Notes $s "Be exact about what learns. The trainee model learns: every session's events update its estimate, so the picture sharpens as evidence grows. Here is Ben's hail discipline across his seeded history: the estimate stays low, so he stays a focus area, but the range around it narrows from about 0.11 to 0.08 as the events behind it grow from 13 to 30. Targeting improves because a competency only counts with 8 events. AI partners are played from a trainee's own past runs. What does not learn yet is the policy that picks the adjustments: it is rule-based today, and a bandit that learns which adjustments work is planned. Do not claim the trainer learns tactics."
 # ---------------------------------------------------------------- 5 allocate
 $s = NewSlide $PANEL 'Choose the platform, seat the crew, set the limits' 36 62 864 100 $STRONG
 Eyebrow $s "Allocate" $ACCENT
