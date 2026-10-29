@@ -128,19 +128,19 @@
     return errs;
   }
 
-  // INTERFACES §3.1. The two panes of a side-by-side run: the settings they share once, and one crew per pane.
+  // INTERFACES §3.1. One crew per run (single crew since 2026-10-29): the run settings in `shared`, and exactly one slot, pane A.
   //   { allocation_id, created_at_session, shared: {scenario, seed, mode, duration_s, eval_interval_s, envelope,
-  //     platform}, slots: [{pane: 'A', crew}, {pane: 'B', crew}] }
-  const PANES = ['A', 'B'];
+  //     platform}, slots: [{pane: 'A', crew}] }
+  const PANES = ['A'];
   const SHARED_KEYS = ['scenario', 'seed', 'mode', 'duration_s', 'eval_interval_s', 'envelope', 'platform'];
 
-  // Pure. The §3 scenario config of each pane, in pane order. Call it on a structurally valid allocation.
+  // Pure. The §3 scenario configs, one per slot (one today). Call it on a structurally valid allocation.
   function expandAllocation(a) {
     return a.slots.map(slot => Object.assign({ scenario_id: `${a.allocation_id}_${slot.pane}` },
       JSON.parse(JSON.stringify(a.shared)), { crew: JSON.parse(JSON.stringify(slot.crew)) }));
   }
 
-  // Structure first, then every derived config against §3, then the checks that span the panes.
+  // Structure first, then every derived config against §3, then the checks that span the crew.
   function validateAllocation(a, opts) {
     if (!isObj(a)) return ['allocation: must be an object'];
     const errs = extraKeys(a, ['allocation_id', 'created_at_session', 'shared', 'slots'], 'allocation');
@@ -152,11 +152,11 @@
       for (const k of SHARED_KEYS) if (!(k in a.shared)) errs.push(`allocation.shared.${k}: required`);
     }
     if (!Array.isArray(a.slots) || a.slots.length !== PANES.length || a.slots.some((s, i) => !isObj(s) || s.pane !== PANES[i]))
-      errs.push(`allocation.slots: exactly ${PANES.length} entries, panes ${PANES.join(' and ')} in order`);
+      errs.push('allocation.slots: exactly one entry, pane A');
     else a.slots.forEach(s => errs.push(...extraKeys(s, ['pane', 'crew'], `allocation.slots[${s.pane}]`)));
     if (errs.length) return errs;
 
-    expandAllocation(a).forEach((c, i) => errs.push(...validateScenarioConfig(c, opts).map(m => `pane ${PANES[i]}: ${m}`)));
+    expandAllocation(a).forEach((c, i) => errs.push(...validateScenarioConfig(c, opts).map(m => m)));
     const ids = a.slots.flatMap(s => (Array.isArray(s.crew) ? s.crew : []).filter(isObj).map(m => m.trainee_id));
     if (new Set(ids).size !== ids.length) errs.push('allocation: a trainee cannot be in two seats');
     return errs;

@@ -3,7 +3,7 @@
 How the allocation page, the host page and the runtime connect, and how to change one side without breaking the other.
 
 ```
-allocate.html  --Allocation-->  host.html  --postMessage-->  runtime.html?pane=run   (iframe)
+allocate.html  --Allocation-->  host.html  --postMessage-->  runtime.html?pane=A     (iframe)
 (pick trainees, partners)       (one runtime)
 
 Since 2026-10-29 there is one crew and one runtime; the code still builds two panes until task J8 (docs/LANES.md).
