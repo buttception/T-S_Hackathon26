@@ -97,7 +97,7 @@
     const comp = lower(p.target), n = p.evidence.success + p.evidence.fail;
     const did = p.changes.map(c => c.behaviour).join(', ');
     if (p.source === 'instructor_steer') return `The instructor steered the CGFs onto ${comp}, so they ${did}.`;
-    if (p.direction === 'up' && !n) return `There was no recent ${comp} evidence yet, and it was the trainee's weakest focus competency, so the CGFs ${did} to create a chance to practise it.`;
+    if (p.direction === 'up' && !n) return `There was no recent ${comp} evidence yet, and it was the lowest-rated of the trainee's seat competencies, so the CGFs ${did} to create a chance to practise it.`;
     if (p.direction === 'up') return `The trainee handled ${p.evidence.success} of their last ${n} ${comp} events, still missing the target, so the CGFs ${did} to keep pressing it.`;
     if (p.direction === 'down') return `The trainee handled ${p.evidence.success} of their last ${n} ${comp} events, now meeting the target, so the CGFs ${did} to ease off.`;
     return `The CGFs ${did}.`;
@@ -181,14 +181,14 @@
       return lines;
     }
     const where = o.reason === 'weakest_in_seat' && o.seat ? ` among the ${R.SEAT_LABELS[o.seat] || o.seat} seat’s competencies` : '';
-    lines.push(`Next session${where ? ' in the same seat' : ''} the CGFs will start by pressing ${lower(o.target)}: it is the trainee’s weakest competency${where}, at ${o.mean} from ${o.evidence} pieces of evidence.`);
+    lines.push(`Next session${where ? ' in the same seat' : ''} the CGFs will start by pressing ${lower(o.target)}: it is the trainee’s lowest-rated competency${where}, at ${o.mean} from ${o.evidence} pieces of evidence.`);
     if (o.trend && o.trend.sessions > 1 && o.trend.first != null) {
       const dir = o.trend.now > o.trend.first ? 'up from' : o.trend.now < o.trend.first ? 'down from' : 'unchanged from';
       const pressed = o.trend.pressed ? `the CGFs made it their main target in ${o.trend.pressed} of those sessions` : 'the CGFs have not yet made it their main target';
       lines.push(`Over ${o.trend.sessions} sessions it has moved ${dir} ${o.trend.first}, across ${o.trend.practised} assessed events; ${pressed}.`);
     }
     if (o.overall && o.overall !== o.target)
-      lines.push(`${R.LABELS[o.overall] || o.overall} is still the trainee\u2019s weakest overall (${o.overall_mean}); it is pressed whenever they sit in a seat that exercises it.`);
+      lines.push(`${R.LABELS[o.overall] || o.overall} is still the trainee\u2019s lowest-rated overall (${o.overall_mean}); it is pressed whenever they sit in a seat that exercises it.`);
     lines.push('While the trainee keeps missing the target the CGFs escalate sooner and react harder in that area; once the trainee handles it consistently they ease back toward the instructor’s base settings.');
     if (o.strongest && o.strongest !== o.target) lines.push(`${R.LABELS[o.strongest] || o.strongest} is the trainee’s strongest (${o.strongest_mean}), so the CGFs will not spend pressure there.`);
     if (o.thin.length) lines.push(`Not enough evidence yet for ${o.thin.map(lower).join(', ')}; these stay neutral until the trainee is tested on them.`);

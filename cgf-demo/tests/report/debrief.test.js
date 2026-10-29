@@ -85,7 +85,7 @@ test('next: in the weapons seat again trainee_b is pressed on that seat\'s weake
   assert.equal(n.reason, 'weakest_in_seat');
   assert.equal(n.target, 'weapons_discipline');
   assert.equal(n.overall, 'hail_discipline');
-  assert.match(n.lines.join(' '), /Hail discipline is still the trainee’s weakest overall \(0\.3\)/);
+  assert.match(n.lines.join(' '), /Hail discipline is still the trainee’s lowest-rated overall \(0\.3\)/);
 });
 
 test('next: after the competency update the stored profile is used as is', () => {
