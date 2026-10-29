@@ -86,12 +86,20 @@
         <div id="forceHarnesses"></div>
         <div class="muted small">Changing a force's harness keeps its ships, positions and tension, and changes how it behaves from now on.</div>
 
-        <h2>Instructor command</h2>
+        <h2>Instructor prompt</h2>
         <div class="row">
-          <input type="text" id="cmd" placeholder="e.g. escalate R-21 · set black to hostile · spawn pirate · gps drift · freeplay">
-          <button id="btnCmd" class="primary">Inject</button>
+          <select id="promptMode" title="Local LLM: plain English, interpreted by a model on this machine. Keyword parser: fixed command words, no model needed.">
+            <option value="llm">Local LLM</option>
+            <option value="keyword">Keyword parser</option>
+          </select>
+          <span id="llmStatus" class="muted small grow"></span>
         </div>
-        <div class="muted small">Rule-based parser for the demo. A local LLM (e.g. Ollama) can replace it, turning free text into the same inject calls.</div>
+        <div class="row">
+          <input type="text" id="cmd" placeholder="e.g. make the red jets more aggressive and have the black drone block BLUE-1">
+          <button id="btnCmd" class="primary">Send</button>
+        </div>
+        <div id="llmPreview" class="preview hidden"></div>
+        <label class="small muted"><input type="checkbox" id="llmPreviewChk"> Preview LLM commands before applying</label>
 
         <h2>Contact injects</h2>
         <div class="row"><span class="muted">Target</span><select id="injTarget" class="grow"></select></div>
@@ -147,6 +155,20 @@
         </div>
         <div class="muted small">A harness defines how one force behaves: its states, thresholds, what provokes it and its radio calls. Exported JSON can be edited and loaded back as a new harness.</div>
 
+        <h2>Local LLM (instructor prompts)</h2>
+        <div class="llmGrid">
+          <span>Server</span>
+          <select id="llmProvider">
+            <option value="ollama">Ollama</option>
+            <option value="openai">OpenAI-compatible (llama.cpp, LM Studio, vLLM)</option>
+          </select>
+          <span>URL</span><input type="text" id="llmUrl" placeholder="http://localhost:11434">
+          <span>Model</span><input type="text" id="llmModel" placeholder="qwen2.5:3b">
+        </div>
+        <label class="small muted"><input type="checkbox" id="llmFallback"> Fall back to the keyword parser if the model is unavailable</label>
+        <div class="row"><button id="btnLlmTest">Test connection</button><span id="llmTestResult" class="small muted grow"></span></div>
+        <div class="muted small">Runs entirely on-prem: the page only talks to the model server at this URL. Nothing is sent anywhere else.</div>
+
         <h2>CGF parameters (live)</h2>
         <div id="sliders"></div>
       </section>
@@ -162,6 +184,7 @@
 <script src="js/malfunctions.js"></script>
 <script src="js/render.js"></script>
 <script src="js/demo.js"></script>
+<script src="js/llm.js"></script>
 <script src="js/ui.js"></script>
 <!-- Boot: loads config.js (or ?config=path/to/config.js), then its plugins, harnesses and scenarios -->
 <script src="js/main.js"></script>

@@ -238,15 +238,10 @@
     const has = (...w) => w.some(x => t.includes(x));
     let done = 0;
 
-    if (/^(restart|reset scenario|start again)\b/.test(t)) {
-      CGF.loadScenario(CGF.scenario.id, currentHarnessIds());
-      CGF.sim.running = true; CGF.emit('run');
-      addLog('INSTRUCTOR restarted the scenario (harness choices kept).', 'instr');
-      return;
-    }
+    if (/^(restart|reset scenario|start again)\b/.test(t)) { restartScenario(); return; }
     if (has('load', 'open scenario', 'switch scenario', 'go to scenario')) {
       const sid = findScenario(t);
-      if (sid) { CGF.loadScenario(sid); CGF.sim.running = true; CGF.emit('run'); addLog(`INSTRUCTOR loaded scenario: ${CGF.scenario.name}`, 'instr'); return; }
+      if (sid) { loadScenario(sid); return; }
     }
     const force = findForce(t);
     if (force && has('set', 'switch', 'swap', 'change', 'make', 'become', ' to ')) {
@@ -278,6 +273,86 @@
     const q = text.match(/["“](.+?)["”]/);
     if (q || has('demand', 'hail')) { CGF.inject.radio(unit, q ? q[1] : ''); done++; }
     if (!done) addLog(`Not understood: "${text}". Try: escalate R-21 · force B-31 block · set red to non-hostile · spawn black · load land · restart · fog · rudder jam · repair`, 'sys');
+  }
+
+  function restartScenario() {
+    CGF.loadScenario(CGF.scenario.id, currentHarnessIds());
+    CGF.sim.running = true; CGF.emit('run');
+    addLog('INSTRUCTOR restarted the scenario (harness choices kept).', 'instr');
+  }
+  function loadScenario(id) {
+    CGF.loadScenario(id);
+    CGF.sim.running = true; CGF.emit('run');
+    addLog(`INSTRUCTOR loaded scenario: ${CGF.scenario.name}`, 'instr');
+  }
+
+  // ------------------------------------------------------------ local LLM prompting
+  // submitPrompt sends the instructor's words to the local model (or the keyword parser), shows what
+  // the model proposes, and applies it after the instructor clicks Apply (or at once with auto / no preview).
+  let pendingPlan = null;
+
+  function showPreview(html) {
+    const el = $('llmPreview');
+    el.innerHTML = html || '';
+    el.classList.toggle('hidden', !html);
+  }
+  function planHtml(r, text, state) {
+    const rows = r.plan.map(p => `<div class="${p.ok ? 'cmdok' : 'cmdbad'}">${p.ok ? '✓' : '✗'} ${esc(p.text)}</div>`).join('');
+    const S = CGF.llm.settings;
+    return `<div class="meta">${esc(S.model)} · ${(r.ms / 1000).toFixed(1)} s · "${esc(text)}"</div>` +
+      (rows || '<div class="muted">No commands.</div>') +
+      (r.question ? `<div class="q">Model asks: ${esc(r.question)}</div>` : '') +
+      (state === 'pending' ? `<div class="row"><button id="btnPlanApply" class="primary">Apply</button><button id="btnPlanDiscard">Discard</button></div>`
+        : `<div class="meta">${esc(state)}</div>`);
+  }
+
+  async function submitPrompt(text, opts) {
+    opts = opts || {};
+    text = String(text || '').trim();
+    if (!text) return { via: 'none' };
+    const S = CGF.llm.settings;
+    if (!S.enabled) { runCommand(opts.fallback || text); return { via: 'keyword' }; }
+
+    addLog(`INSTRUCTOR (LLM) > ${text}`, 'instr');
+    pendingPlan = null;
+    showPreview(`<div class="meta">Asking ${esc(S.model)}…</div>`);
+    $('btnCmd').disabled = true;
+    try {
+      const r = await CGF.llm.interpret(text);
+      const okCount = r.plan.filter(p => p.ok).length;
+      if (!okCount && opts.fallback && S.fallback) throw new Error(r.question ? `model asked: ${r.question}` : 'model returned no usable commands');
+      if (!okCount) {
+        addLog(r.question ? `LLM asks: ${r.question}` : 'LLM returned no usable commands.', 'sys');
+        showPreview(planHtml(r, text, 'Nothing to apply. Rephrase the request.'));
+      } else if (opts.auto || !S.preview) {
+        CGF.llm.apply(r.plan, text);
+        showPreview(planHtml(r, text, 'Applied'));
+      } else {
+        pendingPlan = { r, text };
+        showPreview(planHtml(r, text, 'pending'));
+      }
+      return { via: 'llm', result: r };
+    } catch (err) {
+      addLog(`LLM: ${err.message}`, 'alert');
+      if (S.fallback) {
+        showPreview(`<div class="cmdbad">LLM unavailable: ${esc(err.message)}</div><div class="meta">Used the keyword parser instead.</div>`);
+        runCommand(opts.fallback || text);
+        return { via: 'keyword', error: err.message };
+      }
+      showPreview(`<div class="cmdbad">LLM unavailable: ${esc(err.message)}</div>`);
+      return { via: 'none', error: err.message };
+    } finally { $('btnCmd').disabled = false; }
+  }
+
+  function refreshLlmControls() {
+    const S = CGF.llm.settings;
+    $('promptMode').value = S.enabled ? 'llm' : 'keyword';
+    $('llmPreviewChk').checked = !!S.preview;
+    $('llmProvider').value = S.provider; $('llmUrl').value = S.url; $('llmModel').value = S.model;
+    $('llmFallback').checked = !!S.fallback;
+    $('llmStatus').textContent = S.enabled ? `${S.model} @ ${S.url}${S.fallback ? ' · keyword fallback on' : ''}` : 'fixed command words, no model';
+    $('cmd').placeholder = S.enabled ? 'e.g. make the red jets more aggressive and have the black drone block BLUE-1'
+      : 'e.g. escalate R-21 · set black to hostile · spawn red · gps drift · load air';
   }
 
   // Shows a prompt being typed into the instructor command box (used by hands-off demos)
@@ -380,8 +455,36 @@
       const c = e.target.closest('.contact');
       if (c) selectUnit(CGF.sim.units.find(u => u.name === c.dataset.name));
     });
-    $('btnCmd').addEventListener('click', () => { runCommand($('cmd').value); $('cmd').value = ''; });
-    $('cmd').addEventListener('keydown', e => { if (e.key === 'Enter') { runCommand($('cmd').value); $('cmd').value = ''; } });
+    const send = () => { const v = $('cmd').value; $('cmd').value = ''; submitPrompt(v); };
+    $('btnCmd').addEventListener('click', send);
+    $('cmd').addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+    $('llmPreview').addEventListener('click', e => {
+      if (!pendingPlan) return;
+      if (e.target.id === 'btnPlanApply') { CGF.llm.apply(pendingPlan.r.plan, pendingPlan.text); showPreview(planHtml(pendingPlan.r, pendingPlan.text, 'Applied')); pendingPlan = null; }
+      if (e.target.id === 'btnPlanDiscard') { addLog('LLM commands discarded by instructor.', 'sys'); showPreview(planHtml(pendingPlan.r, pendingPlan.text, 'Discarded')); pendingPlan = null; }
+    });
+
+    // Local LLM settings (kept in this browser only)
+    const llmSet = (key, val) => { CGF.llm.settings[key] = val; CGF.llm.saveSettings(); refreshLlmControls(); };
+    $('promptMode').addEventListener('change', e => llmSet('enabled', e.target.value === 'llm'));
+    $('llmPreviewChk').addEventListener('change', e => llmSet('preview', e.target.checked));
+    $('llmProvider').addEventListener('change', e => {
+      llmSet('provider', e.target.value);
+      if (e.target.value === 'ollama' && /:8080|:1234|:8000/.test(CGF.llm.settings.url)) llmSet('url', 'http://localhost:11434');
+      if (e.target.value === 'openai' && /:11434/.test(CGF.llm.settings.url)) llmSet('url', 'http://localhost:8080');
+    });
+    $('llmUrl').addEventListener('change', e => llmSet('url', e.target.value.trim()));
+    $('llmModel').addEventListener('change', e => llmSet('model', e.target.value.trim()));
+    $('llmFallback').addEventListener('change', e => llmSet('fallback', e.target.checked));
+    $('btnLlmTest').addEventListener('click', async () => {
+      $('llmTestResult').textContent = 'Testing…';
+      try {
+        const models = await CGF.llm.test();
+        const has = models.some(m => m === CGF.llm.settings.model || m.split(':')[0] === CGF.llm.settings.model.split(':')[0]);
+        $('llmTestResult').textContent = `Connected. Models: ${models.join(', ') || 'none'}${has ? '' : ` · "${CGF.llm.settings.model}" not found`}`;
+      } catch (err) { $('llmTestResult').textContent = 'Not reachable: ' + err.message; }
+    });
+    refreshLlmControls();
 
     document.addEventListener('keydown', e => {
       const tag = e.target.tagName, type = e.target.type;
@@ -437,5 +540,5 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  CGF.ui = { init, refresh, runCommand, showTyping, isInstructorView: () => activeTab === 'instructor' };
+  CGF.ui = { init, refresh, runCommand, submitPrompt, showTyping, restartScenario, loadScenario, isInstructorView: () => activeTab === 'instructor' };
 })();

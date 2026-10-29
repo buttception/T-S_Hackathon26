@@ -38,9 +38,19 @@ harness demo, or a **2-minute pitch** using the sea + air demo.
 > drive ships, vehicles and aircraft. A new premise is a new harness; a new area is a new scenario file; neither needs a new simulator.
 > Instructors control it in plain language, and every CGF decision is explainable and logged. It runs from a folder, fully offline."
 
-**4. Next steps (15 s)**
-> "Next: replace the keyword parser with a local LLM that turns any instructor request into the same commands, shown as a preview
-> before they are applied. The prompt format is already defined (see PROMPTING.md)."
+**4. Plain-English prompting with a local LLM (2–3 min, optional)**
+
+Play **Local LLM prompting, plain English**, or type a request yourself on the Instructor tab, for example
+*"Make the Red jets a bit more aggressive, and have the Black drone get in BLUE-1's way."* Point at the preview card:
+> "A language model running on this laptop turns the instructor's words into simulator commands. It can only propose
+> commands that exist and refer to units that are really there; everything is checked and previewed, then logged.
+> If the model is down, the keyword parser takes over."
+
+Before presenting, start the model server and press **Setup → Local LLM → Test connection** (see PROMPTING.md for setup).
+Without a model the demo still runs, using its keyword fallbacks, so say "keyword mode" instead of "the model".
+
+**5. Next steps (15 s)**
+> "Next: locally generated radio chatter in each force's voice, inject timelines, and replay for the debrief."
 
 ## 2-minute version
 
@@ -49,12 +59,13 @@ Play **Sea and air together**. Say the problem line, let it run, then give the "
 ## If someone wants to try it
 
 Press `Esc` to take control. Choose **Freeplay** so nothing ends the run, then let them steer (`A`/`D`, `W`/`S`, click the map)
-or type a prompt such as `escalate R-F1`, `set red to hostile`, `spawn black` or `load land`.
+or type a prompt such as *"bring in another Red fighter"*, `set red to hostile` or `load land`.
 
 ## Likely questions
 
 - **Is it AI?** The forces are rule-based and explainable: every reaction comes from weighted factors shown in the log.
-  That is deliberate for training and accreditation. A local LLM is planned only to interpret instructor prompts and generate radio chatter.
+  That is deliberate for training and accreditation. The local LLM only interprets the instructor's prompts into checked, previewed commands; it never controls the forces.
+- **Which model, and where does it run?** A small open-weight model (e.g. Qwen2.5 3B) on Ollama or llama.cpp on the training machine or local network. No cloud.
 - **How hard is a new domain or scenario?** One scenario file (map, forces, units, domain scale). The harnesses are reused as they are.
 - **Does it need the internet?** No. Everything is local files.
 - **Can it drive our real simulators?** The CGF logic (factors → tension → states → behaviours) is independent of the display,

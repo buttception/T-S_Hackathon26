@@ -4,8 +4,10 @@
 // Step fields (all optional):
 //   caption  text shown over the map (and written to the event log)
 //   do(api)  run once when the step starts
-//   prompt   an instructor prompt, typed visibly into the Instructor command box and then executed
-//            (the same free-text parser the instructor uses, e.g. "escalate R-21; set red to non-hostile")
+//   prompt   an instructor prompt, typed visibly into the Instructor command box and then sent the same
+//            way the instructor's would be: to the local LLM if enabled, otherwise the keyword parser
+//   fallback keyword-parser version of the prompt, used if the LLM is off or unavailable
+//            (e.g. prompt "calm everyone down", fallback "calm R-F1; calm R-F2")
 //   until(api) => bool   step waits until this is true...
 //   hold     ...and at least this many REAL seconds have passed (counted after the prompt has run)
 //   timeout  ...or give up after this many REAL seconds
@@ -57,7 +59,7 @@
     R.startReal = performance.now();
     if (st.caption != null) caption(st.caption);
     if (st.do) st.do(api);
-    if (st.prompt) { api.tab('instructor'); R.typing = { text: st.prompt, shown: 0, nextAt: performance.now() + 400 }; }
+    if (st.prompt) { api.tab('instructor'); R.typing = { text: st.prompt, fallback: st.fallback, shown: 0, nextAt: performance.now() + 400 }; }
   }
 
   function finish() {
@@ -96,16 +98,21 @@
       if (!st) return;
       if (!sim.running && !sim.outcome) { R.startReal += frameMs; return; } // paused: hold the clock too
 
-      // Type the instructor prompt one character at a time, then run it
+      // Type the instructor prompt one character at a time, send it, and wait for the answer
       if (R.typing) {
         const T = R.typing;
+        if (T.sent) return; // waiting for the model
         while (now >= T.nextAt && T.shown < T.text.length) { T.shown++; T.nextAt += TYPE_MS; }
         CGF.ui.showTyping(T.text.slice(0, T.shown), false);
         if (T.shown >= T.text.length && now >= T.nextAt + 500) {
-          R.typing = null;
+          T.sent = true;
           CGF.ui.showTyping(T.text, true);
-          CGF.ui.runCommand(T.text);
-          R.startReal = now;
+          const active = R.active;
+          CGF.ui.submitPrompt(T.text, { auto: true, fallback: T.fallback }).finally(() => {
+            if (R.active !== active || R.typing !== T) return;
+            R.typing = null;
+            R.startReal = performance.now();
+          });
         }
         return;
       }

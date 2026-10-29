@@ -79,6 +79,40 @@ CGF.registerDemo({
   ]
 });
 
+// ------------------------------------------------------------------ plain-English prompting through the local LLM
+// Each prompt is natural language for the model; "fallback" is the keyword version used if no model is available.
+CGF.registerDemo({
+  id: 'llm',
+  name: 'Local LLM prompting, plain English (~3 min)',
+  scenario: 'sea-air',
+  mode: 'freeplay',
+  params: { timeScale: 60 },
+  steps: [
+    { caption: 'Instructor prompting with a LOCAL language model. The instructor types plain English; a model on this machine turns it into simulator commands. Nothing leaves the laptop.',
+      do: a => { a.tab('instructor'); a.speed(16); a.heading(0); }, hold: 10 },
+    { caption: 'A loose, natural request. The model maps "the red jets" and "the black drone" to the right units and states.',
+      prompt: 'Make the Red jets a bit more aggressive, and have the Black drone get in BLUE-1\'s way.',
+      fallback: 'escalate R-F1; escalate R-F2; force B-U1 block', hold: 9 },
+    { caption: 'The model\'s commands were checked against the live scenario before running, and the preview card shows exactly what was applied.',
+      do: a => { a.tab('trainee'); a.steerTo(0, -12); a.speed(22); a.select(a.unit('R-F1')); },
+      until: a => a.maxLevel('red') >= 2, hold: 6, timeout: 30 },
+    { caption: 'A request that spans several systems at once…',
+      prompt: 'Give the trainee a navigation problem, and have R-11 radio a warning telling them to leave Red waters.',
+      fallback: 'gps drift; R-11 hail "Leave Red waters immediately"', hold: 9 },
+    { caption: '…and a de-escalation, phrased the way an instructor would say it.',
+      prompt: 'Things are getting out of hand. Fix the ship, make Red non-hostile and calm the Black drone down.',
+      fallback: 'repair; set red to non-hostile; calm B-U1', hold: 10 },
+    { caption: 'It works across scenarios too: one sentence switches to the land exercise.',
+      prompt: 'Switch to the land border patrol scenario.',
+      fallback: 'load land', hold: 6 },
+    { caption: 'Every LLM command shows up in the event log and the CGF log, just like a button press, so the debrief is complete.',
+      prompt: 'Have all the Black militia vehicles block the road in front of BLUE-1.',
+      fallback: 'force B-31 block; force B-41 block; force B-42 block; force B-43 block', hold: 10 },
+    { caption: 'If the model server is down, the keyword parser takes over automatically. The model runs on-prem (Ollama, llama.cpp or similar), so it fits an air-gapped network.',
+      do: a => a.tab('cgflog'), hold: 10 }
+  ]
+});
+
 // ------------------------------------------------------------------ the sea + air finale on its own
 CGF.registerDemo({
   id: 'sea-air',

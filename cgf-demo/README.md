@@ -6,11 +6,13 @@ a swappable **harness**, a behaviour profile such as *Hostile state*, *Non-hosti
 
 The key idea is that **the same harness files drive every domain.** Red warships, Red armoured vehicles and Red fighters all
 run `hostile-state.js`. Merchant ships, civilian vehicles and airliners all run `civil-traffic.js`. Each scenario only
-supplies a map, the units and a domain scale. Instructors steer the run with **plain-language prompts**
-(`escalate R-21; set red to non-hostile`), and can swap a force's harness while the run is in progress.
+supplies a map, the units and a domain scale. Instructors steer the run in **plain English through a local LLM**
+(*"make the red jets more aggressive and have the black drone block BLUE-1"*). The model runs on-prem; its commands are checked
+against the scenario and previewed before they apply, and a keyword parser takes over if no model is available.
+Instructors can also swap a force's harness while the run is in progress.
 
 Everything runs in the browser from local files, with no server, install or internet, so it suits air-gapped networks.
-Other guides: [PRESENTING.md](PRESENTING.md) (how to demo it) and [PROMPTING.md](PROMPTING.md) (instructor prompts, and how a local LLM would plug in).
+Other guides: [PRESENTING.md](PRESENTING.md) (how to demo it) and [PROMPTING.md](PROMPTING.md) (instructor prompts and setting up the local LLM).
 
 ---
 
@@ -99,7 +101,7 @@ identity: Black under *Non-hostile state* turns from suspect to neutral.
 - **Trainee**: posture meter and tension chart, contacts, *Why is it reacting?* (each factor pushing the selected unit's tension up or down), after-action summary, event log.
 - **Instructor**:
   - **Force harnesses (switch live)**: one dropdown per force.
-  - **Instructor command**: plain-language prompts; see [PROMPTING.md](PROMPTING.md).
+  - **Instructor prompt**: plain English through the local LLM (with an Apply / Discard preview), or keyword commands; see [PROMPTING.md](PROMPTING.md). The model server is configured under **Setup → Local LLM**.
   - Contact injects: escalate / de-escalate, force a state, custom radio demand.
   - Scenario injects: spawn a unit for a force, fog.
   - Ownship malfunctions: rudder jam, engine failure, radar failure, comms failure, GPS drift, fire-control radar stuck on.
@@ -114,6 +116,7 @@ identity: Black under *Non-hostile state* turns from suspect to neutral.
 | Demo | Length | What it shows |
 | --- | --- | --- |
 | **Harness reuse and prompting: sea, land, air** | ~4 min | Typed prompts; the same prompt and manoeuvre under *Hostile* then (after a restart) *Non-hostile*; then the same harness files on land and in the air; ends with sea and air together |
+| **Local LLM prompting, plain English** | ~3 min | Natural-language prompts turned into commands by the local model, with preview; falls back to keywords when there is no model |
 | **Sea and air together** | ~1.5 min | Red ships and fighters under one harness; merchants and airliners under another; one prompt flips Red |
 | Full capability tour, sea | ~2 min | Escalation, injects, merchants fleeing, live swap, GPS drift, CGF log |
 | Neutral shipping reacts | ~1 min | Merchants fleeing the trainee's fire-control radar |
@@ -150,6 +153,7 @@ cgf-demo/
 │   ├── malfunctions.js     Ownship malfunctions
 │   ├── render.js           Canvas renderer, per-domain symbology
 │   ├── demo.js             Demo runner (captions, typed prompts)
+│   ├── llm.js              Local LLM prompting: context, JSON schema, model call, validation
 │   ├── ui.js               Panel, input, instructor prompt parser
 │   └── main.js             Boot
 ├── plugins/greyzone-tactics.js   Adds "block" and "swarm"
