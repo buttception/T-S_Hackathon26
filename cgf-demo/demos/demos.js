@@ -1,10 +1,98 @@
 // Hands-off demo scripts. Each drives the trainee and the instructor automatically with captions.
-// Play from the "Demo" control at the top of the panel, or open index.html?demo=tour (add &loop=1 to repeat).
+// Play from the "Demo" control at the top of the panel, or open index.html?demo=<id> (add &loop=1 to repeat).
+// Steps with a "prompt" type an instructor prompt visibly into the command box, then run it.
 // Injects are used at key moments so every run tells the same story regardless of timing.
 
+// ------------------------------------------------------------------ shared: the sea + air finale
+const SEA_AIR_STEPS = [
+  { caption: 'Sea and air together. BLUE-1 frigate with BLUE-2 patrol aircraft overhead. Red ships and Red fighters share ONE harness; merchant ships and airliners share another.',
+    do: a => { a.tab('trainee'); a.speed(16); a.heading(0); }, hold: 10 },
+  { caption: 'Instructor prompt: scramble another Red fighter, and send R-F1 to harass BLUE-1.',
+    prompt: 'spawn red; force R-F1 harass', hold: 6 },
+  { caption: 'BLUE-1 heads toward Red waters. Red\'s ships and aircraft react as one force: the fighters come out to shadow and warn.',
+    do: a => { a.tab('trainee'); a.steerTo(0, -12); a.speed(24); a.select(a.unit('R-F1')); },
+    until: a => a.maxLevel('red') >= 2, hold: 6, timeout: 40 },
+  { caption: 'Below, merchant ships divert; above, airliners leave the airway. Two forces, one Civil traffic harness.',
+    do: a => a.select(a.top('civair') || a.top('white')),
+    until: a => a.maxLevel('white') >= 2 || a.maxLevel('civair') >= 2, hold: 8, timeout: 40 },
+  { caption: 'One prompt changes Red\'s ships and fighters at once, and calms the patrol boat.',
+    prompt: 'set red to non-hostile; calm R-21', hold: 9 },
+  { caption: 'Every CGF decision, at sea and in the air, is in the log with its reasons.',
+    do: a => a.tab('cgflog'), hold: 10 },
+  { caption: 'Same engine and same harness files for sea, land, air or all together, driven by plain-language instructor prompts. Fully offline.',
+    do: a => a.tab('trainee'), hold: 10 }
+];
+
+// ------------------------------------------------------------------ the long harness + prompting demo
+CGF.registerDemo({
+  id: 'harness',
+  name: 'Harness reuse and prompting: sea, land, air (~4 min)',
+  scenario: 'strait-transit',
+  mode: 'freeplay', // nothing ends the run, so failures are shown and the story continues
+  params: { timeScale: 60 },
+  steps: [
+    // Part 1: sea, same inputs under two different harnesses
+    { caption: 'PART 1 OF 4 · SEA. One engine, five harness files. Red force is running the "Hostile state" harness.',
+      do: a => { a.tab('setup'); a.speed(16); a.heading(0); }, hold: 9 },
+    { caption: 'The instructor drives the scenario by prompt. Watch the command box: one line escalates a Red patrol boat.',
+      do: a => a.select(a.unit('R-21')), prompt: 'escalate R-21', hold: 6 },
+    { caption: 'BLUE-1 closes on R-21 at speed. Under the Hostile harness Red goes Warn, then Harass, then Weapons ready.',
+      do: a => { a.tab('trainee'); a.speed(26); a.steerToUnit(a.unit('R-21')); },
+      until: a => a.maxLevel('red') >= 4, hold: 6, timeout: 45 },
+    { caption: 'Now restart, and change ONLY the harness. Same scenario, same prompt, same manoeuvre.',
+      prompt: 'restart; set red to non-hostile', hold: 6 },
+    { caption: 'The same prompt as before…',
+      do: a => a.select(a.unit('R-21')), prompt: 'escalate R-21', hold: 4 },
+    { caption: '…and the same manoeuvre. Under the "Non-hostile state" harness Red queries, then escorts. No threats.',
+      do: a => { a.tab('trainee'); a.speed(26); a.steerToUnit(a.unit('R-21')); },
+      until: a => a.maxLevel('red') >= 2, hold: 8, timeout: 45 },
+    { caption: 'One prompt can hold several injects: bring in a Black unit, push two militia boats to block, and roll in fog.',
+      prompt: 'spawn black; force B-31 block; force B-41 block; fog', hold: 9 },
+
+    // Part 2: land, the same harness files on ground units
+    { caption: 'PART 2 OF 4 · LAND. A new scenario file, but the SAME harness files: Red armour (Hostile state), Black militia (Grey-zone), bandits (Raiders), civilian traffic (Civil traffic).',
+      prompt: 'load land', hold: 10 },
+    { caption: 'The Grey-zone harness that blocked ships at sea now sets up a roadblock on the border road.',
+      do: a => { a.speed(30); a.select(a.unit('B-31')); }, prompt: 'force B-31 close block; force B-41 close block; force B-42 close block', hold: 9 },
+    { caption: 'Civilian vehicles use the same harness as merchant ships: they pull off the road and get away from the confrontation.',
+      do: a => { a.tab('trainee'); a.select(a.top('white')); },
+      until: a => a.maxLevel('white') >= 2, hold: 7, timeout: 40 },
+    { caption: 'Swap the harness on land too: the militia become non-hostile. They stop blocking and escort the patrol instead.',
+      prompt: 'set black to non-hostile', hold: 8 },
+
+    // Part 3: air, the same harness files on aircraft
+    { caption: 'PART 3 OF 4 · AIR. Fighters, drones and airliners, still the same five harness files. The scenario scales their ranges and speeds to air.',
+      prompt: 'load air', hold: 10 },
+    { caption: 'BLUE-1 turns toward Red\'s air defence zone. Red fighters (Hostile state) intercept, shadow, then warn.',
+      do: a => { a.tab('trainee'); a.steerTo(-40, -60); a.speed(520); a.select(a.unit('R-F1')); },
+      until: a => a.maxLevel('red') >= 2, hold: 6, timeout: 45 },
+    { caption: 'Airliners (Civil traffic) leave the airway to stay clear of the intercept.',
+      do: a => a.select(a.top('white')),
+      until: a => a.maxLevel('white') >= 2, hold: 7, timeout: 35 },
+    { caption: 'Prompt the swap mid-intercept: Red becomes non-hostile. Same fighters, now escorting instead of threatening.',
+      prompt: 'set red to non-hostile', hold: 9 },
+
+    // Part 4: sea and air together
+    { caption: 'PART 4 OF 4 · SEA AND AIR TOGETHER.',
+      prompt: 'load sea and air', hold: 5 },
+    ...SEA_AIR_STEPS
+  ]
+});
+
+// ------------------------------------------------------------------ the sea + air finale on its own
+CGF.registerDemo({
+  id: 'sea-air',
+  name: 'Sea and air together (~1.5 min)',
+  scenario: 'sea-air',
+  mode: 'freeplay',
+  params: { timeScale: 60 },
+  steps: SEA_AIR_STEPS
+});
+
+// ------------------------------------------------------------------ the original tour
 CGF.registerDemo({
   id: 'tour',
-  name: 'Full capability tour (~2 min)',
+  name: 'Full capability tour, sea (~2 min)',
   scenario: 'strait-transit',
   params: { timeScale: 60 },
   steps: [
@@ -25,8 +113,8 @@ CGF.registerDemo({
     { caption: 'Neutral merchants sense the confrontation: they speed up, leave the lane, then divert away at best speed.',
       do: a => { a.tab('trainee'); a.select(a.top('white')); },
       until: a => a.maxLevel('white') >= 2, hold: 8, timeout: 45 },
-    { caption: 'Live harness swap: with one dropdown the instructor turns Black from grey-zone militia into a non-hostile coast guard. Same ships, new attitude.',
-      do: a => { a.tab('instructor'); a.inject.setForceHarness('black', 'non-hostile-navy'); a.speed(16); }, hold: 10 },
+    { caption: 'Live harness swap: with one dropdown the instructor turns Black from grey-zone into a non-hostile state. Same ships, new attitude.',
+      do: a => { a.tab('instructor'); a.inject.setForceHarness('black', 'non-hostile-state'); a.speed(16); }, hold: 10 },
     { caption: 'Malfunction inject: GPS drift. The trainee\'s display drifts off; the instructor sees the true position (faded).',
       do: a => a.inject.malfunction('gps', true), hold: 10 },
     { caption: 'Repair. Every inject and malfunction is recorded for the debrief.',
@@ -66,7 +154,7 @@ CGF.registerDemo({
       do: a => { a.tab('trainee'); a.speed(10); a.heading(0); }, hold: 8 },
     { caption: 'BLUE-1 is slow and predictable: an easy-looking target. The skiffs notice…',
       until: a => a.maxLevel('pirate') >= 1, timeout: 60 },
-    { caption: 'A skiff closes to probe. BLUE-1 goes to 28 knots and turns bow-on: for pirates, speed and manoeuvre deter — the same actions that would anger a navy.',
+    { caption: 'A skiff closes to probe. BLUE-1 goes to 28 knots and turns bow-on: for pirates, speed and manoeuvre deter, the same actions that would anger a navy.',
       do: a => { a.params({ timeScale: 60 }); a.select(a.top('pirate')); a.speed(28); a.steerToUnit(a.top('pirate')); },
       until: a => a.maxLevel('pirate') <= 0, hold: 10, timeout: 50 },
     { caption: 'The skiffs break off. Back on course; the CGF log shows why each decision was made.',

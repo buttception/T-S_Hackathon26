@@ -1,7 +1,8 @@
 // Built-in provocation factors. Each returns 0..1 for one CGF unit; the harness "weights" say how much
 // each one moves that force's tension (per minute; negative = calming). Only factors named in a harness's
 // weights are evaluated. Factors run only while the unit has detected the ownship, unless marked global.
-// ctx = { u, own, sim, H (harness), S (scenario), R (harness ranges), d (range to ownship), U, CGF, detected }
+// ctx = { u, own, sim, H (harness), S (scenario), R (harness ranges, already scaled to the scenario's domain),
+//         d (range to ownship), U, CGF, detected, ss (the scenario's speed scale) }
 // Add your own with CGF.registerFactor(name, { label, fn, global? }) in a plugin file.
 (function () {
   'use strict';
@@ -15,13 +16,13 @@
     const closeness = (c.R.close - c.d) / c.R.close;
     if (closeness <= 0) return 0;
     const v = U.vel(c.own), dx = (c.u.x - c.own.x) / (c.d || 1e-6), dy = (c.u.y - c.own.y) / (c.d || 1e-6);
-    const closing = U.clamp((v.x * dx + v.y * dy) / 10, 0, 1);
+    const closing = U.clamp((v.x * dx + v.y * dy) / (10 * c.ss), 0, 1);
     return closeness * (0.25 + 0.75 * closing);
   } });
 
   reg('bowOn', { label: 'Bow pointed at them', fn: c => {
     const off = Math.abs(U.angDiff(U.bearing(c.own, c.u), c.own.hdg));
-    return off < 20 && c.d < c.R.close * 1.5 && c.own.spd > 3 ? 1 - off / 20 : 0;
+    return off < 20 && c.d < c.R.close * 1.5 && c.own.spd > 3 * c.ss ? 1 - off / 20 : 0;
   } });
 
   reg('cpa', { label: 'Collision-course CPA', fn: c => {
@@ -42,7 +43,7 @@
 
   reg('opening', { label: 'Opening range', fn: c => {
     const rr = U.rangeRate(c.own, c.u);
-    return rr > 2 && c.d < c.R.close * 1.5 ? rr / 15 : 0;
+    return rr > 2 * c.ss && c.d < c.R.close * 1.5 ? rr / (15 * c.ss) : 0;
   } });
 
   // Military activity nearby: armed CGF units at an escalated state, or the ownship using fire-control radar.
@@ -60,7 +61,7 @@
       const lvl = CGF.levelOf(v);
       if (lvl >= 0.5) {
         consider(v, lvl);
-        if (U.dist(v, sim.own) < 6) ownIntensity = Math.max(ownIntensity, lvl); // the ownship is part of that confrontation
+        if (U.dist(v, sim.own) < 6 * CGF.rangeScale()) ownIntensity = Math.max(ownIntensity, lvl); // the ownship is part of that confrontation
       }
     }
     if (ownIntensity > 0) consider(sim.own, ownIntensity);

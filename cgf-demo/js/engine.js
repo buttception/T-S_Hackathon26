@@ -72,8 +72,26 @@
   }
   CGF.validateHarness = src => { prepareHarness(src); return true; };
 
+  // Per-domain defaults. "scale" lets one harness work everywhere: harness and behaviour ranges are
+  // multiplied by scale.range, and speed thresholds by scale.speed (e.g. air: ranges ×6, speeds ×20).
+  const DOMAIN_DEFAULTS = {
+    sea:  { scale: { range: 1, speed: 1 }, units: { dist: 'nm', speed: 'kts' }, terms: { area: 'waters', ownType: 'warship' },
+            view: { half: 36, grid: 5, rings: [5, 10], leaderMin: 6, trackSec: 30 } },
+    land: { scale: { range: 1, speed: 2 }, units: { dist: 'km', speed: 'km/h' }, terms: { area: 'territory', ownType: 'patrol' },
+            view: { half: 30, grid: 5, rings: [5, 10], leaderMin: 3, trackSec: 20 } },
+    air:  { scale: { range: 6, speed: 20 }, units: { dist: 'nm', speed: 'kts' }, terms: { area: 'airspace', ownType: 'aircraft' },
+            view: { half: 150, grid: 25, rings: [25, 50], leaderMin: 1, trackSec: 10 } }
+  };
+
   function prepareScenario(src) {
     const S = JSON.parse(JSON.stringify(src));
+    S.domain = S.domain || 'sea';
+    const D = DOMAIN_DEFAULTS[S.domain] || DOMAIN_DEFAULTS.sea;
+    S.scale = Object.assign({}, D.scale, S.scale);
+    S.unitLabels = Object.assign({}, D.units, S.unitLabels);
+    S.terms = Object.assign({}, D.terms, S.terms);
+    S.view = Object.assign({}, D.view, S.view);
+    S.bounds = S.bounds || S.view.half * 1.35;
     S.forces = S.forces || {};
     S.ownShip = Object.assign({}, OWN_DEFAULTS, S.ownShip);
     S.land = S.land || []; S.zones = S.zones || []; S.lanes = S.lanes || []; S.units = S.units || []; S.spawn = S.spawn || {};
@@ -98,7 +116,12 @@
   CGF.harnessOf = u => CGF.sim.forceHarness[u.force] || null;
   CGF.forceOf = u => CGF.scenario.forces[u.force] || { label: u.force, color: CGF.style.defaultForceColor };
   CGF.forceColor = u => CGF.forceOf(u).color || CGF.style.defaultForceColor;
-  CGF.affiliationOf = u => { const H = CGF.harnessOf(u); return H ? H.affiliation : (u.affiliation || 'unknown'); };
+  CGF.affiliationOf = u => {
+    const H = CGF.harnessOf(u);
+    if (H) return H.affiliation;
+    if (u.affiliation) return u.affiliation;
+    return u.force === CGF.scenario.ownShip.force ? 'friend' : 'unknown'; // own-force units with no harness are friendly
+  };
   CGF.identityOf = u => CGF.style.identity[CGF.affiliationOf(u)] || CGF.style.identity.unknown;
   CGF.harnessesFor = forceKey => {
     const kind = (CGF.scenario.forces[forceKey] || {}).kind || 'state';
@@ -108,7 +131,15 @@
   CGF.levelOf = u => { const H = CGF.harnessOf(u); return H && H.states.length > 1 ? u.stateIdx / (H.states.length - 1) : 0; };
   CGF.cgfs = () => CGF.sim.units.filter(u => u.role === 'cgf');
   CGF.forcesWithHarness = () => Object.keys(CGF.sim.forceHarness);
-  CGF.detectionRange = () => CGF.params.detection * (CGF.sim.fog ? 0.5 : 1);
+  CGF.rangeScale = () => (CGF.scenario && CGF.scenario.scale.range) || 1;
+  CGF.speedScale = () => (CGF.scenario && CGF.scenario.scale.speed) || 1;
+  CGF.domainOf = u => u.domain || CGF.scenario.domain;
+  CGF.detectionRange = () => CGF.params.detection * CGF.rangeScale() * (CGF.sim.fog ? 0.5 : 1);
+  // A harness's ranges and speed thresholds, scaled to the current scenario's domain
+  CGF.scaledRanges = H => {
+    const r = CGF.rangeScale(), s = CGF.speedScale(), R = H.ranges;
+    return { close: R.close * r, cpa: R.cpa * r, conflictNm: R.conflictNm * r, highSpeedKts: R.highSpeedKts * s, slowSpeedKts: R.slowSpeedKts * s };
+  };
   CGF.displayedOwn = () => ({ x: CGF.sim.own.x + CGF.sim.gpsDrift.x, y: CGF.sim.own.y + CGF.sim.gpsDrift.y });
   CGF.aggressionOf = u => CGF.harnessOf(u).aggression * CGF.params.aggression * (u.temperament || 1);
   CGF.zonesAt = p => CGF.scenario.zones.filter(z => U.pointInPoly(p.x, p.y, z.poly));
@@ -129,7 +160,7 @@
     }
     return m;
   };
-  CGF.visibleToTrainee = u => U.dist(u, CGF.sim.own) <= CGF.mods().radarRangeNm;
+  CGF.visibleToTrainee = u => U.dist(u, CGF.sim.own) <= CGF.mods().radarRangeNm * CGF.rangeScale();
 
   // Strongest current reasons behind a unit's tension, e.g. "In territorial waters +16, Proximity +4"
   CGF.reasons = (u, n) => {
@@ -239,7 +270,8 @@
   function radio(u, text) {
     const msg = text.replace(/\{unit\}/g, u.name).replace(/\{force\}/g, CGF.forceOf(u).label)
       .replace(/\{country\}/g, CGF.forceOf(u).label).replace(/\{hdg\}/g, U.pad3(CGF.sim.own.hdg))
-      .replace(/\{own\}/g, CGF.sim.own.name);
+      .replace(/\{own\}/g, CGF.sim.own.name)
+      .replace(/\{area\}/g, CGF.scenario.terms.area).replace(/\{ownType\}/g, CGF.scenario.terms.ownType);
     CGF.log('RADIO ' + msg, CGF.affiliationOf(u) === 'neutral' ? 'neutral' : 'hostile');
     return msg;
   }
@@ -265,7 +297,7 @@
     const d = U.dist(u, o), f = {};
     u.threat = null;
     const detected = d <= CGF.detectionRange();
-    const ctx = { u, own: o, sim, H, S, R: H.ranges, d, U, CGF, detected };
+    const ctx = { u, own: o, sim, H, S, R: CGF.scaledRanges(H), d, U, CGF, detected, ss: CGF.speedScale() };
     for (const k of Object.keys(H.weights)) {
       const fac = CGF.factors[k];
       if (fac && (detected || fac.global)) f[k] = U.clamp(fac.fn(ctx) || 0, 0, 1);
@@ -311,7 +343,8 @@
     const r = fn(u, st || {}, CGF.sim.own, CGF.sim) || {};
     const desired = r.desired != null ? r.desired : U.bearing(u, { x: r.tx, y: r.ty });
     U.turnToward(u, desired, dt);
-    U.accelToward(u, r.spd != null ? r.spd : u.spd, dt);
+    // Aircraft (minSpd) cannot hover: they keep flying and orbit through the target point instead
+    U.accelToward(u, Math.max(r.spd != null ? r.spd : u.spd, u.minSpd || 0), dt);
     U.move(u, dt);
   }
 
@@ -351,7 +384,7 @@
     sim.posture += (U.clamp(maxPpos / 30, 0, 1) - sim.posture) * Math.min(1, dt / 60);
 
     sim.trackTimer += dt;
-    if (sim.trackTimer >= 30) {
+    if (sim.trackTimer >= S.view.trackSec) {
       sim.trackTimer = 0;
       for (const s of [o, ...sim.units]) { s.track.push([s.x, s.y]); if (s.track.length > 40) s.track.shift(); }
     }
@@ -364,7 +397,7 @@
     }
 
     sim.t += dt;
-    if (!sim.outcome && !sim.objectiveDone && S.objective && U.dist(o, S.objective) < 1.5) finish('success', 'Transit complete: ownship reached the exit point.');
+    if (!sim.outcome && !sim.objectiveDone && S.objective && U.dist(o, S.objective) < 1.5 * CGF.rangeScale()) finish('success', `Objective reached: ownship arrived at the ${S.objective.name || 'objective'}.`);
   }
   CGF.step = step;
 

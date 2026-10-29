@@ -4,7 +4,7 @@ window.CGF_CONFIG = {
   title: 'Anti-Piracy Escort Trainer',
   subtitle: 'Blue force: Singapore',
   plugins: ['plugins/greyzone-tactics.js'],
-  harnesses: ['harnesses/piracy.js', 'harnesses/civil-shipping.js', 'harnesses/grey-zone.js'],
+  harnesses: ['harnesses/raiders.js', 'harnesses/civil-traffic.js', 'harnesses/grey-zone.js'],
   scenarios: ['projects/piracy-drill/scenario.js'],
   defaultScenario: 'piracy-drill',
   demos: ['demos/demos.js'],   // only demos whose scenario is loaded are offered

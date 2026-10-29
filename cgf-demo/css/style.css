@@ -44,6 +44,7 @@ button.primary { background: #1d4a7a; border-color: #2f6db0; }
 button.on { background: #5a3208; border-color: var(--warn); color: #ffd9a8; }
 select { max-width: 100%; }
 .grow { flex: 1; min-width: 0; }
+#cmd.typing { border-color: #d7a8ff; box-shadow: 0 0 0 2px rgba(215,168,255,.35); color: #f0e0ff; }
 .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); }
 .tab { background: none; border: 1px solid transparent; border-bottom: none; border-radius: 5px 5px 0 0; color: var(--muted); padding: 5px 8px; }
 .tab.active { background: var(--panel2); border-color: var(--line); color: var(--text); }

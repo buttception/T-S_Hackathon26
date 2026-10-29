@@ -121,11 +121,11 @@
       `${U.fmtTime(sim.t)}   x${CGF.params.timeScale}   ${sim.mode === 'freeplay' ? 'FREEPLAY' : 'EXERCISE'}${sim.fog ? '   FOG' : ''}\n` +
       `${o.name}\n` +
       `HDG ${U.pad3(o.hdg)}  (ordered ${U.pad3(o.ordHdg)})\n` +
-      `SPD ${o.spd.toFixed(1)} kts  (ordered ${o.ordSpd} kts)\n` +
-      `POS ${shown.x.toFixed(1)}E ${shown.y.toFixed(1)}N nm\n` +
-      `ZONE ${zones.length ? zones.map(z => z.name).join(' / ') : 'International waters'}\n` +
+      `SPD ${o.spd.toFixed(0)} ${S.unitLabels.speed}  (ordered ${o.ordSpd})\n` +
+      `POS ${shown.x.toFixed(1)}E ${shown.y.toFixed(1)}N ${S.unitLabels.dist}\n` +
+      `ZONE ${zones.length ? zones.map(z => z.name).join(' / ') : 'Unclaimed'}\n` +
       `FC RADAR ${sim.fcTarget ? 'ON → ' + sim.fcTarget.name : 'off'}` +
-      (S.objective ? `\nTo ${S.objective.name || 'objective'} ${U.dist(shown, S.objective).toFixed(1)} nm` : '');
+      (S.objective ? `\nTo ${S.objective.name || 'objective'} ${U.dist(shown, S.objective).toFixed(1)} ${S.unitLabels.dist}` : '');
 
     const p = sim.posture;
     $('postureLabel').textContent = p < 0.15 ? 'Cautious' : p < 0.45 ? 'Assertive' : 'Provocative';
@@ -195,30 +195,60 @@
   // ------------------------------------------------------------ instructor free-text command
   // Rule-based stand-in for a local LLM: it maps words to the same CGF.inject calls the buttons use.
   const HARNESS_WORDS = [
-    [['non-hostile', 'non hostile', 'friendly', 'nonhostile'], 'non-hostile-navy'],
-    [['hostile'], 'hostile-navy'],
+    [['non-hostile', 'non hostile', 'friendly', 'nonhostile'], 'non-hostile-state'],
+    [['hostile'], 'hostile-state'],
     [['grey', 'gray', 'militia'], 'grey-zone'],
-    [['pirate', 'piracy'], 'piracy'],
-    [['civil', 'merchant shipping'], 'civil-shipping']
+    [['pirate', 'piracy', 'raider', 'bandit'], 'raiders'],
+    [['civil', 'traffic'], 'civil-traffic']
+  ];
+  const SCENARIO_WORDS = [
+    [['sea and air', 'air and sea', 'sea-air', 'sea + air', 'combined'], 'sea-air'],
+    [['land', 'border', 'road'], 'border-patrol'],
+    [['air', 'airspace'], 'airspace-patrol'],
+    [['piracy drill', 'anti-piracy'], 'piracy-drill'],
+    [['sea', 'strait', 'maritime'], 'strait-transit']
   ];
   function findHarness(t) {
     for (const h of Object.values(CGF.harnesses)) if (t.includes(h.id) || t.includes(h.name.toLowerCase())) return h.id;
     for (const [words, id] of HARNESS_WORDS) if (CGF.harnesses[id] && words.some(w => t.includes(w))) return id;
     return null;
   }
+  function findScenario(t) {
+    for (const s of Object.values(CGF.scenarios)) if (t.includes(s.id)) return s.id;
+    for (const [words, id] of SCENARIO_WORDS) if (CGF.scenarios[id] && words.some(w => new RegExp(`\\b${w}\\b`).test(t))) return id;
+    return null;
+  }
   function findForce(t) {
     const S = CGF.scenario;
     return Object.keys(S.forces).filter(k => k !== S.ownShip.force)
-      .find(k => new RegExp(`\\b${k}\\b`).test(t) || t.includes(S.forces[k].label.toLowerCase())) || null;
+      .find(k => new RegExp(`\\b${k}\\b`).test(t) || new RegExp(`\\b${S.forces[k].tag.toLowerCase()}\\b`).test(t) ||
+        t.includes(S.forces[k].label.toLowerCase())) || null;
   }
 
+  // A prompt may hold several commands: "spawn red; escalate R-21 then set black to hostile"
   function runCommand(text) {
-    const t = text.toLowerCase().trim(); if (!t) return;
+    const parts = String(text).split(/;|\bthen\b|\band then\b/i).map(s => s.trim()).filter(Boolean);
+    if (!parts.length) return;
     addLog('INSTRUCTOR > ' + text, 'instr');
+    for (const p of parts) runOne(p);
+  }
+
+  function runOne(text) {
+    const t = text.toLowerCase().trim(); if (!t) return;
     const has = (...w) => w.some(x => t.includes(x));
-    const force = findForce(t);
     let done = 0;
 
+    if (/^(restart|reset scenario|start again)\b/.test(t)) {
+      CGF.loadScenario(CGF.scenario.id, currentHarnessIds());
+      CGF.sim.running = true; CGF.emit('run');
+      addLog('INSTRUCTOR restarted the scenario (harness choices kept).', 'instr');
+      return;
+    }
+    if (has('load', 'open scenario', 'switch scenario', 'go to scenario')) {
+      const sid = findScenario(t);
+      if (sid) { CGF.loadScenario(sid); CGF.sim.running = true; CGF.emit('run'); addLog(`INSTRUCTOR loaded scenario: ${CGF.scenario.name}`, 'instr'); return; }
+    }
+    const force = findForce(t);
     if (force && has('set', 'switch', 'swap', 'change', 'make', 'become', ' to ')) {
       const hid = findHarness(t.replace(new RegExp(`\\b${force}\\b`, 'g'), ''));
       if (hid) { CGF.inject.setForceHarness(force, hid); return; }
@@ -240,13 +270,22 @@
 
     const unit = CGF.cgfs().find(u => t.includes(u.name.toLowerCase())) || injTarget();
     const H = unit && CGF.harnessOf(unit);
-    const st = H && H.states.find(s => t.includes(s.name.toLowerCase()));
+    // longest matching state name wins, so "close block" is not read as "block"
+    const st = H && H.states.filter(s => t.includes(s.name.toLowerCase())).sort((a, b) => b.name.length - a.name.length)[0];
     if (st) { CGF.inject.force(unit, st.name); done++; }
     else if (has('escalate', 'aggressive', 'angry')) { CGF.inject.adjust(unit, 25); done++; }
     else if (has('calm', 'de-escalate', 'deescalate', 'relax')) { CGF.inject.adjust(unit, -25); done++; }
     const q = text.match(/["“](.+?)["”]/);
     if (q || has('demand', 'hail')) { CGF.inject.radio(unit, q ? q[1] : ''); done++; }
-    if (!done) addLog('Command not understood. Try: escalate R-21 · force B-31 block · set red to non-hostile · spawn black · fog · rudder jam · repair', 'sys');
+    if (!done) addLog(`Not understood: "${text}". Try: escalate R-21 · force B-31 block · set red to non-hostile · spawn black · load land · restart · fog · rudder jam · repair`, 'sys');
+  }
+
+  // Shows a prompt being typed into the instructor command box (used by hands-off demos)
+  function showTyping(text, done) {
+    const el = $('cmd');
+    el.value = text;
+    el.classList.toggle('typing', !done);
+    if (done) setTimeout(() => { if (el.value === text) el.value = ''; el.classList.remove('typing'); }, 600);
   }
 
   // ------------------------------------------------------------ wiring
@@ -261,6 +300,7 @@
     CGF.on('reset', () => {
       const S = CGF.scenario;
       $('log').innerHTML = ''; $('banner').style.display = 'none';
+      if (!CGF.demo.isRunning()) $('caption').style.display = 'none'; // a finished demo's last caption goes away
       $('scenarioName').textContent = S.name; $('brief').textContent = S.brief || '';
       $('scenarioSel').value = S.id;
       $('modeSel').value = CGF.sim.mode;
@@ -375,7 +415,8 @@
     });
     canvas.addEventListener('wheel', e => {
       e.preventDefault();
-      CGF.render.view.half = U.clamp(CGF.render.view.half * (e.deltaY > 0 ? 1.1 : 0.9), 8, 60);
+      const base = CGF.scenario.view.half;
+      CGF.render.view.half = U.clamp(CGF.render.view.half * (e.deltaY > 0 ? 1.1 : 0.9), base * 0.25, base * 1.7);
     }, { passive: false });
   }
 
@@ -396,5 +437,5 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  CGF.ui = { init, refresh, runCommand, isInstructorView: () => activeTab === 'instructor' };
+  CGF.ui = { init, refresh, runCommand, showTyping, isInstructorView: () => activeTab === 'instructor' };
 })();

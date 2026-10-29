@@ -16,10 +16,10 @@
     // standard-identity colours (friend / hostile / suspect / neutral) set by the harness, per MIL-STD-2525 / APP-6.
     forces: {
       blue:   { label: 'Blue force (Singapore)', tag: 'BLU', kind: 'state', color: '#00a8dc' },
-      red:    { label: 'Red force', tag: 'RED', kind: 'state', color: '#ff3031', harness: 'hostile-navy' },
+      red:    { label: 'Red force', tag: 'RED', kind: 'state', color: '#ff3031', harness: 'hostile-state' },
       black:  { label: 'Black force', tag: 'BLK', kind: 'state', color: '#b8bec6', harness: 'grey-zone' },
-      pirate: { label: 'Pirate group', tag: 'PIR', kind: 'non-state', color: '#ff9f1c', harness: 'piracy' },
-      white:  { label: 'Neutral shipping', tag: 'MER', kind: 'civil', color: '#00e200', harness: 'civil-shipping' }
+      pirate: { label: 'Pirate group', tag: 'PIR', kind: 'non-state', color: '#ff9f1c', harness: 'raiders' },
+      white:  { label: 'Neutral shipping', tag: 'MER', kind: 'civil', color: '#00e200', harness: 'civil-traffic' }
     },
 
     ownShip: { name: 'BLUE-1 (RSN)', force: 'blue', x: 10, y: -32, hdg: 0, spd: 14, maxSpd: 30, turnRate: 0.8, accel: 0.12 },
@@ -40,7 +40,7 @@
         poly: [[13, -9], [32, -9], [32, 13], [13, 13]] }
     ],
     lanes: [
-      { name: 'SLOC northbound', points: lanePointsNorth },
+      { name: 'SLOC northbound', label: 'SLOC', labelAt: [8, -40], points: lanePointsNorth },
       { name: 'SLOC southbound', points: lanePointsSouth }
     ],
 

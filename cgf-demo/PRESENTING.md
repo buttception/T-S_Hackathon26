@@ -1,61 +1,61 @@
-# Presenting the CGF Maritime Trainer
+# Presenting the CGF Trainer
 
-A short guide for showing the demo to judges or management. Total time: about 5 minutes.
+A short guide for showing the demo to judges or management. There are two versions: a **5-minute pitch** using the long
+harness demo, or a **2-minute pitch** using the sea + air demo.
 
 ## Before you start (2 minutes)
 
 - Open `index.html` in Chrome or Edge on the presenting laptop and make the window full screen (`F11`).
-- Choose **Full capability tour** in the Demo dropdown, but don't press Play yet.
+- Choose **Harness reuse and prompting: sea, land, air** in the Demo dropdown, but don't press Play yet.
 - Turn off notifications. Unplug the network cable or switch on airplane mode: running offline is part of the pitch.
-- Backup: have `index.html?demo=tour&loop=1` open in a second tab. It plays by itself, so you can talk over it if anything goes wrong.
+- Backup: have `index.html?demo=harness&loop=1` open in a second tab. It plays by itself, so you can talk over it if anything goes wrong.
 
-## Talk track
+## 5-minute talk track (long demo)
 
 **1. The problem (30 s, before pressing Play)**
-> "Today, opposing and neutral forces in our ship trainers follow fixed scripts, so an instructor has to drive them by hand.
-> We built computer-generated forces that react to how the trainee actually behaves, on a fully air-gapped laptop."
+> "Today, opposing and civilian forces in our trainers follow fixed scripts, and every new premise or domain means new scripting.
+> We built computer-generated forces that react to what the trainee does, with behaviour packaged as harnesses that we reuse
+> across sea, land and air, and that the instructor drives with plain-language prompts."
 
-**2. Play the tour (about 2 min, hands off)**
+**2. Press Play (about 4 min, hands off).** The captions tell the story. Point at the screen at these moments:
 
-Press **Play demo**. The captions carry the story, so you only need to point at the screen:
-
-| When the caption says… | Point at… |
-| --- | --- |
-| Red reacts and shadows | The tension bar under the Red contact and the **Why is it reacting?** panel. The reasons are explicit, not a black box. |
-| Black closes to block | The Instructor tab: one click, or one typed command, injects an incident. |
-| Merchants divert | The green squares leaving the sea lane: neutral shipping reacts to conflict too. |
-| Live harness swap | The Black symbols changing from dashed red diamonds (suspect) to green squares (neutral): same ships, new attitude. |
-| GPS drift | The faded "true position" that only the instructor sees. |
-| CGF log | Every CGF decision with its reason, exportable to CSV for the debrief. |
-
-Symbols follow MIL-STD-2525 / APP-6 identity conventions, and the RED / BLK / PIR / MER label tags show which force each contact belongs to.
-
-**3. Hand it to the audience (1 min, optional)**
-
-Press `Esc` to take control. Then choose **Freeplay** from the mode dropdown, so nothing ends the run, and let someone steer
-(`A`/`D` to turn, `W`/`S` for speed, click the sea to steer) or type an inject such as `escalate R-21` or `spawn pirate`.
-
-**4. Why it matters (45 s)**
-> "One engine and many premises. Each force gets a harness file (hostile state, non-hostile state, grey-zone, piracy, civil shipping),
-> and the instructor can swap it mid-run. A new training premise is a new file, not a new simulator.
-> It runs from a folder: no install and no network, so it can be fielded in air-gapped training centres."
-
-**5. Next steps (15 s)**
-> "Next: a local LLM so instructors can type injects in plain English, generated radio chatter, and replay for the debrief."
-
-## Other demos
-
-| Demo | Length | Use it to show |
+| Part | When the caption says… | Point at… |
 | --- | --- | --- |
-| Full capability tour | ~2 min | Everything, in one story |
-| Neutral shipping reacts | ~1 min | Second-order effects: merchants fleeing the trainee's fire-control radar |
-| Piracy: speed deters | ~1.5 min | The same engine running a different project with inverted logic: speed calms pirates but would anger a navy |
+| 1 · Sea | "The instructor drives the scenario by prompt" | The prompt being typed into the command box: `escalate R-21` |
+| 1 · Sea | "Under the Hostile harness…" | R-21 going Warn → Harass → Weapons ready, and the red fire-control line |
+| 1 · Sea | "Restart, and change ONLY the harness" | The prompt `restart; set red to non-hostile` |
+| 1 · Sea | "…the same manoeuvre" | **The key moment:** same prompt, same manoeuvre, but now R-21 queries and escorts. The behaviour comes from the harness, not the script |
+| 1 · Sea | "One prompt can hold several injects" | `spawn black; force B-31 block; force B-41 block; fog` |
+| 2 · Land | "A new scenario file, but the SAME harness files" | Land symbols (friend rectangle), roads, and the legend: same harness names |
+| 2 · Land | "roadblock" / "Civilian vehicles…" | The grey-zone militia blocking the road, and civilian vehicles fleeing, just as the merchant ships did at sea |
+| 3 · Air | "Fighters, drones and airliners" | Air symbols (domes, tents), airways, ranges now in tens of nautical miles |
+| 3 · Air | "Prompt the swap mid-intercept" | Red fighters switching from threatening to escorting |
+| 4 · Sea + air | "Red ships and Red fighters share ONE harness" | Both the ships and the jets reacting together, with merchants below and airliners above fleeing |
+| 4 · Sea + air | "The CGF log" | Every decision with its reasons, exportable to CSV for the debrief |
+
+**3. Why it matters (45 s)**
+> "Write a behaviour once and use it everywhere. Hostile, non-hostile, grey-zone, raiders and civil traffic are five files that
+> drive ships, vehicles and aircraft. A new premise is a new harness; a new area is a new scenario file; neither needs a new simulator.
+> Instructors control it in plain language, and every CGF decision is explainable and logged. It runs from a folder, fully offline."
+
+**4. Next steps (15 s)**
+> "Next: replace the keyword parser with a local LLM that turns any instructor request into the same commands, shown as a preview
+> before they are applied. The prompt format is already defined (see PROMPTING.md)."
+
+## 2-minute version
+
+Play **Sea and air together**. Say the problem line, let it run, then give the "why it matters" line.
+
+## If someone wants to try it
+
+Press `Esc` to take control. Choose **Freeplay** so nothing ends the run, then let them steer (`A`/`D`, `W`/`S`, click the map)
+or type a prompt such as `escalate R-F1`, `set red to hostile`, `spawn black` or `load land`.
 
 ## Likely questions
 
-- **Is it AI?** The forces are rule-based and explainable: every reaction comes from weighted factors you can read in the log.
-  That is deliberate for training and accreditation. An LLM is planned only for instructor input and radio chatter, running locally.
-- **How hard is a new scenario?** A scenario is one file (map, forces, units) and a behaviour is one harness file. See `README.md`.
+- **Is it AI?** The forces are rule-based and explainable: every reaction comes from weighted factors shown in the log.
+  That is deliberate for training and accreditation. A local LLM is planned only to interpret instructor prompts and generate radio chatter.
+- **How hard is a new domain or scenario?** One scenario file (map, forces, units, domain scale). The harnesses are reused as they are.
 - **Does it need the internet?** No. Everything is local files.
-- **Can it scale to our real simulators?** The CGF logic (factors → tension → states → behaviours) is independent of the display
+- **Can it drive our real simulators?** The CGF logic (factors → tension → states → behaviours) is independent of the display,
   and could drive entities in an existing simulator through its interface.

@@ -1,8 +1,8 @@
-// Harness: non-hostile state navy / coast guard. Tolerant, quick to calm down.
-// Responds with queries, escorts and diplomatic protests, never force. No failure state.
+// Harness: non-hostile state force. Tolerant, quick to calm down. Queries, escorts and protests, never force.
+// Domain-neutral: the same file drives a coast guard, a border police unit or an air policing flight. No failure state.
 CGF.registerHarness({
-  id: 'non-hostile-navy',
-  name: 'Non-hostile navy',
+  id: 'non-hostile-state',
+  name: 'Non-hostile state',
   description: 'Protective but friendly. Queries, escorts and protests; never uses force.',
   kind: 'state',
   affiliation: 'neutral',
@@ -14,10 +14,10 @@ CGF.registerHarness({
   states: [
     { name: 'Routine', min: 0, behaviour: 'patrol', standDown: 'Resumed routine patrol' },
     { name: 'Query', min: 30, behaviour: 'shadow', range: 8, warn: true, action: 'Queried ownship intentions',
-      msg: '{unit}: {force} coast guard to vessel on course {hdg}, please state your intentions.' },
+      msg: '{unit}: {force} to {ownType} on heading {hdg}, please state your intentions.' },
     { name: 'Escort', min: 55, behaviour: 'escort', range: 3, action: 'Began escorting ownship',
-      msg: '{unit}: We will accompany you while you are in {force} waters.' },
+      msg: '{unit}: We will accompany you while you are in {force} {area}.' },
     { name: 'Protest', min: 80, behaviour: 'escort', range: 1.5, warn: true, action: 'Issued formal protest',
-      msg: '{unit}: Formal notice. You are in {force} waters without clearance. This will be raised diplomatically.' }
+      msg: '{unit}: Formal notice. You are in {force} {area} without clearance. This will be raised diplomatically.' }
   ]
 });
