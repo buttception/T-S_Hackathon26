@@ -20,7 +20,7 @@
   };
   // Apply appears once the parse has finished (the local LLM is tried first), so the step keeps trying
   const applySteer = () => { const b = document.getElementById('btnSteerApply'); if (b) b.click(); };
-  const trainee = { trainee: 'trainee_b', agent: 'trainees/weak_hail_discipline.js', duration_s: 9000 };
+  const trainee = { trainee: 'trainee_b', agent: 'trainees/weak_hail_discipline.js', duration_s: 12000 };
 
   CGF.registerDemo({
     id: 'vision',
@@ -52,9 +52,10 @@
         do: a => a.focus('own', 22), hold: 8 },
 
       // 4. Current behaviour sets HOW HARD
-      { caption: 'Fast-forward: Ben keeps missing the warnings…', speed: 480,
-        until: a => navAdjustments(a).some(x => x.pressure_direction === 'down'), hold: 6, timeout: 60 },
-      { caption: 'Ben is struggling, so the enemy eases off (tag: live). Had he been doing well, it would push harder.',
+      // Challenge rule (JL, 9223c6d): the scripted Ben starts answering, so the live signal pushes harder
+      { caption: 'Fast-forward: Ben starts answering the warnings…', speed: 480,
+        until: a => navAdjustments(a, 'live').some(x => x.pressure_direction === 'up'), hold: 6, timeout: 60 },
+      { caption: 'Ben is handling it now, so the enemy pushes harder (tag: live). If he were struggling, it would ease off.',
         do: a => { reasoning(a); a.focus('own', 22); }, speed: 30, hold: 21 },
 
       // 5. Teamwork from the harness and from the crew's skill
