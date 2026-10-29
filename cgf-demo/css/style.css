@@ -214,7 +214,7 @@ kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 3
 #panel summary { cursor: pointer; font-weight: var(--fw-medium); }
 #panel kbd { font-size: var(--fs-caption); }
 /* Scenario line (design R25): short name, domain and run mode, one chip per non-trainee force */
-.scn { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: var(--space-2) var(--space-3); margin: var(--space-3) 0 var(--space-1); }
+.scn { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: var(--space-2) var(--space-3); margin: var(--space-3) 0 var(--space-5); }   /* 24px below: the scenario reads as its own block (Eevee, 2026-10-29) */
 .scn:empty { display: none; }
 .scnTop { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-2); }
 .scnName { font-size: var(--fs-card); font-weight: var(--fw-medium); color: var(--text-strong); }
