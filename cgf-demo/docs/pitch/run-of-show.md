@@ -14,7 +14,7 @@
 | 3:15 | Steering and fixed mode | Instructor tab, steering box | Type a plain-language request. The parsed directive is shown before it applies. Then switch to "Fixed assessment": the badge changes and the log goes quiet. | Skip steering; show the fixed badge only |
 | 3:45 | Debrief and update | `report.html`, then `allocate.html` | The report: code-computed figures, template narrative, one section per trainee. The profile bars move; the next predicted target changes. | Saved report page |
 | 4:15 | Baseline and cohort | `compare.html`, `cohort.html` | Same seed, fixed run against adaptive run, with its caveat line. The cohort view is for improving the curriculum, never ranking. | Saved runs |
-| 4:30 | Roadmap and business case | Two slides | HLA/DIS is roadmap, not built (`hla-dis-roadmap.md`). Saving formula with `r` as a range; no invented figures (`savings-model.md`). | None needed |
+| 4:30 | Roadmap and business case | Two slides | HLA/DIS is roadmap, not built (`hla-dis-roadmap.md`). Savings slide (formula, placeholder inputs, `r` as a range, all labelled illustrative) then the development-effort and payback slide (about 30 s each; `savings-model.md`). | None needed |
 
 ## Known risks for this script
 
