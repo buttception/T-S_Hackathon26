@@ -124,7 +124,7 @@ test('profile at start: stored profile first, then the seeded roster, then the p
   const CGF = load(store);
   const rec = recordOf('s_20261030_02');
   assert.equal(CGF.Report.build(rec, 'trainee_b').facts.competency_means_start.hail_discipline, 0.45);
-  assert.equal(CGF.Report.build(rec, 'trainee_b').facts.competency_means_start.piracy_response, 0.5);    // prior
+  assert.equal(CGF.Report.build(rec, 'trainee_b').facts.competency_means_start.speed_management, 0.5);    // prior
   assert.equal(CGF.Report.build(rec, 'trainee_c11').facts.competency_means_start.territorial_awareness, 0.28);
 });
 
