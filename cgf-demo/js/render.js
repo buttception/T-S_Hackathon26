@@ -104,11 +104,19 @@
     if (id.dashed) ctx.setLineDash([3, 2]);
     ctx.stroke(); ctx.setLineDash([]);
   }
+  // Labels declutter (design R8): a label that would overlap one already drawn this frame moves down or up a line,
+  // with a thin leader back to where it belongs
+  let placed = [];
+  const overlaps = (x, y, w) => placed.some(p => x - 2 < p.x + p.w + 2 && x + w + 2 > p.x - 2 && y - 10 < p.y + 3 && y + 3 > p.y - 10);
   function label(text, x, y, color) {
     ctx.font = '11px Consolas, monospace';
     const w = ctx.measureText(text).width;
-    ctx.fillStyle = 'rgba(8,16,26,.78)'; ctx.fillRect(x - 2, y - 10, w + 4, 13);
-    ctx.fillStyle = color; ctx.fillText(text, x, y);
+    let ly = y;
+    for (const dy of [0, 13, -13, 26, -26, 39]) { if (!overlaps(x, y + dy, w)) { ly = y + dy; break; } }
+    if (ly !== y) { ctx.strokeStyle = U.hexA('#8aa0b8', .5); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 2, y - 4); ctx.lineTo(x - 2, ly - 4); ctx.stroke(); }
+    placed.push({ x, y: ly, w });
+    ctx.fillStyle = 'rgba(8,16,26,.78)'; ctx.fillRect(x - 2, ly - 10, w + 4, 13);
+    ctx.fillStyle = color; ctx.fillText(text, x, ly);
   }
   function drawTrack(track, color) {
     ctx.fillStyle = U.hexA(color, .35);
@@ -148,6 +156,7 @@
     }
     ctx = canvas.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    placed = [];
     W = r.width; H = r.height;
     stepCamera();
     scale = fitScale();

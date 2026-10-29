@@ -215,7 +215,8 @@ Example: "red should back off and be friendly now"
   // against the units that existed when the plan was made, so those two are best used last.
   function apply(plan, source) {
     const ok = plan.filter(p => p.ok);
-    for (const p of ok) p.run();
+    CGF.sim.injectSource = 'llm';   // the CGF log marks these entries as LLM-parsed (design R12)
+    try { for (const p of ok) p.run(); } finally { CGF.sim.injectSource = null; }
     CGF.log(`LLM commands applied (${ok.length}${plan.length > ok.length ? ` of ${plan.length}` : ''})${source ? ' · ' + source : ''}`, 'instr');
     return ok.length;
   }
