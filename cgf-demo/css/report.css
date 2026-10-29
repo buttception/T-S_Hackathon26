@@ -1,10 +1,9 @@
 /* End-of-training report (report.html). Owner: Eevee. Loaded through css/style.css; every rule is scoped to
    .rp-page so other pages are unaffected. Colours come from tokens.css.
 
-   js/ui-report.js uses rp-good / rp-bad for several meanings (session outcome, competency level, CGF direction,
-   errors). Until those get separate classes (design/requests.md R17), the selectors below tell them apart by
-   context: outcomes use status colours, CGF direction uses the AI colour, a weak competency gets the focus outline,
-   and nothing about a trainee's level is coloured as failure. */
+   Selectors use the classes by meaning from js/ui-report.js (design/requests.md R17), never the legacy
+   rp-good / rp-bad: a session outcome uses status colours, CGF direction uses the AI colour, a focus-area competency
+   gets the focus outline, and nothing about a trainee's level or a single event is coloured as failure. */
 
 .rp-page { font-size: 14px; line-height: 1.5; height: auto; }
 .rp-main { max-width: 1120px; margin: 0 auto; padding: 0 24px 48px; }
@@ -56,45 +55,44 @@
 .rp-page meter::-webkit-meter-even-less-good-value { background: var(--data-fill); border-radius: 4px; }
 .rp-page meter::-moz-meter-bar { background: var(--data-fill); }
 
-/* Session outcome: status colours, with the ✓ / ✗ already in the text */
+/* Session outcome: status colours, with the ✓ / ✗ already in the text. Only the session heading chip and the
+   history table show a session's outcome. */
 .rp-outcome { font-size: 13px; font-weight: 600; padding: 1px 10px; border-radius: 12px; border: 1px solid; }
-.rp-outcome.rp-good { color: var(--status-done); background: var(--status-done-bg); border-color: var(--status-done); }
-.rp-outcome.rp-bad { color: var(--status-critical-text); background: var(--status-critical-bg); border-color: var(--status-critical); }
-.rp-history td.rp-good { color: var(--status-done); }
-.rp-history td.rp-bad { color: var(--status-critical-text); }
+.rp-outcome.rp-outcome--success { color: var(--status-done); background: var(--status-done-bg); border-color: var(--status-done); }
+.rp-outcome.rp-outcome--fail { color: var(--status-critical-text); background: var(--status-critical-bg); border-color: var(--status-critical); }
+.rp-history td.rp-outcome--success { color: var(--status-done); }
+.rp-history td.rp-outcome--fail { color: var(--status-critical-text); }
+/* The Trainee events table reuses rp-outcome--* for single events (a hail answered or missed). That is evidence about
+   a competency, not a failed session, so it stays plain text (design/requests.md R20). */
 
-/* CGF direction (sharper or eased off) is the AI acting, not good or bad news */
-.rp-kf.rp-good b, .rp-kf.rp-bad b, .rp-phase-head b.rp-good, .rp-phase-head b.rp-bad { color: var(--source-ai-text); }
+/* CGF direction (sharper or eased off) is the AI acting, not good or bad news; the ▲ / ▼ is in the text */
+.rp-kf.rp-dir--up b, .rp-kf.rp-dir--down b, .rp-phase-head b.rp-dir--up, .rp-phase-head b.rp-dir--down,
+.rp-table td.rp-dir--up, .rp-table td.rp-dir--down { color: var(--source-ai-text); }
 .rp-why { margin-top: 8px; }
 .rp-phase { border-left: 3px solid var(--text-muted); padding: 6px 12px; margin: 8px 0; background: var(--surface-sunken); border-radius: 0 6px 6px 0; }
 .rp-phase-up { border-left-color: var(--source-ai); }
 .rp-phase-why { margin: 4px 0; }
 .rp-phase-did { margin: 4px 0; padding-left: 18px; }
 
-/* Competency level: data, never failure. The weakest gets the AI focus outline. */
-.rp-comp td.rp-bad, .rp-crew td.rp-bad { color: var(--text-strong); }
-.rp-comp td.rp-bad { box-shadow: inset 0 0 0 1px var(--data-focus); border-radius: 4px; }
-.rp-comp td.rp-good, .rp-crew td.rp-good { color: var(--text-strong); }
-.rp-comp td.rp-thin, .rp-comp td.rp-none { color: var(--text-muted); }
+/* Competency level: data, never failure. A focus area gets the AI focus outline wherever it appears (competency
+   table and crew table); strength and developing are plain; thin and untested are muted. */
+.rp-page td.rp-level--focus { color: var(--text-strong); box-shadow: inset 0 0 0 1px var(--data-focus); border-radius: 4px; }
+.rp-page td.rp-level--strength { color: var(--text-strong); }
+.rp-page td.rp-level--developing { color: var(--text); }
+.rp-page td.rp-level--thin, .rp-page td.rp-level--none { color: var(--text-muted); }
 
 /* Errors from the page itself */
-#rpBody > p.rp-bad { color: var(--status-critical-text); }
-#rpBody > p.rp-bad::before { content: "\2715\00a0"; color: var(--status-critical); }
+.rp-page .rp-error { color: var(--status-critical-text); }
+.rp-page .rp-error::before { content: "\2715\00a0"; color: var(--status-critical); }
 
 .rp-footer { max-width: 75ch; margin-top: 32px; padding-top: 12px; border-top: 1px solid var(--border); }
 
 /* Print / save as PDF: light page, no controls, charts and table rows never split across pages.
-   Collapsed sections (competency table, history, key moments) print only if opened first. */
+   Collapsed sections (competency table, history, key moments) print because js/ui-report.js opens them on beforeprint
+   (R19). CSS can't do it: Chrome ignores ::details-content overrides on a closed <details>, tested 2026-10-29. */
 @media print {
-  /* On :root (only when the report is the page), so tokens that point at these, such as --rp-chart-*, follow */
-  :root:has(body.rp-page) {
-    --surface-bg: #ffffff; --surface-panel: #ffffff; --surface-raised: #f1f4f8; --surface-sunken: #f6f8fb;
-    --border: #d5dce5; --border-strong: #9aa8b8; --text: #1b2533; --text-strong: #0b1420; --text-muted: #4f5f73;
-    --ui-accent: #1d5fa8; --data-track: #e3e8ef; --data-fill: #4f6782; --data-focus: #6b3fc4;
-    --source-ai: #6b3fc4; --source-ai-text: #4b2a8f; --status-done: #1b2533; --status-done-bg: #f1f4f8;
-    --status-critical: #b0127a; --status-critical-text: #8a0f60; --status-critical-bg: #fbe8f3; --status-caution: #b35c00;
-  }
-  .rp-page { background: #ffffff; color: var(--text); font-size: 11pt; }
+  /* The light print palette lives in tokens.css (@media print, :root:has(body.rp-page)) */
+  .rp-page { background: var(--surface-bg); color: var(--text); font-size: 11pt; }
   .rp-header { position: static; }
   .rp-header .row { display: none; }
   .rp-main { max-width: none; padding: 0; }
@@ -102,4 +100,7 @@
   .rp-chart, .rp-phase, .rp-table tr, .rp-keyfacts { break-inside: avoid; }
   .rp-page h3, .rp-page h4, .rp-session > h2 { break-after: avoid; }
   .rp-table tbody tr:hover { background: none; }
+  /* On paper every section is open (R19), so the summary reads as a plain heading, without the disclosure triangle */
+  .rp-page summary { cursor: auto; list-style: none; font-weight: 600; }
+  .rp-page summary::-webkit-details-marker { display: none; }
 }

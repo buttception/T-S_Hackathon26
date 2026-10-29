@@ -94,3 +94,15 @@
   --accent: var(--ui-accent);
   --warn: var(--status-caution);
 }
+
+/* Print palette for the end-of-training report (Print / save as PDF): a light page, same token names, so every
+   rule and chart that uses the tokens follows. On :root, only when the report is the page. */
+@media print {
+  :root:has(body.rp-page) {
+    --surface-bg: #ffffff; --surface-panel: #ffffff; --surface-raised: #f1f4f8; --surface-sunken: #f6f8fb;
+    --border: #d5dce5; --border-strong: #9aa8b8; --text: #1b2533; --text-strong: #0b1420; --text-muted: #4f5f73;
+    --ui-accent: #1d5fa8; --data-track: #e3e8ef; --data-fill: #4f6782; --data-focus: #6b3fc4;
+    --source-ai: #6b3fc4; --source-ai-text: #4b2a8f; --status-done: #1b2533; --status-done-bg: #f1f4f8;
+    --status-critical: #b0127a; --status-critical-text: #8a0f60; --status-critical-bg: #fbe8f3; --status-caution: #b35c00;
+  }
+}

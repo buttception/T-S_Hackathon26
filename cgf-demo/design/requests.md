@@ -22,9 +22,11 @@ Status: open, agreed, done, declined.
 | R14 | Devin | Setup sliders | Show the instructor's envelope (min, base, max) on each adjustable setting, and mark a value that was clamped | Finding 16 (P4) | open |
 | R15 | JL | `js/ui-allocate.js` `FOCUS_MARK` | Replace the ◆ focus-area marker with a shape that is not a symbology frame (for example ◎, or the word "focus"). A diamond is the hostile/suspect frame in MIL-STD-2525, and it sits next to trainee names | Review of 0291f1d (P3) | done (c0905e4; now ◎) |
 | R16 | JL | `cohort.html` heatmap legend | The legend says "Darker cells mean a higher mean", but the scale runs dark = low, light = high. Change it to "Lighter cells mean a higher mean" | Review of 5e37aad (P2) | done (c0905e4) |
-| R17 | Glenda | `js/ui-report.js` | Split `rp-good` / `rp-bad` by meaning: `rp-outcome--success` / `--fail` for session outcomes, `rp-level--strength` / `--developing` / `--focus` / `--thin` / `--none` for competency levels, `rp-dir--up` / `--down` for CGF direction, `rp-error` for page errors. `css/report.css` tells them apart by context until then | Report review: one "bad" class meant failure, a weak skill and the AI pushing harder (P3, P4, Ethical AI) | open (rp-outcome added on session headings; rp-good/rp-bad still used elsewhere) |
+| R17 | Glenda | `js/ui-report.js` | Split `rp-good` / `rp-bad` by meaning: `rp-outcome--success` / `--fail` for session outcomes, `rp-level--strength` / `--developing` / `--focus` / `--thin` / `--none` for competency levels, `rp-dir--up` / `--down` for CGF direction, `rp-error` for page errors. `css/report.css` tells them apart by context until then | Report review: one "bad" class meant failure, a weak skill and the AI pushing harder (P3, P4, Ethical AI) | done: classes by meaning (ea6ef4c, Glenda); report.css moved to them (Eevee). Glenda may now drop rp-good / rp-bad / rp-mid / rp-thin / rp-none |
 | R18 | Glenda | `js/ui-report.js`, `js/report/charts.js` | Wording: "Needs work" / "Needs most work" / "weak" become "Focus area"; show the session date instead of the raw id (`s_20261030_01`) in headings; break the narrative's run of figures into short lines or a small table | Report review (P2, Ethical AI) | open |
 | R19 | Glenda | `js/ui-report.js` print button | Open every `<details>` (competency table, history, key moments) before `window.print()` and restore them after, so the PDF holds the whole report | Report review: collapsed sections do not print (P1) | open |
+| R20 | Glenda | `js/ui-report.js` Trainee events table, Result column | Give single-event results their own classes (for example `rp-result--met` / `rp-result--missed`) and words ("met" / "missed" instead of "success" / "fail"). They now reuse `rp-outcome--success` / `--fail`, the session-outcome classes, so restyling outcomes would turn every missed hail into a failure chip. `report.css` keeps them plain until then | R17 review: one event is evidence about a competency, not a failed session (P3, Ethical AI) | open |
+| R21 | Glenda | `js/report/charts.js` chart roles | Split the `miss` role in two: `miss` for a missed event (success-rate chart) and `focus` for the focus area (competencies chart). Today both read `--rp-chart-miss`, so the focus area shows as an orange ring while the competency table outlines it in violet | R17 review (P3) | open |
 
 ## Open requests by problem category
 
@@ -35,7 +37,8 @@ Colours that mean more than one thing, or that are hard-coded outside the tokens
 | ID | Owner | Problem |
 |---|---|---|
 | R2 | Devin | Six hard-coded colours in `js/ui.js` (posture label, hail pending, factor bars, chart) still use the old red/green palette |
-| R17 | Glenda | One `rp-bad` class means a failed session, a developing competency and the CGF pushing harder (also Ethical AI) |
+| R20 | Glenda | Single trainee events reuse the session pass/fail classes, so a missed hail could be styled as a failed session (also Ethical AI) |
+| R21 | Glenda | One chart colour role means both "missed event" and "focus area", so the focus area is orange in the chart and violet in the table |
 
 ### 2. Mode and state clarity (P5: safe under pressure)
 The instructor can't always tell which mode or system state is active.
