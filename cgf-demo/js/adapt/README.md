@@ -51,8 +51,8 @@ Local runs without the host: Reasoning tab → Start (warship crew, chosen train
 
 The decisions made in this lane, and these questions with recommendations, are collected in [DECISIONS.md](DECISIONS.md).
 
-1. **Band direction: decided (JL, reply A).** Remediation is the only band rule: pressure stays on while the trainee is
-   below the band, and eases once they are above it. `band_mode` no longer exists.
+1. **Band direction: decided (JL, INTERFACES §6).** Challenge is the only band rule: pressure rises while the trainee
+   is above the band and eases toward the instructor's base while they are below it. `band_mode` no longer exists.
 2. **Run length.** In `strait-transit` the ownship starts about 16 nm from Red, so hails only begin around 15 minutes in.
    The allocation page's default `duration_s` of 1200 gives one or two hail events per run, which is too few for the live
    signal. 2400 or more works (about 4 to 6 hail events per run with the scripted crews).

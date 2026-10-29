@@ -52,7 +52,7 @@ was changed.
 
 ## Needs a decision from JL
 
-A to H are answered in `docs/project/replies-to-devin-decisions.md` and built (A remediation only, B 2400 s, D record forwarded, G validators used by the tests). Open:
+A to H are answered in `docs/project/replies-to-devin-decisions.md` and built (A challenge only, B 2400 s, D record forwarded, G validators used by the tests). Open:
 
 | # | Question | What the runtime does now | Recommendation |
 |---|---|---|---|
