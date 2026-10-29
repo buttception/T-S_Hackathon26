@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compare runs</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/compare.css">
+</head>
+<body>
+<div id="compareApp">
+  <header>
+    <h1>Compare runs <small>· a fixed baseline beside an adaptive run</small></h1>
+    <a class="btn" href="host.html">Back to the run</a>
+    <a class="btn" href="allocate.html">Allocation</a>
+  </header>
+
+  <main>
+    <p class="compare-intro">A fixed-mode run shows what this crew does when nothing adapts. An adaptive run on the same seed shows what the AI changed.
+      Every figure is counted from the two session records.</p>
+    <div class="row">
+      <label class="small">Adaptive run <select id="pickRun"></select></label>
+      <label class="small">Baseline <select id="pickBaseline"></select></label>
+    </div>
+    <div id="compareBody"></div>
+  </main>
+</div>
+
+<script src="js/util.js"></script>
+<script src="contracts/contracts.js"></script>
+<script src="js/ui-cohort.js"></script><!-- only for the competency labels; it draws nothing here -->
+<script src="js/assess/runs.js"></script>
+<script src="js/ui-compare.js"></script>
+</body>
+</html>

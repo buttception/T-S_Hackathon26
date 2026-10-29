@@ -1,0 +1,22 @@
+/* Run comparison page (compare.html). Structure only, on the design tokens from css/tokens.css (loaded through
+   css/style.css). Written by JL as a starting point; Eevee owns the look and can restyle or fold it in. Colour is never
+   the only carrier of meaning: every bar prints its percentage and every change prints its sign and points. */
+
+#compareApp { display: flex; flex-direction: column; min-height: 100vh; }
+#compareApp header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--surface-panel); border-bottom: 1px solid var(--border); }
+#compareApp header h1 { margin: 0 auto 0 0; }
+#compareApp a.btn { text-decoration: none; color: var(--text); }
+#compareApp main { padding: 10px 14px 24px; max-width: 1200px; }
+.compare-intro { background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: 6px; padding: 8px 12px; }
+.compare-problem { background: var(--status-caution-bg); color: var(--status-caution-text); border: 1px solid var(--status-caution); border-radius: 6px; padding: 8px 12px; }
+.compare-problem::before { content: "\26A0\00a0"; }
+
+.compare-table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 4px 0 8px; }
+.compare-table th { text-align: left; color: var(--text-muted); font-weight: 400; padding: 5px 8px; white-space: nowrap; }
+.compare-table tbody th { color: var(--text); }
+.compare-table td { padding: 5px 8px; border-top: 1px solid var(--border); }
+.compare-table td.num { text-align: right; white-space: nowrap; font-family: Consolas, monospace; }
+.compare-bar { display: inline-block; vertical-align: middle; width: 90px; height: 8px; background: var(--data-track); border-radius: 4px; overflow: hidden; }
+.compare-bar i { display: block; height: 100%; background: var(--data-fill); }
+.val { display: inline-block; vertical-align: middle; margin-left: 6px; font-family: Consolas, monospace; }
+.compare-notes li { margin: 4px 0; }

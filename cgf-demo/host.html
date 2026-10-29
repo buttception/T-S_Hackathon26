@@ -10,12 +10,13 @@
 <body>
 <div id="hostApp">
   <header>
-    <h1>Side-by-side run</h1>
+    <h1>Run</h1>
     <span id="summary" class="grow"></span>
-    <button id="btnStart" class="primary" disabled>Start both</button>
-    <button id="btnPause" disabled>Pause both</button>
-    <button id="btnRestart" disabled>Restart both</button>
+    <button id="btnStart" class="primary" disabled>Start</button>
+    <button id="btnPause" disabled>Pause</button>
+    <button id="btnRestart" disabled>Restart</button>
     <button id="btnExport" disabled title="Download the valid session records of this run as JSON">Export session records</button>
+    <a class="btn" href="compare.html">Compare runs</a>
     <a class="btn" href="allocate.html">Edit allocation</a>
   </header>
 
@@ -26,8 +27,8 @@
   </div>
 
   <main id="stage">
-    <section class="pane"><div id="infoA" class="info"></div><iframe id="frameA" title="Pane A"></iframe></section>
-    <section class="pane"><div id="infoB" class="info"></div><iframe id="frameB" title="Pane B"></iframe></section>
+    <!-- One crew, one runtime (J8). The inline style spans the whole width; Eevee can move it into link/host.css, whose grid has two columns. -->
+    <section class="pane" style="grid-column: 1 / -1"><div id="infoA" class="info"></div><iframe id="frameA" title="Runtime"></iframe></section>
   </main>
 </div>
 
@@ -40,6 +41,7 @@
 <script src="js/report/report.js"></script>
 <script src="js/history/history.js"></script>
 <script src="js/assess/assess.js"></script>
+<script src="js/assess/runs.js"></script>
 <script src="link/host.js"></script>
 </body>
 </html>

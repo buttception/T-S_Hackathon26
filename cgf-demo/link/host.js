@@ -97,7 +97,8 @@
           (p.recordErrors.length ? '<span class="chip bad">invalid, not saved</span>' : '<span class="chip good">valid, saved</span>') + '</div>' +
           (p.recordErrors.length ? `<div class="warn small">${p.recordErrors.slice(0, 3).map(esc).join('<br>')}${p.recordErrors.length > 3 ? `<br>and ${p.recordErrors.length - 3} more` : ''}</div>` : '') +
           (p.reportUrl ? `<div class="small"><a class="btn" href="${esc(p.reportUrl)}" target="_blank" rel="noopener">Open report for pane ${esc(pane)}</a></div>` : '') +
-          (p.reportError ? `<div class="warn small">${esc(p.reportError)}</div>` : '') : '') +
+          (p.reportError ? `<div class="warn small">${esc(p.reportError)}</div>` : '') +
+          (p.compareUrl ? `<div class="small"><a class="btn" href="${esc(p.compareUrl)}" target="_blank" rel="noopener">${p.record.mode === 'fixed' ? 'Saved as a baseline: compare runs' : 'Compare with the fixed baseline'}</a></div>` : '') : '') +
         (p.apiMissing && p.apiMissing.length ? `<div class="warn small">The runtime is missing calls the link needs: ${p.apiMissing.map(esc).join(', ')}. Tell whoever changed the runtime.</div>` : '') +
         (p.error ? `<div class="warn small">${esc(p.error)}</div>` : '');
     }
@@ -123,6 +124,10 @@
         run = mergeRun(run, allocationId, pane, msg.record); saveRun();
         if (CGF.Report && typeof CGF.Report.finishSession === 'function') {   // Glenda's lane: reports, history entries, page URL
           try { p.reportUrl = CGF.Report.finishSession(msg.record).url; } catch (e) { p.reportError = 'The report could not be built: ' + e.message; }
+        }
+        // Keep the run so it can be compared with a fixed baseline (compare.html); a fixed run is the baseline itself
+        if (CGF.Runs && typeof CGF.Runs.save === 'function') {
+          try { CGF.Runs.save(msg.record); p.compareUrl = 'compare.html?run=' + encodeURIComponent(msg.record.session_id); } catch (e) { p.compareUrl = null; }
         }
         // The competency update runs after the report (INTERFACES §9): report, then Assess.update, then History.attachAssessment
         if (!p.reportError && CGF.Assess && typeof CGF.Assess.update === 'function') {

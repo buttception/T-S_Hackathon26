@@ -19,6 +19,8 @@
 <script src="../fixtures/profiles/roster.js"></script>
 <script src="../js/assess/assess.js"></script>
 <script src="../js/ui-cohort.js"></script>
+<script src="../js/assess/runs.js"></script>
+<script src="../js/ui-compare.js"></script>
 <script>
 (function () {
   const C = CGF.contracts, A = CGF.Assess, F = window.CGF_FIXTURES;
@@ -29,7 +31,7 @@
   const clone = o => JSON.parse(JSON.stringify(o));
 
   function reset() {
-    Object.keys(localStorage).filter(k => k.startsWith('cgf.profile.') || k === 'cgf.assessed').forEach(k => localStorage.removeItem(k));
+    Object.keys(localStorage).filter(k => k.startsWith('cgf.profile.') || k === 'cgf.assessed' || k === 'cgf.runs').forEach(k => localStorage.removeItem(k));
     CGF.History = undefined;
   }
 
@@ -170,6 +172,94 @@
     ok(/Only 3 trainees rated/.test(V.summaryNote({ rated: 3, mean: 0.5, below_half: 1, share_below_half: 0.33 })));
     ok(/candidate for more practice/.test(V.summaryNote({ rated: 10, mean: 0.4, below_half: 5, share_below_half: 0.5 })));
     ok(/2 of 10/.test(V.summaryNote({ rated: 10, mean: 0.7, below_half: 2, share_below_half: 0.2 })));
+  });
+
+  // ---- saved runs and the baseline comparison (js/assess/runs.js)
+  const R = CGF.Runs;
+  const adj = (n, setting, oldV, newV, target) => ({ adjustment_id: 'a_' + n, t: n * 30, session_id: 's_x', force: 'all', setting, old: oldV, new: newV, requested: newV,
+    clamped: false, target_competency: target || 'hail_discipline', seat: 'navigation', pressure_direction: 'up', source: 'engine', policy: 'rules_v1',
+    evidence_event_ids: [], explanation: null });
+  const mkRun = (sid, mode, events, adjustments, over) => Object.assign({}, record(events, sid), { mode, adjustments: adjustments || [] }, over || {});
+  const hails = (n, ok) => Array.from({ length: n }, (x, i) => (i < ok ? hailOk(i + 1, 'trainee_b') : hailFail(i + 1, 'trainee_b')));
+
+  test('Runs saves records newest last, replaces the same session, and keeps only the latest ten', () => {
+    R.save(mkRun('s_1', 'fixed', [])); R.save(mkRun('s_2', 'adaptive', [])); R.save(mkRun('s_1', 'fixed', [hailOk(1, 'trainee_b')]));
+    eq(R.list().map(r => r.session_id), ['s_2', 's_1']);
+    eq(R.find('s_1').events.length, 1, 'replaced');
+    for (let i = 3; i < 15; i++) R.save(mkRun('s_' + i, 'fixed', []));
+    eq(R.list().length, R.MAX_RUNS);
+    eq(R.list()[R.MAX_RUNS - 1].session_id, 's_14');
+    eq(R.find('s_1'), null, 'the oldest was dropped');
+  });
+  test('Runs.save rejects something that is not a session record', () => {
+    for (const bad of [null, {}, { session_id: 's' }, { session_id: 's', events: [], adjustments: [] }]) {
+      let msg = ''; try { R.save(bad); } catch (e) { msg = e.message; }
+      ok(/session record/.test(msg), JSON.stringify(bad));
+    }
+  });
+  test('baselineFor picks the latest FIXED run on the same scenario, seed, platform and crew', () => {
+    R.save(mkRun('s_f1', 'fixed', [])); R.save(mkRun('s_f2', 'fixed', []));
+    R.save(mkRun('s_other_seed', 'fixed', [], [], { seed: 99 }));
+    R.save(mkRun('s_other_crew', 'fixed', [], [], { crew: [{ seat: 'weapons', trainee_id: 'trainee_c05' }, { seat: 'sensors', trainee_id: 'trainee_c01' }, { seat: 'navigation', trainee_id: 'trainee_b' }] }));
+    R.save(mkRun('s_adaptive', 'adaptive', []));
+    const target = mkRun('s_target', 'adaptive', []);
+    eq(R.baselineFor(target).session_id, 's_f2');
+    eq(R.baselineFor(mkRun('s_nope', 'adaptive', [], [], { seed: 5 })), null, 'no run with that seed');
+    eq(R.baselineFor(mkRun('s_fixed', 'fixed', [])), null, 'a fixed run has no baseline');
+    eq(R.baselineFor(R.find('s_f2')), null);
+  });
+  test('compare computes success rates per competency and the change in points', () => {
+    const base = mkRun('s_b', 'fixed', hails(10, 2)), run = mkRun('s_r', 'adaptive', hails(10, 6), [adj(1, 'sensitivity', 1, 1.2), adj(2, 'sensitivity', 1.2, 1.4), adj(3, 'weight.ignoredWarning', 1, 1.25)]);
+    const c = R.compare(base, run), h = c.by_competency.find(x => x.competency === 'hail_discipline');
+    eq([h.baseline.success, h.baseline.fail, h.baseline.rate], [2, 8, 0.2]);
+    eq([h.run.success, h.run.fail, h.run.rate], [6, 4, 0.6]);
+    eq([h.delta, h.enough, h.adjustments_aimed], [0.4, true, 3]);
+    eq([c.baseline.mode, c.run.mode, c.baseline.adjustments, c.run.adjustments], ['fixed', 'adaptive', 0, 3]);
+  });
+  test('compare lists the settings the AI moved, with first and last values', () => {
+    const run = mkRun('s_r', 'adaptive', hails(4, 2), [adj(1, 'sensitivity', 1, 1.2), adj(2, 'sensitivity', 1.2, 1.4), adj(3, 'weight.ignoredWarning', 1, 1.25)]);
+    const c = R.compare(mkRun('s_b', 'fixed', hails(4, 1)), run);
+    eq(c.adjustments.settings[0], { setting: 'sensitivity', changes: 2, first_old: 1, last_new: 1.4 });
+    eq(c.adjustments.targeted, { hail_discipline: 3 });
+  });
+  test('compare refuses to compare a competency with too few events in either run, and says so', () => {
+    const c = R.compare(mkRun('s_b', 'fixed', hails(2, 0)), mkRun('s_r', 'adaptive', hails(10, 5)));
+    const h = c.by_competency[0];
+    eq([h.enough, h.delta], [false, null]);
+    ok(c.notes.some(n => /Hail discipline: too few events to compare \(baseline 2, this run 10/.test(n)), c.notes.join(' | '));
+  });
+  test('every number in a compare note comes from the facts, and the notes include the honesty caveat', () => {
+    const c = R.compare(mkRun('s_b', 'fixed', hails(10, 2)), mkRun('s_r', 'adaptive', hails(10, 6), [adj(1, 'sensitivity', 1, 1.2)]));
+    ok(c.notes.some(n => /20% success in the fixed baseline, 60% in this run \(\+40 points\), with 1 adjustment aimed at it/.test(n)), c.notes.join(' | '));
+    ok(c.notes.some(n => /not proof/.test(n)));
+    ok(c.notes.some(n => /1 adjustment in this run; the fixed baseline made 0/.test(n)));
+  });
+  test('compare is deterministic and needs two records', () => {
+    const a = mkRun('s_b', 'fixed', hails(6, 1)), b = mkRun('s_r', 'adaptive', hails(6, 4), [adj(1, 'sensitivity', 1, 1.2)]);
+    eq(R.compare(a, b), R.compare(a, b));
+    for (const args of [[null, b], [a, null], [{}, b]]) { let msg = ''; try { R.compare(...args); } catch (e) { msg = e.message; } ok(/two session records/.test(msg)); }
+  });
+
+  // ---- which two runs the comparison page shows (js/ui-compare.js)
+  test('compare page: nothing saved, a fixed run only, an adaptive run without a baseline, and the happy path', () => {
+    const ch = CGF.compareView.choose;
+    eq(ch([], {}).problem, 'none');
+    const f = mkRun('s_f', 'fixed', []), a = mkRun('s_a', 'adaptive', []);
+    eq(ch([f], {}).problem, 'not-adaptive');                       // only a fixed run: the latest run is the baseline itself
+    eq(ch([a], {}).problem, 'no-baseline');
+    const good = ch([f, a], {});
+    eq([good.run.session_id, good.baseline.session_id, good.problem], ['s_a', 's_f', null]);
+  });
+  test('compare page: defaults to the latest adaptive run, honours ?run and ?baseline, and reports what is missing', () => {
+    const ch = CGF.compareView.choose;
+    const f1 = mkRun('s_f1', 'fixed', []), a1 = mkRun('s_a1', 'adaptive', []), f2 = mkRun('s_f2', 'fixed', []), a2 = mkRun('s_a2', 'adaptive', []);
+    eq(ch([f1, a1, f2, a2], {}).run.session_id, 's_a2');
+    eq(ch([f1, a1, f2, a2], {}).baseline.session_id, 's_f2', 'the latest fixed baseline');
+    eq(ch([f1, a1, f2, a2], { run: 's_a1' }).run.session_id, 's_a1');
+    eq(ch([f1, a1, f2, a2], { run: 's_a1', baseline: 's_f1' }).baseline.session_id, 's_f1', 'an explicit baseline wins');
+    eq(ch([f1, a1], { run: 'nope' }).problem, 'missing-run');
+    eq(ch([f1, a1], { run: 's_a1', baseline: 'nope' }).problem, 'missing-baseline');
+    eq(ch([f1, a1], { run: 's_f1' }).problem, 'not-adaptive');
   });
 
   // ---- AI partner parameters (J7, INTERFACES §3.2)
