@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Report outstanding-items tests</title>
+<style>
+  body { font: 14px/1.5 "Segoe UI", system-ui, sans-serif; background: #0b1420; color: #d6e2f0; padding: 16px; }
+  .pass { color: #4dd17a; } .fail { color: #ff7b54; } h1 { font-size: 16px; }
+  #summary { font-weight: 700; margin: 8px 0 12px; }
+  #stage { display: none; }
+</style>
+</head>
+<body>
+<h1>Report lane: validator fixtures, AI partners, R18, R20, R21, seeded history (same file as outstanding.test.js)</h1>
+<div id="summary">running…</div>
+<ul id="results"></ul>
+
+<!-- The markup ui-report.js drives, hidden -->
+<div id="stage">
+  <span id="rpSub"></span><select id="rpTrainee"></select><button id="rpPrint"></button><button id="rpExport"></button>
+  <div id="rpBody"></div><button id="rpTop" hidden></button>
+</div>
+
+<script src="../../contracts/contracts.js"></script>
+<script src="../../fixtures/profiles/roster.js"></script>
+<script src="../../fixtures/platforms.js"></script>
+<script src="../../fixtures/history/demo.js"></script>
+<script src="../../js/report/report.js"></script>
+<script src="../../js/history/history.js"></script>
+<script src="../../js/report/debrief.js"></script>
+<script src="../../js/report/charts.js"></script>
+<script src="../../js/assess/assess.js"></script>
+<script src="../../js/ui-report.js"></script>
+<script>
+// A tiny stand-in for node:test and node:assert/strict, enough for outstanding.test.js
+const queue = [];
+const fmt = v => { try { return JSON.stringify(v); } catch (e) { return String(v); } };
+const fail = (m, d) => { throw new Error((d ? d + ': ' : '') + m); };
+const shimAssert = {
+  ok: (c, d) => { if (!c) fail('expected truthy', d); },
+  equal: (a, b, d) => { if (a !== b) fail('got ' + fmt(a) + ', want ' + fmt(b), d); },
+  deepEqual: (a, b, d) => { if (fmt(a) !== fmt(b)) fail('got ' + fmt(a) + ', want ' + fmt(b), d); },
+  match: (s, re, d) => { if (!re.test(s)) fail('no match for ' + re, d); },
+  doesNotMatch: (s, re, d) => { if (re.test(s)) fail('unexpected match for ' + re, d); },
+  throws: (fn, re, d) => { let t = false; try { fn(); } catch (e) { t = true; if (re && !re.test(e.message)) fail('wrong error: ' + e.message, d); } if (!t) fail('did not throw', d); }
+};
+window.require = name => name === 'node:test' ? { test: (n, o, f) => queue.push([n, typeof o === 'function' ? o : f, typeof o === 'function' ? {} : o]) }
+  : name === 'node:assert/strict' ? shimAssert : (() => { throw new Error('no ' + name + ' in the browser'); })();
+</script>
+<script src="outstanding.test.js"></script>
+<script>
+(function () {
+  let pass = 0; const ul = document.getElementById('results');
+  for (const [name, fn, opts] of queue) {
+    let err = null;
+    try { if (opts && opts.skip) throw new Error('skipped'); fn(); } catch (e) { err = e; }
+    const li = document.createElement('li');
+    if (err) { li.className = 'fail'; li.textContent = 'FAIL ' + name + ' — ' + (err.message || err); } else { pass++; li.className = 'pass'; li.textContent = 'ok ' + name; }
+    ul.appendChild(li);
+  }
+  const s = document.getElementById('summary');
+  s.textContent = pass + ' / ' + queue.length + ' passed'; s.dataset.done = '1';
+})();
+</script>
+</body>
+</html>
