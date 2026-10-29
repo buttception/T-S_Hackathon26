@@ -30,6 +30,10 @@ Status: open, agreed, done, declined.
 | R22 | Devin | `js/ui.js` `updateRunButton()` | Also set `$('btnRun').dataset.state` to `play` (Start, Resume), `pause` (Pause) or `finished` (Finished). Keep the words. `style.css` then shows ▶, two pause bars or ■ beside the word and greys out Finished. One line, no markup change | Start, Restart and speed now read as one player bar; CSS cannot see whether the sim is running, so the icon needs the state (P3: player conventions, P5: state readable at a glance) | open |
 | R23 | Devin, wording agreed with JL (R3) | `runtime.html` `#modeSel`, `js/ui.js` (`modeSel` listeners, status line) | Replace the Exercise/Freeplay dropdown with a two-option toggle so both choices are always visible: `<div class="segToggle" role="radiogroup" aria-label="Run ends"><span class="segLabel">Run ends</span><button role="radio" aria-checked="true" data-mode="exercise">At objective</button><button role="radio" aria-checked="false" data-mode="freeplay">Never (free play)</button></div>`. On click call `CGF.inject.setMode(btn.dataset.mode)`; on the `mode` event set `aria-checked` on both. Place it on its own row (it wraps there today) or the scenario line, not inside the player bar. Status line: "ENDS AT OBJECTIVE" / "FREE PLAY". `style.css` already styles `.segToggle` (preview: `design/previews/33-run-ends-toggle.jpg`) | A dropdown hides the other option and has no label, so it reads like a playback setting; "Exercise" is a third mode name next to Adaptive/Fixed (audit B, R3). Two visible options with a label say what the choice does (P2, Hick: two options need no menu), and a tick marks the choice without relying on colour (P5) | open |
 | R24 | JL | `allocate.html` header and `<head>` | Two small edits now that the page's styles live in `css/allocate.css`: remove the leading "· " from the `<h1>` subtitle (`<small>choose the platform…`), which now sits on its own line; and remove the `css/allocate-layout.css` link, which is empty (folded into `allocate.css`). Until then `allocate.css` clips the dot | Allocation v2 type and spacing (P2: the subtitle reads as guidance, not as a stray bullet) | open |
+| R25 | Devin | `runtime.html` `#scenarioName`, `js/ui.js` `reset` handler, `scenarios/*.js` | Give the scenario its own line at the top of the panel: short name, domain and run mode, and one chip per non-trainee force (colour swatch + tag). Add `shortName` and `domain` to each scenario (for example `'Strait transit'`, `'Sea'`); fall back to `name` when absent. See the R25–R28 spec below | The full name sits muted and small at the end of the control row and wraps; the force list in brackets reads as part of the name (P2, P3). Preview: `design/previews/45-scenario-info-preview.html` | open |
+| R26 | Devin | `scenarios/*.js` `brief`, `js/ui.js` `reset` handler, `runtime.html` `#brief` and `#mapWrap` | Structure the brief as Objective / Situation / Constraints (`brief: { objective, situation: [...], constraints }`; a plain string still renders as today) and render it as `<dl class="mission">`. Pin the objective on the map in `<div id="objPin">` so it stays visible on every tab | One muted paragraph mixes objective, threats and rules, and disappears on other tabs. Orders-style layout is familiar to instructors (P2, P3) | open |
+| R27 | Devin; JL decides the trainee part (with R9) | `runtime.html` `#legend`, `js/ui.js` legend builder (~line 98) | Make the map key a collapsible `<details>` with two labelled groups, "Symbol = identity" and "Tag and zone = force". Show harness names (Hostile state, Grey-zone…) only while `CGF.ui.isInstructorView()` is true | The key covers the map and can't be closed; identity and force colours read as one key; the trainee can read each force's behaviour from the legend (P2, P3, P4, Ethical AI) | open |
+| R28 | Devin | `js/ui.js` (legend, `#forceList`, Instructor force harnesses), `runtime.html` Trainee tab | Use one force row everywhere: `<div class="forceRow"><i></i><span class="tag"></span><span class="label"></span><span class="kind"></span><span class="instrOnly">n units · <span class="harness">…</span></span></div>`. Add a "Forces" section to the Trainee tab under Mission; the `instrOnly` part renders only in the instructor view and Setup | The same forces appear in three formats in three places (P3) | open |
 
 ## R2 spec: runtime colours as classes (for Devin)
 
@@ -47,6 +51,18 @@ Agreed 2026-10-29 (Eevee): solution A. Every colour moves out of `js/ui.js` and 
 | 8 | `js/engine.js` 19, `CGF.style.stateColors` (used by `js/render.js` 179 and `js/ui.js` 145) | grey, yellow, orange, orange-red, red by escalation level | Read the five values from `--escalation-0` to `--escalation-4` once at start-up (same `getComputedStyle` helper as #5), keeping the array as the fallback. On contact cards, put `class="esc-<n>"` on the card, `escState` on the state name and `escFill` on the tension bar, instead of the inline colour | calm levels uncoloured, then caution orange, then critical magenta |
 
 Done when: `grep -nE "#[0-9a-fA-F]{3,6}|rgba?\(" js/ui.js runtime.html` finds no colours outside scenario force data, and the runtime still opens from `file://`.
+
+## R25–R28 spec: scenario info on runtime (for Devin)
+
+Proposed 2026-10-29 (Eevee). Preview: `design/previews/45-scenario-info-preview.html` (open from `file://`; the switch on the right compares trainee and instructor views). Class names below are the ones `style.css` will style; markup and data are Devin's.
+
+| # | Request | Markup / data | Notes |
+|---|---|---|---|
+| 1 | R25 scenario line | `<div class="scn"><div class="scnTop"><span class="scnName">{shortName}</span><span class="scnMeta">{domain} · {mode}</span></div><div class="chips">` + per force except the trainee's: `<span class="chip"><i style="--force:{color}"></i>{tag}</span>` + `</div></div>`, placed under the `<h1>`, above the player row. `#scenarioName` goes | Force colours stay in the scenario file; pass them as the `--force` custom property, not as `background` |
+| 2 | R26 brief | `<dl class="mission"><dt>Objective</dt><dd>…</dd><dt>Situation</dt><dd><ul><li>…</li></ul></dd><dt>Constraints</dt><dd>…</dd></dl>` in `#brief`; drop the `muted` class | Strait transit wording: Objective "BLUE-1 transits north to the Exit point." Situation: "Red holds the western coast.", "Black claims the reef to the east.", "Pirates operate to the south-east.", "Merchant ships use both sea lanes." Constraints "Keep the sea lanes open. Avoid escalation." |
+| 3 | R26 objective pin | `<div id="objPin"><b>Objective</b> · {objective}</div>` inside `#mapWrap` | Top-left, so it sits where `#hud` is today; Eevee will stack them |
+| 4 | R27 map key | `<details id="legend" open><summary>Map key</summary><div class="legendGroups"><div class="legendGroup"><div class="legendHead">Symbol = identity</div>…</div><div class="legendGroup"><div class="legendHead">Tag and zone = force</div>…</div></div></details>`. Remove `pointer-events: none` reliance (CSS will handle it). Remember open/closed in `localStorage` (wrapped in try/catch) | Harness names only when `CGF.ui.isInstructorView()`; rebuild the legend on tab change. If JL decides on R9 that trainees keep seeing CGF reasoning, harness names can stay visible too |
+| 5 | R28 force row | As in the R28 row above; wrap `.instrOnly` content so it can be left out of the DOM in trainee view rather than hidden by CSS | Trainee tab "Forces" lists every force including Blue ("Blue (you)") |
 
 ## Open requests by problem category
 
@@ -68,6 +84,7 @@ The instructor can't always tell which mode or system state is active.
 | R11 | Devin | Whether the LLM or the keyword fallback is active is a small grey line |
 | R22 | Devin | Start/Pause button has no play/pause state for an icon |
 | R23 | Devin, JL on wording | Exercise/Freeplay is an unlabelled dropdown that hides the other option and looks like a playback setting |
+| R27 | Devin | Map key mixes symbol identity and force colour with no labels (also P3) |
 
 ### 3. AI transparency (P4: transparent AI, human in command)
 What the AI did, why, and within which bounds, isn't visible enough.
@@ -83,6 +100,9 @@ Too much at once, or the wrong things competing for attention.
 | R8 | Devin | Map labels overlap where units cluster |
 | R10 | Devin | Trainee tab is one long scroll (summary, log, keyboard help) |
 | R13 | Devin | Setup mixes everyday and technical settings; "Load (restart)" has no confirmation (also P5) |
+| R25 | Devin | Scenario name is small, grey and wraps at the end of the control row |
+| R26 | Devin | Mission brief is one grey paragraph and disappears on other tabs |
+| R28 | Devin | Forces are listed in three formats in three places (also P3) |
 
 ### 5. Language (P2, Ethical AI)
 Code terms or judgemental words shown to instructors and trainees.
@@ -95,6 +115,7 @@ Code terms or judgemental words shown to instructors and trainees.
 | ID | Owner | Problem |
 |---|---|---|
 | R9 | JL decides, then Devin | Trainees can see the CGF's reasoning during a run |
+| R27 | JL decides with R9, then Devin | The map key shows trainees each force's behaviour (Hostile state, Grey-zone…) |
 
 ### 7. Broken output (P1)
 None open. R19 is done; known gap: headless `--print-to-pdf` does not fire `beforeprint`, so automated PDFs still miss closed sections.
@@ -106,4 +127,6 @@ Not requests: styling work in the Eevee lane, from JL's triage and the audit.
 - Review `css/compare.css` (comparison page) and `css/cohort.css` (heatmap and legend), both JL's starting points.
 - Vehicle diagram on the allocation page: inline token colours in `js/ui-allocate-vehicles.js`; move to classes if needed (would be a request to JL).
 - Type scale and projector mode (audit finding C).
+- Style the R25–R28 classes (`scn`, `chip`, `mission`, `objPin`, `legendGroup`, `forceRow`, `harness`) in `style.css` ahead of Devin's markup.
+- Pirate force orange (`#ff9f1c`, in `scenarios/*.js`) is close to `--status-caution` (`#ffa94d`, malfunction tags). Pick a pirate colour further away, then ask Devin to change the scenario files.
 - Consequential-action button styling on the runtime Instructor tab (audit finding 11).
