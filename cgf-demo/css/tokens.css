@@ -69,6 +69,22 @@
   --data-3: #8fb3d6;
   --data-4: #c9def2;
 
+  /* Report charts (js/report/charts.js reads --rp-chart-<role>). CGF pressure is the AI acting, so violet;
+     results are data; a miss is a hollow ring in the caution colour, so shape and colour both carry it. */
+  --rp-chart-pressure: var(--source-ai);
+  --rp-chart-pressed: var(--source-ai);
+  --rp-chart-phase-up: var(--source-ai);
+  --rp-chart-phase-down: var(--text-muted);
+  --rp-chart-ok: var(--data-fill);
+  --rp-chart-miss: var(--status-caution);
+  --rp-chart-trend: var(--data-fill);
+  --rp-chart-rate: var(--text);
+  --rp-chart-start: var(--text-muted);
+  --rp-chart-next: var(--text-strong);
+  --rp-chart-band: var(--border-strong);
+  --rp-chart-track: var(--data-track);
+  --rp-chart-grid: var(--border);
+
   /* Legacy names used by style.css, allocate.css and host.css today */
   --bg: var(--surface-bg);
   --panel: var(--surface-panel);
