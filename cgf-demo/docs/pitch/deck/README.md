@@ -1,4 +1,10 @@
-# Pitch deck source
+# Pitch deck
+
+**The PowerPoint file is `../Adaptive-CGF-Trainer.pptx`** (13 slides, speaker notes, Eevee's dark theme, Segoe UI and Consolas). It is the deck to present. `build-pptx.ps1` regenerates it: it drives PowerPoint through COM on Windows (`powershell -ExecutionPolicy Bypass -File build-pptx.ps1 -Out <file.pptx> -Shots images`, with `images/` renamed to hold `allocate_c.png`, `runtime_c.png`, `report_c.png`, `cohort_c.png`). Or edit the .pptx directly.
+
+The rest of this folder is the earlier web-slides version (a private Slides artifact), kept as a source copy.
+
+## Web-slides source
 
 13 slides, built as a Slides artifact (private, owner JL): https://claude.ai/artifact/SzeeUcQmXhaUHG6cqYtYT8
 
