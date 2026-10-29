@@ -7,16 +7,35 @@
 #compareApp header h1 { margin: 0 auto 0 0; }
 #compareApp a.btn { text-decoration: none; color: var(--text); }
 #compareApp main { padding: 10px 14px 24px; max-width: 1200px; }
-.compare-intro { background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: 6px; padding: 8px 12px; }
-.compare-problem { background: var(--status-caution-bg); color: var(--status-caution-text); border: 1px solid var(--status-caution); border-radius: 6px; padding: 8px 12px; }
+.compare-intro { background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: 8px; padding: var(--space-3) var(--space-4); }
+.compare-problem { background: var(--status-caution-bg); color: var(--status-caution-text); border: 1px solid var(--status-caution); border-radius: 8px; padding: var(--space-3) var(--space-4); }
 .compare-problem::before { content: "\26A0\00a0"; }
 
-.compare-table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 4px 0 8px; }
-.compare-table th { text-align: left; color: var(--text-muted); font-weight: 400; padding: 5px 8px; white-space: nowrap; }
+.compare-table { border-collapse: collapse; width: 100%; font-size: var(--fs-body); margin: var(--space-1) 0 var(--space-2); }
+/* Column headers: caption level, uppercase and tracked, like every table on the other pages; row headers stay body size */
+.compare-table thead th { text-align: left; color: var(--text-muted); font-size: var(--fs-caption); font-weight: var(--fw-medium); text-transform: uppercase;
+  letter-spacing: .04em; padding: var(--space-2) var(--space-3); white-space: nowrap; vertical-align: bottom; }
+.compare-table tbody th { text-align: left; font-weight: var(--fw-regular); padding: var(--space-2) var(--space-3); white-space: nowrap; border-top: 1px solid var(--border); }
 .compare-table tbody th { color: var(--text); }
-.compare-table td { padding: 5px 8px; border-top: 1px solid var(--border); }
-.compare-table td.num { text-align: right; white-space: nowrap; font-family: Consolas, monospace; }
+.compare-table td { padding: var(--space-2) var(--space-3); border-top: 1px solid var(--border); }
+.compare-table td.num { text-align: right; white-space: nowrap; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .compare-bar { display: inline-block; vertical-align: middle; width: 90px; height: 8px; background: var(--data-track); border-radius: 4px; overflow: hidden; }
 .compare-bar i { display: block; height: 100%; background: var(--data-fill); }
-.val { display: inline-block; vertical-align: middle; margin-left: 6px; font-family: Consolas, monospace; }
+.val { display: inline-block; vertical-align: middle; margin-left: 6px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .compare-notes li { margin: 4px 0; }
+
+/* ---- Type and spacing: the shared six-level scale from tokens.css, laid out like the allocation page (2026-10-29) */
+#compareApp { font-family: var(--font-ui); font-size: var(--fs-body); line-height: var(--lh-body); }
+#compareApp header { padding: var(--space-4) var(--space-5); }
+#compareApp header h1 { font-size: var(--fs-page); font-weight: var(--fw-medium); line-height: var(--lh-tight); color: var(--text-strong); }
+/* Subtitle on its own line; the markup starts it with "· ", so the dot and its space are pulled left and clipped */
+#compareApp header h1 small { display: block; margin-top: var(--space-1); font-size: var(--fs-body); font-weight: var(--fw-regular);
+  color: var(--text-muted); text-indent: -0.62em; clip-path: inset(0); }
+#compareApp header h1 small::first-letter { text-transform: uppercase; }
+#compareApp .btn, #compareApp button { font-size: var(--fs-body); min-height: 34px; padding: 6px var(--space-3); white-space: nowrap; }
+#compareApp :focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+#compareApp main { padding: var(--space-5) var(--space-5) var(--space-6); }
+#compareApp main > p, #compareApp main > .row { margin: var(--space-3) 0; }
+#compareApp h2 { font-size: var(--fs-section); font-weight: var(--fw-medium); line-height: var(--lh-tight); text-transform: none; letter-spacing: 0;
+  color: var(--text-strong); border-bottom: none; padding: 0; margin: var(--space-6) 0 var(--space-3); }
+#compareApp .small { font-size: var(--fs-small); }
