@@ -162,6 +162,116 @@
     return errs;
   }
 
+  // ---- INTERFACES §4 simulation event, §7 adjustment record, §9.1 session record (runtime output)
+
+  // type -> [competency, outcome], the table in §4. A null competency means the event does not update a profile.
+  const EVENT_TYPES = {
+    hail_acknowledged: ['hail_discipline', 'success'], hail_ignored: ['hail_discipline', 'fail'],
+    safe_passage: ['collision_avoidance', 'success'], close_quarters: ['collision_avoidance', 'fail'],
+    left_territorial: ['territorial_awareness', 'success'], territorial_incursion: ['territorial_awareness', 'fail'],
+    fc_restraint: ['weapons_discipline', 'success'], fc_radar_lock: ['weapons_discipline', 'fail'],
+    pirate_speed_response: ['speed_management', 'success'], pirate_slow_response: ['speed_management', 'fail'],
+    tension_peak: [null, null], exercise_failed: [null, null]
+  };
+  const EVENT_KEYS = ['event_id', 't', 'session_id', 'trainee_id', 'seat', 'type', 'competency', 'outcome', 'unit_id', 'detail'];
+  const ADJUSTMENT_KEYS = ['adjustment_id', 't', 'session_id', 'force', 'setting', 'old', 'new', 'requested', 'clamped',
+    'target_competency', 'seat', 'pressure_direction', 'source', 'policy', 'evidence_event_ids', 'explanation'];
+  const RECORD_KEYS = ['session_id', 'pane', 'scenario', 'seed', 'mode', 'platform', 'crew', 'outcome', 'duration_s', 'events', 'adjustments'];
+  const ADJUSTMENT_SOURCES = ['engine', 'instructor_steer'], POLICIES = ['rules_v1', 'bandit_v2'], DIRECTIONS = ['up', 'down'];
+  const near = (a, b) => Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
+
+  // seats: optional list of seat ids the event's seat must belong to (the crew of the session)
+  function validateEvent(e, seats) {
+    if (!isObj(e)) return ['event: must be an object'];
+    const errs = extraKeys(e, EVENT_KEYS, 'event');
+    for (const k of EVENT_KEYS) if (!(k in e)) errs.push(`event.${k}: required`);
+    if (!isStr(e.event_id)) errs.push('event.event_id: required');
+    if (!isNum(e.t) || e.t < 0) errs.push('event.t: number >= 0 required');
+    if (!isStr(e.session_id)) errs.push('event.session_id: required');
+    const row = EVENT_TYPES[e.type];
+    if (!row) { errs.push(`event.type: one of ${Object.keys(EVENT_TYPES).join(', ')}`); return errs; }
+    if (e.competency !== row[0]) errs.push(`event.competency: ${e.type} is ${row[0] === null ? 'null' : `"${row[0]}"`}`);
+    if (e.outcome !== row[1]) errs.push(`event.outcome: ${e.type} is ${row[1] === null ? 'null' : `"${row[1]}"`}`);
+    if (row[0] !== null) {   // a competency event names the seat and the trainee in it
+      if (!isStr(e.seat)) errs.push('event.seat: a competency event needs a seat');
+      if (!isStr(e.trainee_id)) errs.push('event.trainee_id: a competency event needs a trainee');
+    } else {
+      if (e.seat !== null) errs.push('event.seat: null for a crew-wide event');
+      if (e.trainee_id !== null && !isStr(e.trainee_id)) errs.push('event.trainee_id: string or null');
+    }
+    if (isStr(e.seat) && seats && !seats.includes(e.seat)) errs.push(`event.seat: "${e.seat}" is not a seat of this crew`);
+    if (e.unit_id !== null && !isStr(e.unit_id)) errs.push('event.unit_id: string or null');
+    if (!isObj(e.detail)) errs.push('event.detail: must be an object');
+    return errs;
+  }
+
+  // opts.envelope: optional envelope; then `new` must sit inside the setting's min..max (invariant 1)
+  function validateAdjustment(a, opts) {
+    if (!isObj(a)) return ['adjustment: must be an object'];
+    const errs = extraKeys(a, ADJUSTMENT_KEYS, 'adjustment');
+    for (const k of ADJUSTMENT_KEYS) if (!(k in a)) errs.push(`adjustment.${k}: required`);
+    for (const k of ['adjustment_id', 'session_id', 'force']) if (!isStr(a[k])) errs.push(`adjustment.${k}: required`);
+    if (!isNum(a.t) || a.t < 0) errs.push('adjustment.t: number >= 0 required');
+    if (!isStr(a.setting) || !rangeOf(a.setting)) errs.push('adjustment.setting: a known setting (INTERFACES §2)');
+    for (const k of ['old', 'new', 'requested']) if (!isNum(a[k])) errs.push(`adjustment.${k}: number required`);
+    if (typeof a.clamped !== 'boolean') errs.push('adjustment.clamped: boolean required');
+    else if (isNum(a.new) && isNum(a.requested) && a.clamped === near(a.new, a.requested)) errs.push('adjustment.clamped: true exactly when requested differs from new');
+    if (!COMPETENCIES.includes(a.target_competency)) errs.push('adjustment.target_competency: a catalog competency');
+    if (a.seat !== null && !isStr(a.seat)) errs.push('adjustment.seat: string or null');
+    if (!DIRECTIONS.includes(a.pressure_direction)) errs.push(`adjustment.pressure_direction: one of ${DIRECTIONS.join(', ')}`);
+    if (!ADJUSTMENT_SOURCES.includes(a.source)) errs.push(`adjustment.source: one of ${ADJUSTMENT_SOURCES.join(', ')}`);
+    if (!POLICIES.includes(a.policy)) errs.push(`adjustment.policy: one of ${POLICIES.join(', ')}`);
+    if (!Array.isArray(a.evidence_event_ids) || !a.evidence_event_ids.every(isStr)) errs.push('adjustment.evidence_event_ids: array of event ids');
+    if (a.explanation !== null && !isStr(a.explanation)) errs.push('adjustment.explanation: null or a string');
+    const env = opts && opts.envelope && opts.envelope[a.setting];
+    if (env && isNum(a.new) && (a.new < env.min - 1e-9 || a.new > env.max + 1e-9)) errs.push(`adjustment.new: ${a.new} is outside the envelope ${env.min}..${env.max}`);
+    return errs;
+  }
+
+  // opts.envelope: optional, passed to every adjustment check
+  function validateSessionRecord(r, opts) {
+    if (!isObj(r)) return ['record: must be an object'];
+    const errs = extraKeys(r, RECORD_KEYS, 'record');
+    for (const k of RECORD_KEYS) if (!(k in r)) errs.push(`record.${k}: required`);
+    if (!isStr(r.session_id)) errs.push('record.session_id: required');
+    if (r.pane !== null && !PANES.includes(r.pane)) errs.push('record.pane: A, B, or null for a local run');
+    if (!isStr(r.scenario)) errs.push('record.scenario: required');
+    if (!Number.isInteger(r.seed) || r.seed < 0) errs.push('record.seed: integer >= 0 required');
+    if (!MODES.includes(r.mode)) errs.push(`record.mode: one of ${MODES.join(', ')}`);
+    if (!SEATS_BY_TYPE[r.platform]) errs.push(`record.platform: the platform type, one of ${Object.keys(SEATS_BY_TYPE).join(', ')}`);
+    if (!['success', 'fail'].includes(r.outcome)) errs.push('record.outcome: success or fail');
+    if (!isNum(r.duration_s) || r.duration_s < 0) errs.push('record.duration_s: number >= 0 required');
+    const seats = SEATS_BY_TYPE[r.platform];
+    if (!Array.isArray(r.crew)) errs.push('record.crew: must be an array');
+    else {
+      if (seats) {
+        if (r.crew.length !== seats.length) errs.push(`record.crew: a ${r.platform} has ${seats.length} seats, got ${r.crew.length}`);
+        r.crew.forEach((m, i) => {
+          if (!isObj(m)) { errs.push(`record.crew[${i}]: must be {seat, trainee_id}`); return; }
+          errs.push(...extraKeys(m, ['seat', 'trainee_id'], `record.crew[${i}]`));
+          if (m.seat !== seats[i]) errs.push(`record.crew[${i}].seat: expected "${seats[i]}"`);
+          if (!isStr(m.trainee_id) || !ID_RE.test(m.trainee_id)) errs.push(`record.crew[${i}].trainee_id: lower-case id required`);
+        });
+      }
+    }
+    const crew = Array.isArray(r.crew) ? r.crew.filter(isObj) : [];
+    if (!Array.isArray(r.events)) errs.push('record.events: must be an array');
+    else r.events.forEach((e, i) => {
+      errs.push(...validateEvent(e, seats).map(m => `record.events[${i}]: ${m}`));
+      if (isObj(e) && e.session_id !== r.session_id) errs.push(`record.events[${i}].session_id: must equal the record's`);
+      if (isObj(e) && isStr(e.seat) && !crew.some(m => m.seat === e.seat && m.trainee_id === e.trainee_id))
+        errs.push(`record.events[${i}]: trainee ${e.trainee_id} is not in seat ${e.seat} of this crew`);
+    });
+    if (!Array.isArray(r.adjustments)) errs.push('record.adjustments: must be an array');
+    else r.adjustments.forEach((a, i) => {
+      errs.push(...validateAdjustment(a, opts).map(m => `record.adjustments[${i}]: ${m}`));
+      if (isObj(a) && a.session_id !== r.session_id) errs.push(`record.adjustments[${i}].session_id: must equal the record's`);
+      if (isObj(a) && isStr(a.seat) && seats && !seats.includes(a.seat)) errs.push(`record.adjustments[${i}].seat: "${a.seat}" is not a seat of this crew`);
+    });
+    return errs;
+  }
+
   CGF.contracts = { COMPETENCIES, MODES, PANES, SEATS_BY_TYPE, DOMAIN_BY_TYPE, SETTING_RANGES, WEIGHT_RANGE, PRIOR, EVIDENCE_MIN,
-    validateEnvelope, validateProfile, validatePlatform, validateCrew, validateScenarioConfig, validateAllocation, expandAllocation };
+    EVENT_TYPES, validateEnvelope, validateProfile, validatePlatform, validateCrew, validateScenarioConfig, validateAllocation, expandAllocation,
+    validateEvent, validateAdjustment, validateSessionRecord };
 })();

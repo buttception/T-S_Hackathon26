@@ -32,7 +32,7 @@ The repo's CGFs already react to what the trainee does right now: a tension scor
 | Signal | Source | Time scale | What it decides |
 |---|---|---|---|
 | Experience | Trainee profile: a Beta posterior per competency, kept across sessions | Sessions | **Which** competency to exercise (the weakest one with enough evidence) |
-| Current behaviour | Events and stats from this run, in a rolling window | Seconds to minutes | **How hard** to push: raise pressure when the trainee is cruising, ease off when they are overwhelmed |
+| Current behaviour | Events and stats from this run, in a rolling window | Seconds to minutes | **How hard** to push: keep the pressure on while the trainee is still missing the target, ease off once they are meeting it (remediation, decided 2026-10-29; INTERFACES §6) |
 
 The two are linked. The profile is the prior. Events from the current run update the posterior live, so evidence from this session shifts the target during the session. A trainee who has been weak at hailing but handles it well today stops being the target once the live evidence outweighs the history.
 

@@ -158,13 +158,13 @@
     eq(b.crew.map(m => m.agent_profile), ['trainees/weak_hail_discipline.js', 'trainees/strong.js', 'trainees/strong.js']);
   });
   test('expanding does not share references with the allocation', () => {
-    const a = build(sel()), [c] = C.expandAllocation(a);
+    const a = build(sel()), [c] = C.expandAllocation(a), max = F.envelopeDefault.aggression.max;
     c.envelope.aggression.max = 0.5; c.crew[0].trainee_id = 'x'; c.platform.type = 'tank';
-    eq(a.shared.envelope.aggression.max, 0.8); eq(a.slots[0].crew[0].trainee_id, 'trainee_a'); eq(a.shared.platform.type, 'warship');
+    eq(a.shared.envelope.aggression.max, max); eq(a.slots[0].crew[0].trainee_id, 'trainee_a'); eq(a.shared.platform.type, 'warship');
   });
   test('config envelopes are copies of the fixture', () => {
-    const a = build(sel()); a.shared.envelope.aggression.max = 0.5;
-    eq(F.envelopeDefault.aggression.max, 0.8);
+    const before = F.envelopeDefault.aggression.max, a = build(sel()); a.shared.envelope.aggression.max = 0.5;
+    eq(F.envelopeDefault.aggression.max, before);
   });
   test('breaking a derived config field makes validation fail', () => {
     const [c] = cfgs(sel());
@@ -504,6 +504,93 @@
   test('vehicle diagrams escape names', () => {
     const svg = CGF.vehicles.svg('tank', { commander: { name: '<img onerror=x>', active: false } }, 'A');
     ok(!svg.includes('<img'), 'escaped');
+  });
+
+  // ---- runtime contracts: §4 event, §7 adjustment, §9.1 session record
+  const mkEv = o => Object.assign({ event_id: 'e_000187', t: 642, session_id: 's_x', trainee_id: 'trainee_b', seat: 'navigation', type: 'hail_ignored',
+    competency: 'hail_discipline', outcome: 'fail', unit_id: 'R-21', detail: { warning_level: 2 } }, o);
+  const mkAdj = o => Object.assign({ adjustment_id: 'a_0009', t: 660, session_id: 's_x', force: 'hostile-state', setting: 'weight.ignoredWarning',
+    old: 1, new: 1.25, requested: 1.25, clamped: false, target_competency: 'hail_discipline', seat: 'navigation', pressure_direction: 'up',
+    source: 'engine', policy: 'rules_v1', evidence_event_ids: ['e_000143'], explanation: null }, o);
+  const mkRec = o => Object.assign({ session_id: 's_x', pane: 'B', scenario: 'strait-transit', seed: 42, mode: 'adaptive', platform: 'warship',
+    crew: [{ seat: 'weapons', trainee_id: 'trainee_c07' }, { seat: 'sensors', trainee_id: 'trainee_c03' }, { seat: 'navigation', trainee_id: 'trainee_b' }],
+    outcome: 'success', duration_s: 2400, events: [mkEv()], adjustments: [mkAdj()] }, o);
+  const bad = (errs, re) => ok(errs.length > 0 && (!re || errs.some(m => re.test(m))), 'expected an error' + (re ? ' ' + re : '') + ', got ' + JSON.stringify(errs));
+
+  test('the event table matches INTERFACES §4: every type names a catalog competency or none', () => {
+    for (const [t, [k, o]] of Object.entries(C.EVENT_TYPES)) {
+      ok(k === null ? o === null : C.COMPETENCIES.includes(k) && ['success', 'fail'].includes(o), t);
+    }
+  });
+  test('validateEvent accepts a competency event and a crew-wide event', () => {
+    eq(C.validateEvent(mkEv()), []);
+    eq(C.validateEvent(mkEv({ type: 'tension_peak', competency: null, outcome: null, seat: null, trainee_id: null, unit_id: 'R-21' })), []);
+  });
+  test('validateEvent rejects a wrong competency or outcome for the type, a missing seat, an unknown type and extra fields', () => {
+    bad(C.validateEvent(mkEv({ competency: 'collision_avoidance' })), /competency/);
+    bad(C.validateEvent(mkEv({ outcome: 'success' })), /outcome/);
+    bad(C.validateEvent(mkEv({ seat: null })), /seat/);
+    bad(C.validateEvent(mkEv({ type: 'tension_peak', competency: null, outcome: null, seat: 'navigation' })), /null for a crew-wide/);
+    bad(C.validateEvent(mkEv({ type: 'nope' })), /event.type/);
+    bad(C.validateEvent(Object.assign(mkEv(), { extra: 1 })), /unknown field/);
+    const m = mkEv(); delete m.detail; bad(C.validateEvent(m), /required/);
+    bad(C.validateEvent(mkEv(), ['weapons', 'sensors']), /not a seat of this crew/);
+  });
+  test('validateAdjustment accepts the §7 example and checks the clamp flag', () => {
+    eq(C.validateAdjustment(mkAdj()), []);
+    eq(C.validateAdjustment(mkAdj({ requested: 2.0, new: 1.5, clamped: true })), []);
+    bad(C.validateAdjustment(mkAdj({ requested: 2.0, new: 1.5, clamped: false })), /clamped/);
+    bad(C.validateAdjustment(mkAdj({ clamped: true })), /clamped/);
+  });
+  test('validateAdjustment rejects unknown settings, directions, sources and extra or missing fields', () => {
+    bad(C.validateAdjustment(mkAdj({ setting: 'weight.cpa!' })), /setting/);
+    bad(C.validateAdjustment(mkAdj({ setting: 'nope' })), /setting/);
+    bad(C.validateAdjustment(mkAdj({ pressure_direction: 'sideways' })), /pressure_direction/);
+    bad(C.validateAdjustment(mkAdj({ source: 'ai' })), /source/);
+    bad(C.validateAdjustment(mkAdj({ target_competency: 'piracy_response' })), /target_competency/);
+    bad(C.validateAdjustment(Object.assign(mkAdj(), { extra: 1 })), /unknown field/);
+    const m = mkAdj(); delete m.seat; bad(C.validateAdjustment(m), /required/);
+  });
+  test('validateAdjustment holds a value to the envelope when one is given (invariant 1)', () => {
+    const env = { 'weight.ignoredWarning': { min: 0.5, max: 2.0, base: 1.0 } };
+    eq(C.validateAdjustment(mkAdj({ new: 2.0, requested: 2.0 }), { envelope: env }), []);
+    bad(C.validateAdjustment(mkAdj({ new: 2.4, requested: 2.4 }), { envelope: env }), /outside the envelope/);
+  });
+  test('validateSessionRecord accepts a full record, with a null pane for a local run', () => {
+    eq(C.validateSessionRecord(mkRec()), []);
+    eq(C.validateSessionRecord(mkRec({ pane: null })), []);
+    eq(C.validateSessionRecord(mkRec({ events: [], adjustments: [] })), []);
+  });
+  test('validateSessionRecord checks the crew, the platform and the cross-references', () => {
+    bad(C.validateSessionRecord(mkRec({ platform: 'submarine' })), /platform/);
+    bad(C.validateSessionRecord(mkRec({ platform: { type: 'warship', model: 'formidable' } })), /platform/);   // the record holds the type string
+    bad(C.validateSessionRecord(mkRec({ crew: [{ seat: 'tao', trainee_id: 'trainee_b' }] })), /crew/);
+    bad(C.validateSessionRecord(mkRec({ events: [mkEv({ session_id: 's_other' })] })), /must equal the record/);
+    bad(C.validateSessionRecord(mkRec({ events: [mkEv({ trainee_id: 'trainee_a' })] })), /not in seat/);
+    bad(C.validateSessionRecord(mkRec({ adjustments: [mkAdj({ session_id: 's_other' })] })), /must equal the record/);
+    bad(C.validateSessionRecord(mkRec({ adjustments: [mkAdj({ seat: 'tao' })] })), /not a seat/);
+    bad(C.validateSessionRecord(mkRec({ mode: 'auto' })), /mode/);
+    bad(C.validateSessionRecord(mkRec({ outcome: 'draw' })), /outcome/);
+    bad(C.validateSessionRecord(Object.assign(mkRec(), { extra: 1 })), /unknown field/);
+  });
+  test('validateSessionRecord names the failing event or adjustment by index', () => {
+    bad(C.validateSessionRecord(mkRec({ events: [mkEv(), mkEv({ type: 'nope' })] })), /^record\.events\[1\]/);
+    bad(C.validateSessionRecord(mkRec({ adjustments: [mkAdj(), mkAdj({ setting: 'nope' })] })), /^record\.adjustments\[1\]/);
+  });
+
+  // ---- decisions of 2026-10-29: run length and the default envelope
+  test('the default run is 2400 s with an evaluation every 30 s', () => {
+    eq([A.DEFAULTS.duration_s, A.DEFAULTS.eval_interval_s], [2400, 30]);
+  });
+  test('the default envelope is valid, starts near the runtime defaults, and has room both ways', () => {
+    eq(C.validateEnvelope(F.envelopeDefault), []);
+    for (const k of ['aggression', 'sensitivity']) eq(F.envelopeDefault[k].base, 1.0, k);
+    for (const [k, e] of Object.entries(F.envelopeDefault)) ok(e.min < e.base && e.base < e.max, k + ' has room above and below the base');
+  });
+  test('every setting a competency tactic nudges has an envelope entry, except the two noted omissions', () => {
+    ok(window.Adapt && Adapt.TACTICS, 'Adapt.TACTICS is loaded');
+    const OMITTED = ['calm_down_rate', 'detection'];   // runtime defaults not confirmed, see fixtures/envelope-default.js
+    for (const [k, list] of Object.entries(Adapt.TACTICS)) list.forEach(s => ok(s in F.envelopeDefault || OMITTED.includes(s), `${k}: ${s}`));
   });
 
   const failed = results.filter(r => r[1]);

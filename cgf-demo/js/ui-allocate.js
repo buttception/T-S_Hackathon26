@@ -13,7 +13,7 @@
 
   const STORE_KEY = 'cgf.allocation';         // localStorage: one config per crew
   const SLOTS = ['A', 'B'];                    // the crews, one per pane
-  const DEFAULTS = { scenario: 'strait-transit', seed: 1234, mode: 'adaptive', duration_s: 1200, eval_interval_s: 30 };
+  const DEFAULTS = { scenario: 'strait-transit', seed: 1234, mode: 'adaptive', duration_s: 2400, eval_interval_s: 30 };   // 2400 s: the ownship meets its first hails about 15 min in (Devin, decision B)
   const DEFAULT_PLATFORM = { type: 'warship', model: 'formidable' };
   const LABELS = {
     hail_discipline: 'Hail', collision_avoidance: 'Collision', territorial_awareness: 'Territorial',

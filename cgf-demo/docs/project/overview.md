@@ -69,3 +69,12 @@
 - Each lane owns a set of files. Contracts change only through the Lead.
 - The LLM is never on the critical path, and every LLM feature has a template fallback.
 - All data is synthetic.
+
+## Decisions of 2026-10-29 (JL), after Devin's adaptive runtime
+
+- **Band direction: remediation.** Keep pressing while the trainee is still missing the target, ease off once they meet it (INTERFACES §6, PLAN §2). One rule, no `band_mode` in the config. Devin removes the challenge mode.
+- **Run length: 2400 s** default. First hails come about 15 minutes in. A validation run showed only four hail events in 2400 s, so the live signal may engage late (see `replies-to-devin-decisions.md`).
+- **Default envelope raised** to the runtime's defaults (aggression and sensitivity base 1.0, reaction delay base 30 s) and extended to every setting a tactic nudges.
+- **Runtime validators added** in `contracts/`: `validateEvent`, `validateAdjustment`, `validateSessionRecord`. Checked against real sessions from the runtime.
+- **G1 seating:** the hail-discipline trainee sits in the navigation seat.
+- **Open:** whether the pane sends the session record to the host (Devin's item D, in `link/`, JL's lane).

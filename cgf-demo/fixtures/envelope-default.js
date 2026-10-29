@@ -1,13 +1,24 @@
-// Default instructor envelope (docs/INTERFACES.md §2). Editing it belongs to the Setup panel (Console C2).
+// Default instructor envelope (docs/INTERFACES.md §2). The instructor edits it on the allocation page.
 // A .js fixture, not .json, because fetch() fails under file://.
+//
+// Raised 2026-10-29 (JL, Devin's decision C) so linked CGFs start as lively as the runtime's own defaults (1.0) and
+// can be pushed in both directions. The first block mirrors LOCAL_ENVELOPE in js/adapt/runtime.js. The factor-weight
+// multipliers default to 1.0 by definition, and every setting a competency's tactic nudges (js/adapt/predict.js
+// TACTICS) needs an entry here, otherwise the policy cannot adjust it. calm_down_rate and detection are left out
+// until their runtime defaults are confirmed.
 (function () {
   'use strict';
   const F = window.CGF_FIXTURES = window.CGF_FIXTURES || {};
   F.envelopeDefault = {
-    'aggression':            { min: 0.2, max: 0.8, base: 0.4 },
-    'sensitivity':           { min: 0.3, max: 0.9, base: 0.5 },
-    'reaction_delay_s':      { min: 2,   max: 20,  base: 8 },
-    'weight.ignoredWarning': { min: 0.5, max: 2.0, base: 1.0 },
-    'weight.cpa':            { min: 0.5, max: 2.0, base: 1.0 }
+    'aggression':            { min: 0.6, max: 2.0, base: 1.0 },
+    'sensitivity':           { min: 0.6, max: 2.0, base: 1.0 },
+    'reaction_delay_s':      { min: 5,   max: 60,  base: 30 },
+    'weight.ignoredWarning': { min: 0.5, max: 2.5, base: 1.0 },
+    'weight.cpa':            { min: 0.5, max: 2.0, base: 1.0 },
+    'weight.proximity':      { min: 0.5, max: 2.0, base: 1.0 },
+    'weight.territorial':    { min: 0.5, max: 2.0, base: 1.0 },
+    'weight.contiguous':     { min: 0.5, max: 2.0, base: 1.0 },
+    'weight.fcRadar':        { min: 0.5, max: 2.0, base: 1.0 },
+    'weight.slowSpeed':      { min: 0.5, max: 2.0, base: 1.0 }
   };
 })();

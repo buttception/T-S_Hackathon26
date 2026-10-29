@@ -46,15 +46,18 @@ The instructor sets an envelope per setting:
 
 ```json
 {
-  "aggression":           {"min": 0.2, "max": 0.8, "base": 0.4},
-  "sensitivity":          {"min": 0.3, "max": 0.9, "base": 0.5},
-  "reaction_delay_s":     {"min": 2,   "max": 20,  "base": 8},
-  "weight.ignoredWarning": {"min": 0.5, "max": 2.0, "base": 1.0},
-  "weight.cpa":           {"min": 0.5, "max": 2.0, "base": 1.0}
+  "aggression":            {"min": 0.6, "max": 2.0, "base": 1.0},
+  "sensitivity":           {"min": 0.6, "max": 2.0, "base": 1.0},
+  "reaction_delay_s":      {"min": 5,   "max": 60,  "base": 30},
+  "weight.ignoredWarning": {"min": 0.5, "max": 2.5, "base": 1.0},
+  "weight.cpa":            {"min": 0.5, "max": 2.0, "base": 1.0},
+  "weight.proximity":      {"min": 0.5, "max": 2.0, "base": 1.0}
 }
 ```
 
 Validation: `min <= base <= max`, and the range sits inside the setting's hard range from the Setup tab. Settings without an envelope entry cannot be adjusted.
+
+**Default envelope (raised 2026-10-29, JL).** `fixtures/envelope-default.js` starts at the runtime's own defaults (aggression and sensitivity base 1.0, reaction delay base 30 s) so linked CGFs are as lively as local ones and can be pushed both ways. It has an entry for every setting a competency's tactic nudges (`Adapt.TACTICS` in `js/adapt/predict.js`), because a setting without an entry can never be adjusted. `calm_down_rate` and `detection` are left out until their runtime defaults are confirmed. The example above shows six of the ten entries.
 
 ## 3. Scenario config
 
@@ -64,19 +67,19 @@ Validation: `min <= base <= max`, and the range sits inside the setting's hard r
   "scenario": "strait-transit",
   "seed": 1234,
   "mode": "adaptive",
-  "duration_s": 1200,
+  "duration_s": 2400,
   "eval_interval_s": 30,
   "envelope": "<envelope object from section 2>",
   "platform": {"type": "warship", "model": "formidable"},
   "crew": [
-    {"seat": "weapons",    "trainee_id": "trainee_b",   "agent_profile": "trainees/weak_hail_discipline.js"},
-    {"seat": "sensors",    "trainee_id": "trainee_c03", "agent_profile": "trainees/strong.js"},
-    {"seat": "navigation", "trainee_id": "trainee_c04", "agent_profile": "trainees/strong.js"}
+    {"seat": "weapons",    "trainee_id": "trainee_c17", "agent_profile": "trainees/strong.js"},
+    {"seat": "sensors",    "trainee_id": "trainee_c08", "agent_profile": "trainees/strong.js"},
+    {"seat": "navigation", "trainee_id": "trainee_b",   "agent_profile": "trainees/weak_hail_discipline.js"}
   ]
 }
 ```
 
-`duration_s` and `eval_interval_s` are sim seconds, not real seconds. Defaults are placeholders until Sim has measured how long a run takes at time scale 60.
+`duration_s` and `eval_interval_s` are sim seconds, not real seconds. The defaults are 2400 (40 minutes) and 30. The ownship in `strait-transit` starts about 16 nm from the red force, so its first hails come about 15 minutes in, and 1200 s gave only one or two hail events (Devin, decision B; JL chose 2400 on 2026-10-29). In the G1 demo the hail-discipline trainee sits in the navigation seat, where hail discipline belongs (`seatFocus`).
 
 **Platform and crew (changed 2026-10-29, replaces the single `trainee` field).** The player role decides how many trainees a pane has. `platform.type` is one of the platform types in section 1. `platform.model` is an id from the platform catalog (`fixtures/platforms.js`: fighters `f15e`, `fa18f`; warships `formidable`, `lcs-independence`; tanks `leopard2sg`, `m1a2sepv3`). `crew` has exactly one entry per seat of that type, in the seat order of section 1. A seat is a trainee station, not the vehicle's whole crew: a real tank has four crew and a frigate 70 or more, and the stations nobody fills are simulated. The scenario's domain must match the platform type.
 
@@ -94,21 +97,21 @@ The trainee allocation page outputs one `Allocation`. It pairs the two panes of 
     "scenario": "strait-transit",
     "seed": 1234,
     "mode": "adaptive",
-    "duration_s": 1200,
+    "duration_s": 2400,
     "eval_interval_s": 30,
     "envelope": "<envelope object from section 2>",
     "platform": {"type": "warship", "model": "formidable"}
   },
   "slots": [
     {"pane": "A", "crew": [
-      {"seat": "weapons",    "trainee_id": "trainee_a",   "agent_profile": "trainees/strong.js"},
+      {"seat": "weapons",    "trainee_id": "trainee_c07", "agent_profile": "trainees/strong.js"},
       {"seat": "sensors",    "trainee_id": "trainee_c01", "agent_profile": "trainees/strong.js"},
-      {"seat": "navigation", "trainee_id": "trainee_c02", "agent_profile": "trainees/strong.js"}
+      {"seat": "navigation", "trainee_id": "trainee_a",   "agent_profile": "trainees/strong.js"}
     ]},
     {"pane": "B", "crew": [
-      {"seat": "weapons",    "trainee_id": "trainee_b",   "agent_profile": "trainees/weak_hail_discipline.js"},
-      {"seat": "sensors",    "trainee_id": "trainee_c03", "agent_profile": "trainees/strong.js"},
-      {"seat": "navigation", "trainee_id": "trainee_c04", "agent_profile": "trainees/strong.js"}
+      {"seat": "weapons",    "trainee_id": "trainee_c17", "agent_profile": "trainees/strong.js"},
+      {"seat": "sensors",    "trainee_id": "trainee_c08", "agent_profile": "trainees/strong.js"},
+      {"seat": "navigation", "trainee_id": "trainee_b",   "agent_profile": "trainees/weak_hail_discipline.js"}
     ]}
   ]
 }
@@ -217,7 +220,9 @@ For the target competency the engine keeps a rolling window of its last `N` even
 |---|---|
 | `window_success_rate` | Successes in the window divided by events in the window |
 | `challenge_band` | Default 0.4 to 0.7 |
-| `pressure_direction` | `up` above the band (trainee is cruising), `down` below it (overwhelmed), `hold` inside |
+| `pressure_direction` | `up` below the band (the trainee is still missing the target: keep pressing), `down` above it (the trainee is meeting it: ease off), `hold` inside |
+
+**Band direction decided 2026-10-29 (JL): remediation.** The purpose is to exercise a focus area, so the pressure stays on while the trainee is still failing it and eases once they succeed. This replaces the earlier "challenge" reading (raise the pressure when the trainee is cruising). There is one rule, not two modes, so no `band_mode` field is added to the §3 config. With fewer than 3 events for the target (Devin's `MIN_WINDOW`) there is no live evidence yet, so the seat keeps exposure up, as the runtime does today.
 
 The policy raises settings toward the envelope maximum on `up`, moves them back toward base on `down`, and leaves them on `hold`.
 
@@ -293,7 +298,11 @@ Owner: Glenda (report lane). The report is built from the session record (§9.1)
   "seed": 42,
   "mode": "adaptive",
   "platform": "warship",
-  "crew": [{"seat": "tao", "trainee_id": "trainee_b"}],
+  "crew": [
+    {"seat": "weapons", "trainee_id": "trainee_c17"},
+    {"seat": "sensors", "trainee_id": "trainee_c08"},
+    {"seat": "navigation", "trainee_id": "trainee_b"}
+  ],
   "outcome": "success",
   "duration_s": 920.0,
   "events": [],
@@ -301,7 +310,9 @@ Owner: Glenda (report lane). The report is built from the session record (§9.1)
 }
 ```
 
-`events` are §4 events, and each carries a `seat`. `adjustments` are §7 records. `mode` is `adaptive` or `fixed`.
+`events` are §4 events, and each carries a `seat`. `adjustments` are §7 records. `mode` is `adaptive` or `fixed`. `platform` is the platform **type** string (`warship`), not the `{type, model}` object of §3. `crew` has one entry per seat of that type, in seat order, with `seat` and `trainee_id` (no `agent_profile`). `pane` is `A`, `B`, or `null` for a local run.
+
+`CGF.contracts.validateSessionRecord(record, {envelope})` checks all of this, including that every event and adjustment carries the record's `session_id`, that every event's trainee sits in the seat it names, and, when an envelope is given, that every adjusted value is inside it. It was checked against full sessions from Devin's runtime (adaptive, fixed and the earlier challenge mode): no errors.
 
 **History entry**: one per trainee per session, appended by Glenda's history store under `localStorage` key `cgf.history.<trainee_id>` (an array, newest last). Seeded history ships as `fixtures/history/*.js`.
 
@@ -339,6 +350,7 @@ Owner: Glenda (report lane). The report is built from the session record (§9.1)
 | Steer | Devin | `Adapt.steer(directive) -> void` |
 | Live state for the reasoning panel | Devin | `Adapt.liveState() -> {target, windowSuccessRate, pressureDirection, workingProfile}` |
 | Predict a seat's first target (allocation page) | Devin (`js/adapt/predict.js`, standalone) | `Adapt.predictTarget({profile, seat, competencies, mode}) -> {competency, mean, evidence, reason, settings}`. Pure; the same rule as the live policy (§5.1). Full request: `docs/project/request-devin-predict-target.md` |
+| Validate runtime output | JL (`contracts/contracts.js`) | `validateEvent(e, seats?)` (§4), `validateAdjustment(a, {envelope}?)` (§7), `validateSessionRecord(r, {envelope}?)` (§9.1). Each returns a list of error strings, empty when valid. The runtime may call them; its tests should |
 | End session | Devin | `Adapt.endSession() -> SessionRecord` (§9.1). It no longer writes the profile; JL's `Assess.update` does |
 | Cohort | JL (`js/assess/`) | `Assess.cohort() -> object` (trainee id to competency to mean) |
 
