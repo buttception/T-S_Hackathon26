@@ -4,7 +4,7 @@ Decided 2026-10-29: the plan and the team repo (`buttception/T-S_Hackathon26`, `
 
 Updated 2026-10-29: roles re-cut into four lanes by person (JL, Devin, Glenda, Eevee). See sections 3, 5 and 7, and `docs/LANES.md`, which has each person's tasks and the hand-offs. This replaces the Lead / Sim / Engine / Console / Design split and the earlier "Evi" Design role (read Evi as Eevee).
 
-Changed 2026-10-29 (JL): **one crew, one runtime.** The A/B pair is removed; the demo trains a single set of crew. The instructor can add **AI partners** to fill seats; a partner behaves according to what older runs say about a trainee (section 2b). The side-by-side divergence demo is replaced by a run-after-run loop: history sets the target, live behaviour sets the intensity, and the profile moves between runs. Task S5 (two instances) and the second pane in C1 are dropped.
+Changed 2026-10-29 (JL): **one crew, one runtime.** The A/B pair is removed; the demo trains a single set of crew. The instructor can add **AI partners** to fill seats; a partner behaves according to what older runs say about a trainee (section 2b). The side-by-side divergence demo is replaced by a run-after-run loop: history sets the target, live behaviour sets the intensity, and the profile moves between runs. Task S5 (two instances) and the second runtime frame in C1 are dropped.
 
 ## 1. Goal and scoring
 
@@ -220,7 +220,7 @@ Design delivers specs and mockups only. It never edits simulation, engine or oth
 |---|---|---|
 | 0:00 | Problem: one instructor, many trainees, fixed scenarios train the average trainee | Title slide |
 | 0:30 | Instructor sets the envelope | Setup panel |
-| 1:00 | Same strait. The crew's navigation trainee has a profile weak at hail discipline; their CGFs start pressing hails. (If AI partners are confirmed: an AI partner built from an older run fills the weapons seat.) The log says why, tagged `history` | Pane, profile strip, log |
+| 1:00 | Same strait. The crew's navigation trainee has a profile weak at hail discipline; their CGFs start pressing hails. (If AI partners are confirmed: an AI partner built from an older run fills the weapons seat.) The log says why, tagged `history` | Runtime, profile strip, log |
 | 2:00 | The trainee keeps missing hails, so the pressure eases (`live`); a trainee who answers them gets the opposite. History set the target, current behaviour set the intensity | Profile strip and log |
 | 2:30 | Instructor types "test the navigation trainee's collision avoidance". The parsed directive is shown, then the CGFs shift | Steering box and runtime |
 | 3:15 | Toggle fixed mode for assessment | Mode toggle, log goes quiet |
