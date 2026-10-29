@@ -21,7 +21,8 @@
     sensitivity:             { min: 0.6, max: 2.0, base: 1.0 },
     reaction_delay_s:        { min: 5,   max: 60,  base: 30 },
     'weight.ignoredWarning': { min: 0.5, max: 2.5, base: 1.0 },
-    'weight.cpa':            { min: 0.5, max: 2.0, base: 1.0 }
+    'weight.cpa':            { min: 0.5, max: 2.0, base: 1.0 },
+    'weight.team':           { min: 0.3, max: 2.0, base: 1.0 }    // teamwork of the opposition (js/sim/team.js)
   };
 
   let session = null, lastRecord = null;
@@ -48,7 +49,7 @@
     for (const p of missing) await CGF.util.loadScript(p);
   }
 
-  // opts: { pane, session_id, band_mode, scripted (default true) }. Returns the error list (empty when started).
+  // opts: { pane, session_id, scripted (default true) }. Returns the error list (empty when started).
   function begin(config, opts) {
     const errs = CGF.contracts ? CGF.contracts.validateScenarioConfig(config) : [];
     if (errs.length) { CGF.log('Adaptive session not started: ' + errs.join('; '), 'alert'); return errs; }
@@ -65,10 +66,9 @@
     }
 
     const profiles = {};
-    for (const m of config.crew) profiles[m.trainee_id] = profileFor(m.trainee_id);
+    for (const m of config.crew.filter(c => c.role !== 'partner')) profiles[m.trainee_id] = profileFor(m.trainee_id);
     const adapt = CGF.Adapt.create({
       config, profiles, seatFocus: CGF.simEvents.seatFocus(config.platform.type), session_id, pane: opts.pane || null,
-      band_mode: opts.band_mode
     });
     CGF.Adapt.current = adapt;
     // Run to the full duration: failure states are logged by the engine's freeplay rule, not ending the run
@@ -140,7 +140,7 @@
       ]
     };
     CGF.loadScenario(config.scenario, null, { mode: 'exercise' });
-    return start(config, { pane: null, band_mode: o.band_mode }).then(errs => {
+    return start(config, { pane: null }).then(errs => {
       if (!errs.length) { CGF.sim.running = true; CGF.emit('run'); }
       return errs;
     });

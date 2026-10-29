@@ -6,6 +6,7 @@ CGF.registerHarness({
   id: 'hostile-state',
   name: 'Hostile state',
   description: 'Low tolerance, escalates quickly. Final state is a weapons-ready posture (exercise failure).',
+  teamwork: 0.5,              // 0..1: how well its units share a picture and act together (CGF teamwork)
   kind: 'state',
   affiliation: 'hostile',
   baseTension: 20, aggression: 1.3, decayPerMin: 3, ackRelief: 8,

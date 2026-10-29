@@ -6,6 +6,7 @@ CGF.registerHarness({
   id: 'grey-zone',
   name: 'Grey-zone (state-backed)',
   description: 'Deniable state-backed units. Swarms and blocks the ownship\'s path; never fires.',
+  teamwork: 0.8,              // 0..1: how well its units share a picture and act together (CGF teamwork)
   kind: 'state',
   affiliation: 'suspect',
   baseTension: 15, aggression: 1.0, decayPerMin: 2.5, ackRelief: 6,

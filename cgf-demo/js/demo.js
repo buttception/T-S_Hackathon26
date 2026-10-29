@@ -11,13 +11,28 @@
 //   until(api) => bool   step waits until this is true...
 //   hold     ...and at least this many REAL seconds have passed (counted after the prompt has run)
 //   timeout  ...or give up after this many REAL seconds
+//   speed    simulation speed for this step (time scale, sim seconds per real second): fast through quiet
+//            stretches, slow at the moments that matter
+//   focus    camera target for this step: a unit name, 'own', or {x, y}; zoom: the view half-width to glide to
 (function () {
   'use strict';
   const CGF = window.CGF, U = CGF.util;
   const TYPE_MS = 45; // per character, so the audience can read the prompt as it is typed
 
+  // Demo-level fields (besides id, name, scenario, mode, params, steps):
+  //   places: { <scenario id>: [x, y, hdg] }  where BLUE-1 starts whenever the demo loads or restarts that scenario,
+  //           nearer the action than the scenario's default start (the maps are large)
+  //   view:   { zoom }  the camera follows BLUE-1 at this half-width when a scenario loads (default: whole map)
   CGF.demos = {};
   CGF.registerDemo = d => { if (!d || !d.id) throw new Error('a demo needs an id'); CGF.demos[d.id] = d; CGF.emit('registry'); };
+
+  // Each time a scenario loads during a demo: put BLUE-1 at the demo's start for it, and follow it with the camera
+  CGF.on('reset', () => {
+    const d = R.active; if (!d) return;
+    const p = d.places && d.places[CGF.scenario.id];
+    if (p) api.place(p[0], p[1], p[2]);
+    if (d.view && d.view.zoom && CGF.render && CGF.render.focus) setTimeout(() => { if (R.active === d) CGF.render.focus(CGF.sim.own, { half: d.view.zoom * (CGF.scenario.scale.range || 1) }); }, 0);
+  });
 
   const R = { active: null, idx: -1, startReal: 0, steerTo: null, steerUnit: null, loop: false, typing: null };
 
@@ -40,6 +55,13 @@
     // Camera: glide to and follow an entity of interest (unit, unit name, 'own' or {x, y}); half = zoom
     focus(target, half) { if (CGF.render && CGF.render.focus) CGF.render.focus(target, { half }); },
     overview() { if (CGF.render && CGF.render.overview) CGF.render.overview(); },
+    timeScale(x) { CGF.params.timeScale = x; CGF.emit('params'); },
+    place(x, y, hdg) { const o = CGF.sim.own; o.x = x; o.y = y; if (hdg != null) { o.hdg = hdg; o.ordHdg = hdg; } o.track = []; },
+    events: type => CGF.simEvents.log().filter(e => !type || e.type === type),
+    adjustments: () => (CGF.Adapt.current ? CGF.Adapt.current.adjustments : []),
+    teamActions: () => CGF.sim.actions.filter(x => x.action.startsWith('Joined the response')).length,
+    // Start an adaptive session in this page (warship crew, scripted trainees); the step waits until it is running
+    startAdaptive(opts) { R.waiting = true; return CGF.adaptRuntime.startLocal(opts).finally(() => { R.waiting = false; R.startReal = performance.now(); }); },
     // Load another scenario mid-demo (keeps the demo running)
     load(id, opts) {
       clearSteer();
@@ -62,6 +84,9 @@
     R.startReal = performance.now();
     if (st.caption != null) caption(st.caption);
     if (st.do) st.do(api);
+    if (st.speed) api.timeScale(st.speed);
+    if (st.focus) api.focus(st.focus, st.zoom);
+    else if (st.zoom) api.focus('own', st.zoom);
     if (st.prompt) { api.tab('instructor'); R.typing = { text: st.prompt, fallback: st.fallback, shown: 0, nextAt: performance.now() + 400 }; }
   }
 
@@ -99,6 +124,7 @@
       if (!R.active) return;
       const sim = CGF.sim, st = R.active.steps[R.idx];
       if (!st) return;
+      if (R.waiting) { R.startReal += frameMs; return; }                     // a session is still starting
       if (!sim.running && !sim.outcome) { R.startReal += frameMs; return; } // paused: hold the clock too
 
       // Type the instructor prompt one character at a time, send it, and wait for the answer

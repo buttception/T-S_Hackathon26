@@ -10,11 +10,15 @@
 //
 // Experience picks WHAT to exercise: per seat, the weakest focus competency with enough evidence in the
 // working profile (the stored profile, updated live by this session's events). Current behaviour sets HOW HARD:
-// the success rate of that competency's last N events against the challenge band.
+// the success rate of that competency's last N events against the band (§6, remediation, decided by JL): while
+// the trainee is still missing the target (below the band) keep the pressure on; once they meet it (above the
+// band) ease off.
 //
-// opts.band_mode chooses how the band maps to pressure (the docs disagree; JL to decide):
-//   'challenge'   (default, INTERFACES §6): above the band the trainee is cruising -> up; below it -> down
-//   'remediation' (PLAN G1 wording): failing the target -> keep pressing (up); succeeding -> ease off (down)
+// Every engine adjustment names its cause (§7, LANES D7): "history" (no live evidence yet, so the target and the
+// first steps come from the stored profile), "live" (the live success rate), or "team" (the opposition's
+// teamwork, js/sim/team.js, set from the crew's capability). Instructor steering leaves cause out.
+// AI partner seats (§3.2, LANES D8) are played by the simulation but never adapted to: no working copy, no target,
+// no adjustment caused by or naming them.
 (function () {
   'use strict';
   const CGF = window.CGF;
@@ -29,10 +33,10 @@
   function create(opts) {
     const config = opts.config, envelope = config.envelope || {};
     const P = CGF.adaptPolicy, clamp = CGF.adaptClamp.clamp;
-    const remediation = opts.band_mode === 'remediation';
     const COMPETENCIES = window.Adapt.catalog();   // INTERFACES §1 (js/adapt/predict.js)
+    const MEASURED = Object.keys(window.Adapt.TACTICS);
 
-    const seats = config.crew.map(m => {
+    const seats = config.crew.filter(m => m.role !== 'partner').map(m => {
       const prof = (opts.profiles || {})[m.trainee_id];
       const working = {};
       for (const c of COMPETENCIES) {
@@ -51,6 +55,7 @@
     for (const [k, e] of Object.entries(envelope)) settings[k] = e.base;
 
     const allEvents = [], adjustments = [], lastChange = {};   // lastChange: setting -> cycle number
+    const teamNotes = {};   // adjustment id -> { capability, basis } for the reasoning panel (not part of the record)
     let nAdj = 0, lastNow = 0, paneDirection = 'hold', cycleNo = 0;
 
     // The same rule the allocation page previews (Adapt.pickTarget in js/adapt/predict.js), on the live working copy
@@ -90,17 +95,17 @@
         const w = (s.target && s.windows[s.target]) || [];
         s.n = w.length;
         s.rate = w.length ? w.filter(e => e.ok).length / w.length : null;
-        const above = remediation ? 'down' : 'up', below = remediation ? 'up' : 'down';
         s.direction = !s.target ? 'hold'
           : (s.steer && s.steer.active) ? 'up'
           : w.length < MIN_WINDOW ? 'up'
-          : s.rate > BAND[1] ? above : s.rate < BAND[0] ? below : 'hold';
+          : s.rate > BAND[1] ? 'down' : s.rate < BAND[0] ? 'up' : 'hold';
       }
       if (config.mode === 'fixed') { paneDirection = 'hold'; return []; }   // invariant 2: fixed mode never adjusts
 
       // §5.1: any seat "down" wins; otherwise any "up" raises the pane
       paneDirection = seats.some(s => s.direction === 'down') ? 'down' : seats.some(s => s.direction === 'up') ? 'up' : 'hold';
-      if (paneDirection === 'hold') return [];
+      const out = teamAdjustment(now);
+      if (paneDirection === 'hold') return out;
 
       // one request per setting: the single largest change among the seats moving the pane's way (never summed)
       const chosen = {};
@@ -113,13 +118,12 @@
           const cur = settings[setting], req = P.stepValue(setting, cur, envelope[setting], paneDirection, intensity, probe);
           if (req == null) continue;
           const delta = Math.abs(req - cur);
-          if (!chosen[setting] || delta > chosen[setting].delta) chosen[setting] = { s, req, delta };
+          if (!chosen[setting] || delta > chosen[setting].delta) chosen[setting] = { s, req, delta, cause: steering ? null : probe ? 'history' : 'live' };
         }
       }
 
-      const out = [];
       for (const setting of Object.keys(chosen).sort()) {
-        const { s, req } = chosen[setting], old = settings[setting];
+        const { s, req, cause } = chosen[setting], old = settings[setting];
         const c = clamp(req, envelope[setting]);
         if (c.value === old) continue;
         const w = s.windows[s.target] || [];
@@ -129,10 +133,46 @@
           pressure_direction: paneDirection, source: s.steer && s.steer.active ? 'instructor_steer' : 'engine',
           policy: P.id, evidence_event_ids: w.slice(-5).map(e => e.id), explanation: null
         };
+        if (cause) adj.cause = cause;
         settings[setting] = c.value; lastChange[setting] = cycleNo;
         out.push(adj); adjustments.push(adj);
       }
       return out;
+    }
+
+    // Teamwork tactic: "weight.team" (when the envelope allows it) follows the crew's capability. Capability is the
+    // mean, over the trainee seats, of their measured focus competencies in the working copy, so it starts from the
+    // profiles and moves with this session's evidence. A capable crew (above 0.5) faces a better-drilled
+    // opposition; a struggling one a looser one. One step per change, with the usual cooldown.
+    function teamCapability() {
+      const means = [];
+      for (const s of seats) for (const c of s.focus) if (MEASURED.includes(c)) means.push(mean(s.working[c]));
+      return means.length ? means.reduce((a, b) => a + b, 0) / means.length : 0.5;
+    }
+    function teamAdjustment(now) {
+      const e = envelope['weight.team'];
+      if (!e || !seats.length) return [];
+      if (lastChange['weight.team'] != null && cycleNo - lastChange['weight.team'] < P.COOLDOWN_CYCLES) return [];
+      const cap = teamCapability();
+      const goal = cap >= 0.5 ? e.base + (cap - 0.5) / 0.5 * (e.max - e.base) : e.base - (0.5 - cap) / 0.5 * (e.base - e.min);
+      const cur = settings['weight.team'], span = Math.max(e.max - e.base, e.base - e.min) * P.STEP;
+      if (Math.abs(goal - cur) < 0.01) return [];
+      const req = Math.round((cur + Math.sign(goal - cur) * Math.min(span, Math.abs(goal - cur))) * 1000) / 1000;
+      const c = clamp(req, e);
+      if (c.value === cur) return [];
+      const lead = seats.find(s => s.target) || seats[0];
+      const adj = {
+        adjustment_id: `a_${pad(++nAdj, 4)}`, t: now, session_id: opts.session_id, force: 'all', setting: 'weight.team',
+        old: cur, new: c.value, requested: req, clamped: c.clamped,
+        target_competency: lead.target || lead.focus.find(x => MEASURED.includes(x)) || MEASURED[0], seat: lead.seat,
+        pressure_direction: c.value > cur ? 'up' : 'down', source: 'engine', policy: P.id,
+        evidence_event_ids: seats.flatMap(s => (s.windows[s.target] || []).slice(-2).map(x => x.id)).slice(-5),
+        explanation: null, cause: 'team'
+      };
+      teamNotes[adj.adjustment_id] = { capability: Math.round(cap * 1000) / 1000, basis: seats.some(s => s.n >= MIN_WINDOW) ? 'live' : 'history' };
+      settings['weight.team'] = c.value; lastChange['weight.team'] = cycleNo;
+      adjustments.push(adj);
+      return [adj];
     }
 
     function steer(directive) {
@@ -153,7 +193,8 @@
       return {
         target: lead ? lead.target : null, windowSuccessRate: lead ? lead.windowSuccessRate : null,
         pressureDirection: paneDirection, workingProfile: lead ? lead.workingProfile : {},
-        seats: all, mode: config.mode, band_mode: remediation ? 'remediation' : 'challenge', settings: Object.assign({}, settings), t: lastNow
+        seats: all, mode: config.mode, settings: Object.assign({}, settings), teamCapability: Math.round(teamCapability() * 1000) / 1000,
+        teamNotes: Object.assign({}, teamNotes), t: lastNow
       };
     }
 
@@ -161,7 +202,10 @@
     function endSession(outcome, duration_s) {
       return {
         session_id: opts.session_id, pane: opts.pane || null, scenario: config.scenario, seed: config.seed, mode: config.mode,
-        platform: config.platform.type, crew: config.crew.map(m => ({ seat: m.seat, trainee_id: m.trainee_id })),
+        platform: config.platform.type,
+        crew: config.crew.map(m => m.role === 'partner'
+          ? { seat: m.seat, trainee_id: m.trainee_id, role: 'partner', derived_from: JSON.parse(JSON.stringify(m.derived_from)) }
+          : { seat: m.seat, trainee_id: m.trainee_id }),
         outcome, duration_s: Math.round(duration_s * 100) / 100,
         events: allEvents.slice(), adjustments: adjustments.slice()
       };

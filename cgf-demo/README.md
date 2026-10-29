@@ -18,6 +18,8 @@ Other guides: [PRESENTING.md](PRESENTING.md) (how to demo it) and [PROMPTING.md]
 
 ## 1. Quick start
 
+Full setup, tests and troubleshooting: [RUNNING.md](RUNNING.md).
+
 1. Open `runtime.html` in Chrome or Edge (double-click it).
 2. Press **Start** (or `Space`) and steer to the green objective without starting a fight.
 3. Or pick a demo next to **Play demo** and watch. `Esc` hands you control. `runtime.html?demo=harness&loop=1` runs unattended.
@@ -115,6 +117,7 @@ identity: Black under *Non-hostile state* turns from suspect to neutral.
 
 | Demo | Length | What it shows |
 | --- | --- | --- |
+| **Vision: adaptive CGF trainer** | ~5 min | The whole idea in one run: history picks the target, the live signal sets the pressure, CGFs work as a team, elite harness, plain-English steering, session record, fixed mode. Setup and presenting notes: [RUNNING.md](RUNNING.md) |
 | **Harness reuse and prompting: sea, land, air** | ~4 min | Typed prompts; the same prompt and manoeuvre under *Hostile* then (after a restart) *Non-hostile*; then the same harness files on land and in the air; ends with sea and air together |
 | **Local LLM prompting, plain English** | ~3 min | Natural-language prompts turned into commands by the local model, with preview; falls back to keywords when there is no model |
 | **Sea and air together** | ~1.5 min | Red ships and fighters under one harness; merchants and airliners under another; one prompt flips Red |

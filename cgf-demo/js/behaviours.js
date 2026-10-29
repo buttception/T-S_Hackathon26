@@ -13,9 +13,19 @@
   const offsetPoint = (o, angle, r) => ({ x: o.x + Math.sin(U.rad(angle)) * r, y: o.y + Math.cos(U.rad(angle)) * r });
 
   // Keep station on the ownship's beam (shadow) or quarter (escort), on whichever side the unit is already on.
+  // With teamwork of 0.5 or more (js/sim/team.js), units of one force on station together split the bearings
+  // between them: one on each beam, then astern, then the quarters, instead of all crowding the nearest side.
+  const TEAM_SLOTS = [1, -1, 1.8, 0.5, -0.5];
   function station(u, o, r, angleOff) {
-    const side = U.angDiff(U.bearing(o, u), o.hdg) >= 0 ? 1 : -1;
-    const p = offsetPoint(o, o.hdg + side * angleOff, r), tol = 0.5 * k();
+    let bearingOff;
+    if (CGF.teamworkOf && CGF.teamworkOf(u.force) >= 0.5) {
+      const team = CGF.cgfs().filter(v => v.force === u.force && ['shadow', 'escort'].includes((CGF.stateOf(v) || {}).behaviour))
+        .sort((a, b) => (a.name < b.name ? -1 : 1));
+      const i = Math.max(0, team.indexOf(u));
+      bearingOff = team.length > 1 ? TEAM_SLOTS[i % TEAM_SLOTS.length] * angleOff : null;
+    }
+    if (bearingOff == null) bearingOff = (U.angDiff(U.bearing(o, u), o.hdg) >= 0 ? 1 : -1) * angleOff;
+    const p = offsetPoint(o, o.hdg + bearingOff, r), tol = 0.5 * k();
     const dd = U.dist(u, p);
     return { tx: p.x, ty: p.y, spd: dd > tol ? u.maxSpd * U.clamp(dd / (3 * k()), 0.4, 1) : o.spd, desired: dd < tol ? o.hdg : null };
   }
@@ -59,8 +69,11 @@
     return { tx: p.x, ty: p.y, spd: u.maxSpd };
   });
 
-  // Hold a set range from the ownship, facing it
+  // Hold a set range from the ownship, facing it. If the ownship is leaving (heading away from this unit), hold
+  // ground instead of pursuing, so the range can open and the unit can stand down once the threat has gone.
   reg('posture', (u, st, o) => {
+    const leaving = o.spd > 2 * CGF.speedScale() && Math.abs(U.angDiff(o.hdg, U.bearing(u, o))) < 80;
+    if (leaving) return { tx: u.x, ty: u.y, spd: 0, desired: U.bearing(u, o) };
     const p = offsetPoint(o, U.bearing(o, u), (st.range || 4) * k()), dd = U.dist(u, p);
     return { tx: p.x, ty: p.y, spd: dd > 0.5 * k() ? u.maxSpd * U.clamp(dd / (3 * k()), 0.3, 1) : Math.max(o.spd, 4 * CGF.speedScale()),
       desired: dd < 1 * k() ? U.bearing(u, o) : null };

@@ -16,14 +16,15 @@
   };
   const SETTING_LABEL = {
     aggression: 'CGF aggression', sensitivity: 'CGF sensitivity', reaction_delay_s: 'CGF reaction delay (s)',
-    calm_down_rate: 'CGF calm-down rate', detection: 'CGF detection range'
+    calm_down_rate: 'CGF calm-down rate', detection: 'CGF detection range', 'weight.team': 'opposition teamwork'
   };
   const compLabel = c => LABEL[c] || c || 'no target';
   const settingLabel = s => SETTING_LABEL[s] || (s.startsWith('weight.') ? `weight on "${s.slice(7)}"` : s);
   const fmt = v => (Math.round(v * 100) / 100).toString();
 
   // ------------------------------------------------------------ explanation templates (pure)
-  // adj: §7 adjustment. ctx: { trainee_id, eventsById, band_mode, min_window }
+  // adj: §7 adjustment. ctx: { trainee_id, eventsById, min_window, team: {capability, basis} for a "team" adjustment }
+  // Remediation (INTERFACES §6): pressure stays on while the trainee misses the target, and eases once they meet it.
   function explain(adj, ctx) {
     const who = `${ctx.trainee_id} (${adj.seat})`, comp = compLabel(adj.target_competency);
     const ev = (adj.evidence_event_ids || []).map(id => ctx.eventsById[id]).filter(Boolean);
@@ -33,16 +34,15 @@
     const up = adj.pressure_direction === 'up';
     let text;
     if (adj.source === 'instructor_steer') text = `Instructor steering: testing ${who} on ${comp}, so ${change} to raise the pressure.`;
-    else if (up && n < (ctx.min_window || 3))
+    else if (adj.cause === 'team') {
+      const t = ctx.team || {};
+      text = `The crew's capability is ${t.capability != null ? fmt(t.capability) : 'estimated'}${t.basis === 'live' ? ' with this session\'s evidence' : ' from their profiles'}, so ${change}: the opposing units work ${up ? 'more' : 'less'} closely together.`;
+    } else if (up && n < (ctx.min_window || 3))
       text = `No recent ${comp} evidence from ${who}, and it is the weakest of their focus competencies, so ${change} to create exposure.`;
-    else if (ctx.band_mode === 'remediation')
+    else
       text = up
         ? `${who} handled only ${s} of the last ${n} ${comp} events, so ${change} to keep pressing it.`
         : `${who} handled ${s} of the last ${n} ${comp} events, so ${change} to ease the pressure.`;
-    else
-      text = up
-        ? `${who} handled ${s} of the last ${n} ${comp} events, above the challenge band, so ${change} to raise the pressure.`
-        : `${who} handled only ${s} of the last ${n} ${comp} events, below the challenge band, so ${change} to ease the pressure.`;
     if (adj.clamped) text += ` The request (${fmt(adj.requested)}) was capped at the instructor's envelope.`;
     return text;
   }
@@ -72,6 +72,7 @@
   if (typeof document === 'undefined') return;
   const $ = id => document.getElementById(id), esc = s => CGF.util.esc(s);
   let pendingDirective = null, useLlm = false;
+  const teamActions = [];   // recent cooperation between CGF units (js/sim/team.js), newest last
 
   function ctxFor(adj) {
     const sess = CGF.adaptRuntime.session(), crew = sess ? sess.config.crew : [];
@@ -79,7 +80,7 @@
     for (const e of CGF.simEvents.log()) eventsById[e.event_id] = e;
     const live = sess && sess.adapt.liveState();
     return { trainee_id: (crew.find(m => m.seat === adj.seat) || {}).trainee_id || '?', eventsById,
-      band_mode: live ? live.band_mode : 'challenge', min_window: CGF.Adapt.MIN_WINDOW };
+      min_window: CGF.Adapt.MIN_WINDOW, team: live && live.teamNotes ? live.teamNotes[adj.adjustment_id] : null };
   }
 
   // fills adjustment.explanation (§7: the reasoning panel fills it; the policy leaves it null)
@@ -92,6 +93,10 @@
   }
 
   const arrow = d => d === 'up' ? '▲ raise' : d === 'down' ? '▼ ease' : '● hold';
+  // Which of the three signals caused an entry (LANES D7), as a visible tag; classes for the design lane
+  const CAUSE = { live: 'live: current behaviour', history: 'history: past training', team: 'team: CGF cooperation' };
+  const causeTag = a => a.source === 'instructor_steer' ? '<span class="cause-tag cause-instructor">instructor</span>'
+    : `<span class="cause-tag cause-${esc(a.cause || 'live')}" title="${esc(CAUSE[a.cause] || '')}">${esc(a.cause || 'live')}</span>`;
 
   function renderSeats(live) {
     if (!live) return '<div class="muted">No adaptive session. In a linked pane it starts when the host sends the allocation; here you can start a local one below.</div>';
@@ -116,22 +121,38 @@
     return list.slice().reverse().map(a => {
       const ev = (a.evidence_event_ids || []).map(id => byId[id]).filter(Boolean)
         .map(e => `${e.outcome === 'success' ? '✓' : '✗'} ${esc(e.type)} at ${CGF.util.fmtTime(e.t)}`).join(' · ');
-      return `<div class="act"><span class="muted">${CGF.util.fmtTime(a.t)}</span> <b>${esc(arrow(a.pressure_direction))}</b> ` +
+      return `<div class="act"><span class="muted">${CGF.util.fmtTime(a.t)}</span> ${causeTag(a)} <b>${esc(arrow(a.pressure_direction))}</b> ` +
         `${esc(settingLabel(a.setting))}: ${fmt(a.old)} → ${fmt(a.new)}${a.clamped ? ' <span class="muted">(capped)</span>' : ''}` +
-        `<div class="cause">${esc(a.seat)} · target ${esc(compLabel(a.target_competency))} · ${esc(a.source === 'instructor_steer' ? 'instructor steering' : a.policy)}</div>` +
+        `<div class="cause">${esc(a.seat)} · target ${esc(compLabel(a.target_competency))} · ${esc(a.source === 'instructor_steer' ? 'instructor steering' : (CAUSE[a.cause] || a.policy))}</div>` +
         (ev ? `<div class="cause">Evidence: ${ev}</div>` : '') +
         `<div class="cause">Why: ${esc(a.explanation || '')}</div></div>`;
     }).join('');
+  }
+
+  function renderTeam(live) {
+    if (!CGF.scenario || !CGF.sim) return '';
+    const S = CGF.scenario, forces = Object.keys(CGF.sim.forceHarness).filter(k => CGF.harnessOf({ force: k }) && CGF.sim.forceHarness[k].armed);
+    const rows = forces.map(k => `<div class="factor"><span>${esc(S.forces[k].label)}</span>` +
+      `<div class="bar"><div style="width:${Math.round(CGF.teamworkOf(k) * 100)}%;background:var(--accent)"></div></div><span>${Math.round(CGF.teamworkOf(k) * 100)}%</span></div>`).join('');
+    const mult = CGF.settings ? CGF.settings.get('weight.team') : 1;
+    const acts = teamActions.slice(-6).reverse().map(x => `<div class="act"><span class="muted">${CGF.util.fmtTime(x.t)}</span> <span class="cause-tag cause-team">team</span> ` +
+      `${esc(x.to)} joined ${esc(x.from)}'s response (${esc(x.reason)}), readiness +${x.boost}</div>`).join('');
+    return rows + `<div class="muted small">Adaptation multiplier on teamwork: ${fmt(mult)}${live ? ` · crew capability ${fmt(live.teamCapability)}` : ''}</div>` +
+      (acts || '<div class="muted small">No cooperation yet.</div>');
   }
 
   function render() {
     if (!$('rsnSeats')) return;
     const sess = CGF.adaptRuntime.session(), live = sess ? sess.adapt.liveState() : null, rec = CGF.adaptRuntime.lastRecord();
     $('rsnStatus').textContent = sess
-      ? `${sess.session_id} · ${sess.config.mode} · ${live.band_mode} band · ${sess.config.scenario} · next evaluation at ${CGF.util.fmtTime(sess.nextEval)}${sess.ended ? ' · ended' : ''}`
+      ? `${sess.session_id} · ${sess.config.mode === 'fixed' ? 'Fixed assessment (no adjustments)' : 'Adaptive practice'} · ${sess.config.scenario} · next evaluation at ${CGF.util.fmtTime(sess.nextEval)}${sess.ended ? ' · ended' : ''}`
       : rec ? `Last session ${rec.session_id} ended: ${rec.outcome}` : 'No adaptive session';
     $('rsnLocal').hidden = !!(CGF.sim && CGF.sim.link);
-    $('rsnSeats').innerHTML = renderSeats(live);
+    const partners = sess ? sess.config.crew.filter(m => m.role === 'partner') : [];
+    $('rsnSeats').innerHTML = renderSeats(live) + partners.map(m =>
+      `<div class="contact"><span><b>${esc(m.seat)}</b> · AI partner</span><span class="muted">not adapted to</span>` +
+      `<span class="meta">played from the runs of ${esc((m.derived_from || {}).trainee_id || '?')}</span></div>`).join('');
+    if ($('rsnTeam')) $('rsnTeam').innerHTML = renderTeam(live);
     $('rsnAdjustments').innerHTML = renderAdjustments(sess ? sess.adapt.adjustments : rec ? rec.adjustments : []);
     $('btnExportRecord').disabled = !rec;
     $('rsnRecordInfo').textContent = rec ? `${rec.session_id}: ${rec.outcome}, ${rec.events.length} events, ${rec.adjustments.length} adjustments` : 'Available when a run ends.';
@@ -161,7 +182,7 @@
     $('rsnTrainee').innerHTML = (F.profiles || []).map(p => `<option value="${esc(p.trainee_id)}"${p.trainee_id === 'trainee_b' ? ' selected' : ''}>${esc(p.trainee_id)}</option>`).join('');
     $('rsnAgent').innerHTML = Object.entries(CGF.traineeAgents).map(([path, p]) => `<option value="${esc(path)}"${path.includes('weak') ? ' selected' : ''}>${esc(p.label || path)}</option>`).join('');
     $('btnRsnStart').onclick = () => CGF.adaptRuntime.startLocal({
-      trainee: $('rsnTrainee').value, agent: $('rsnAgent').value, mode: $('rsnMode').value, band_mode: $('rsnBand').value,
+      trainee: $('rsnTrainee').value, agent: $('rsnAgent').value, mode: $('rsnMode').value,
       duration_s: Math.max(120, parseInt($('rsnDuration').value, 10) || 2400)
     }).then(errs => { if (errs.length) $('rsnStatus').textContent = 'Not started: ' + errs.join('; '); render(); });
     $('rsnLlm').onchange = e => { useLlm = e.target.checked; };
@@ -185,6 +206,9 @@
     $('btnExportRecord').onclick = () => { const r = CGF.adaptRuntime.lastRecord(); if (r) download(`session-record-${r.session_id}.json`, JSON.stringify(r, null, 2)); };
 
     CGF.on('adapt:cycle', ({ adjustments }) => { fillExplanations(adjustments); render(); });
+    CGF.on('sim:team', x => { teamActions.push(x); if (teamActions.length > 50) teamActions.shift(); });
+    CGF.on('reset', () => { teamActions.length = 0; });
+    CGF.on('team-config', () => setTimeout(render, 0));
     for (const evt of ['adapt:start', 'adapt:steer', 'session-record', 'reset']) CGF.on(evt, () => setTimeout(render, 0));
     render();
   }

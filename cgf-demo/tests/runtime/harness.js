@@ -10,10 +10,10 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const SCRIPTS = [
   'js/util.js', 'js/engine.js', 'js/behaviours.js', 'js/factors.js', 'js/malfunctions.js',
   'plugins/greyzone-tactics.js',
-  'harnesses/hostile-state.js', 'harnesses/non-hostile-state.js', 'harnesses/grey-zone.js', 'harnesses/raiders.js', 'harnesses/civil-traffic.js',
+  'harnesses/hostile-state.js', 'harnesses/hostile-elite.js', 'harnesses/non-hostile-state.js', 'harnesses/grey-zone.js', 'harnesses/raiders.js', 'harnesses/civil-traffic.js',
   'scenarios/strait-transit.js', 'scenarios/border-patrol.js', 'scenarios/airspace-patrol.js', 'scenarios/sea-air.js', 'projects/piracy-drill/scenario.js',
   'contracts/contracts.js', 'fixtures/platforms.js', 'fixtures/profiles/roster.js', 'fixtures/envelope-default.js',
-  'js/sim/rng.js', 'js/sim/events.js', 'js/sim/apply.js', 'js/sim/crew-agent.js',
+  'js/sim/rng.js', 'js/sim/events.js', 'js/sim/apply.js', 'js/sim/team.js', 'js/sim/crew-agent.js',
   'trainees/strong.js', 'trainees/weak_hail_discipline.js',
   'js/llm.js',
   'js/adapt/predict.js', 'js/adapt/clamp.js', 'js/adapt/policy-rules.js', 'js/adapt/adapt.js', 'js/adapt/steer.js', 'js/adapt/runtime.js',

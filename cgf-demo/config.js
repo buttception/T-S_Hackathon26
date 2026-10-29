@@ -13,6 +13,7 @@ window.CGF_CONFIG = {
   // ships, ground vehicles and aircraft; each scenario scales their ranges and speeds.
   harnesses: [
     'harnesses/hostile-state.js',
+    'harnesses/hostile-elite.js',
     'harnesses/non-hostile-state.js',
     'harnesses/grey-zone.js',
     'harnesses/raiders.js',
@@ -31,6 +32,7 @@ window.CGF_CONFIG = {
 
   // Hands-off demo scripts (Play demo button, or runtime.html?demo=harness&loop=1)
   demos: [
+    'demos/vision.js',   // the 5-minute vision demo
     'demos/demos.js'
   ],
 

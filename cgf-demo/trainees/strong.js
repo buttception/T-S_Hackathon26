@@ -7,8 +7,9 @@ CGF.registerTraineeAgent('trainees/strong.js', {
   hail: { ack: [{ p: 0.95 }], delay_s: [8, 30] },
   nav: {
     speed: 24,
-    // A probing route straight at Red's patrol boats, so every crew meets hails early in a run
-    routes: { 'strait-transit': [[-4, -44], [0, -28], [8, -8], [16, 12], [20, 64]] },
+    // Starts near Red's patrol boats and probes past them, so even a short run meets hails early
+    start: { 'strait-transit': [-6, -38, 280] },
+    routes: { 'strait-transit': [[-15, -34], [-14, -22], [-8, -12], [4, -2], [16, 8], [20, 64]] },
     cpa_margin: 1.5,
     respect_zones: true
   },

@@ -15,16 +15,18 @@ Everything is new files or small hooks in `js/engine.js`, so it does not collide
 | `js/sim/rng.js` | Seeded random numbers (`CGF.rng(seed)`), never `Math.random` | S1 |
 | `js/sim/events.js` | §4 events, only while a session is configured. Hail answered or not (ignore timer, superseded, or escalated past); safe passage or close quarters per encounter; entering or leaving foreign claimed zones; fire-control lock or restraint; piracy speed response; tension peaks; failure | S2 |
 | `js/sim/apply.js` | `CGF.settings` (§2 settings) and `CGF.apply(adjustments)`: settings only (invariant 8) | S4 |
-| `js/sim/crew-agent.js` | Scripted crews: each seat's agent profile decides what its competencies are about (hails, collision, zones, fire-control, piracy) | S3 |
+| `js/sim/team.js` | Cooperating CGFs: a shared picture per force, teammate alerts scaled by the harness `teamwork` (instructor override per force), `sim:team` events | D6 |
+| `js/sim/crew-agent.js` | Scripted crews: each seat's agent profile decides what its competencies are about (hails, collision, zones, fire-control, piracy); AI partner seats played from `agent_params` | S3, D8 |
 | `trainees/strong.js`, `trainees/weak_hail_discipline.js` | The two agent profiles (paths are the contract in `fixtures/profiles/roster.js`) | S3 |
 | `js/adapt/predict.js` | Standalone target rule: `Adapt.pickTarget` (used by the live policy) and `Adapt.predictTarget` for the allocation page; the competency → tactic map | JL's request |
 | `js/adapt/clamp.js` | Envelope clamp, pure | E3 |
 | `js/adapt/policy-rules.js` | `rules_v1`: competency to settings, step size, cooldown, exposure probe | E4 |
-| `js/adapt/adapt.js` | `CGF.Adapt.create(...)`: `evaluate`, `steer`, `liveState`, `endSession` (§10); pure | E4, E5, E6, D5 |
+| `js/adapt/adapt.js` | `CGF.Adapt.create(...)`: `evaluate`, `steer`, `liveState`, `endSession` (§10); pure. Remediation band rule, `cause` tags (D7), teamwork tactic on `weight.team`, partner seats skipped | E4, E5, E6, D5 |
 | `js/adapt/steer.js` | Steering text to a §8 directive: keyword parser, optional local LLM, strict validation | D4 |
 | `js/adapt/runtime.js` | Runs a session in the pane: on `link-init` (or a local start), evaluates every `eval_interval_s`, applies, ends at `duration_s`, emits `session-record` | D2, D5 |
 | `js/ui-reasoning.js` | Reasoning tab: per-seat target and live signal, every adjustment with direction, change, evidence and reason, steering box, session-record export | D3, D4, D5 |
-| `tests/runtime/` | `node --test tests/runtime/` from `cgf-demo/` (33 tests) | all |
+| `harnesses/hostile-elite.js` | Elite hostile force: close teamwork, faster reactions | D6 |
+| `tests/runtime/` | `node --test tests/runtime/` from `cgf-demo/` (45 tests) | all |
 
 ## How a session runs
 

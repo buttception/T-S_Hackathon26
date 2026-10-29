@@ -54,7 +54,7 @@
   // A harness's "kind" must match the force's kind: state actors, non-state groups or civil shipping.
   const KINDS = { state: 'state actor', 'non-state': 'non-state group', civil: 'civil shipping' };
   const HARNESS_DEFAULTS = {
-    name: 'Unnamed harness', description: '', kind: 'state', affiliation: 'hostile', armed: true,
+    name: 'Unnamed harness', description: '', kind: 'state', affiliation: 'hostile', armed: true, teamwork: 0,
     baseTension: 10, aggression: 1, decayPerMin: 3, ackRelief: 10, warnRepeatSec: 240, ignoreAfterSec: 180,
     failState: null, weights: {}
   };
@@ -364,7 +364,8 @@
 
   function steer(u, behaviourName, st, dt) {
     const fn = CGF.behaviours[behaviourName] || CGF.behaviours.hold;
-    const r = fn(u, st || {}, CGF.sim.own, CGF.sim) || {};
+    // a CGF steers on where it believes the ownship is (its own contact, or its force's shared fix: js/sim/team.js)
+    const r = fn(u, st || {}, u.role === 'cgf' && CGF.perceivedOwn ? CGF.perceivedOwn(u) : CGF.sim.own, CGF.sim) || {};
     const desired = r.desired != null ? r.desired : U.bearing(u, { x: r.tx, y: r.ty });
     U.turnToward(u, desired, dt);
     // Aircraft (minSpd) cannot hover: they keep flying and orbit through the target point instead

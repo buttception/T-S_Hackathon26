@@ -1,6 +1,6 @@
 # Decisions: adaptive runtime (Devin's lane)
 
-Dated 2026-10-29. Branch `devin/adaptive-runtime`, merged to `main` by Devin at his request rather than through JL,
+Dated 2026-10-29. First merged from `devin/adaptive-runtime`; later changes pushed directly to `main` (decision 26),
 so JL please review this note. Module overview: [README.md](README.md). No contract (`contracts/`, `docs/INTERFACES.md`)
 was changed.
 
@@ -16,7 +16,7 @@ was changed.
 | 6 | Policy tactics are targeted: hail → sensitivity, `weight.ignoredWarning`; collision → `weight.cpa`, `weight.proximity`; territorial → `weight.territorial`, `weight.contiguous`, calm-down rate; weapons → `weight.fcRadar`, reaction delay; piracy → detection, `weight.slowSpeed`. Aggression is not used | Aggression scales every provocation, so it escalated every CGF regardless of the target and ended runs early |
 | 7 | Step 20% of the base-to-bound span; a setting changes at most once every 2 cycles; with fewer than 3 target events a seat probes "up" but only halfway to the bound | PLAN E4's step limit and cooldown. Without the probe ceiling, seats with no evidence drove settings to the maximum in about 2 minutes |
 | 8 | Every enveloped setting starts each session at its envelope `base` (an initial setting, not an adjustment record) | Both panes start from the same instructor-set point |
-| 9 | Scripted crews comply after acknowledging a hail (turn away for 180 s, then resume the route); the weak-hail profile ignores early hails and answers after four | Realistic behaviour, and it gives the G1 "trainee starts answering" beat regardless of timing |
+| 9 | Scripted crews comply after acknowledging a hail (turn away for 180 s, then resume the route); the weak-hail profile ignores its first two hails and then answers most | Realistic behaviour, and it gives the G1 "trainee starts answering" beat regardless of timing |
 | 10 | Reasons are templates computed from the adjustment record and its evidence events. An optional local-LLM rephrasing is discarded if it contains any number not in the template | Invariant 5; works with the LLM off (invariant 4) |
 | 11 | Session id = `s_<yyyymmdd>_<hhmmss>_<pane>`, from the wall clock at session start (outside the simulation); tests pass a fixed id | Unique per run for Glenda's history; the simulation itself stays clock-free (invariant 3 holds for a given id) |
 | 12 | Follows JL's 9-competency catalog (`90ccaa3`): the pirate speed events now measure `speed_management`; the competency list comes from `contracts.COMPETENCIES` | INTERFACES §1, §1.1, §4 |
@@ -38,3 +38,22 @@ was changed.
 | G | **Validators.** `contracts/` has no `validateEvent` or session-record validator | `tests/runtime/` checks the §4, §7 and §9.1 shapes | Add them to `contracts/`; the runtime will call them |
 | H | ~~**Profile `name`.**~~ Resolved by JL in `90ccaa3` (`validateProfile` accepts `name`) | The Reasoning tab now shows the name beside the trainee id | None |
 | I | **Process.** This branch was merged to `main` directly | | Review the merge; revert or adjust if anything conflicts with the lane plan |
+| 17 | **Remediation is the only band rule** (JL, reply A): rate above the band eases off, below it presses. `band_mode` and the panel selector are gone | `docs/project/replies-to-devin-decisions.md` |
+| 18 | **D7 cause tags:** every engine adjustment carries `cause`: `history` (probe before live evidence), `live` (the window), `team` (the teamwork tactic). Instructor steering leaves it out (its `source` says it). Shown as a tag in the Reasoning panel | LANES D7. **JL: every adjustment from the runtime now has it, so `cause` can become required for engine adjustments** |
+| 19 | **D6 cooperating CGFs** (`js/sim/team.js`): a force shares one picture. A unit in contact updates the shared fix; a unit out of contact steers on it, dead-reckoned. An ignored hail or a unit going to weapons-ready alerts its teammates (tension boost scaled by teamwork, throttled 120 s, logged as "Joined the response"). Shadowing and escorting units split bearings when teamwork is 0.5 or more | LANES D6. Settings only change behaviour weights and tension, never positions directly (invariant 8) |
+| 20 | **Teamwork comes from the harness** (`teamwork` field: hostile 0.5, non-hostile 0.5, grey-zone 0.8, raiders 0.4, civil 0). New harness `hostile-elite` (teamwork 0.95, faster reactions). The instructor can override per force with a slider (Instructor tab) | Lets the instructor choose "fighting an elite force or not" |
+| 21 | **Teamwork adapts to the crew:** setting `weight.team` (multiplies the teammate alert), driven by the crew's capability (mean of the trainee seats' measured focus competencies): above 0.5 the opposition cooperates more tightly, below it more loosely. One step per change, normal cooldown, `cause: 'team'`, only when the envelope lists `weight.team` | **JL: please add `'weight.team': { min: 0.3, max: 2.0, base: 1.0 }` to the default envelope** so linked sessions use it too |
+| 22 | **D8 partner seats:** a crew entry with `role: 'partner'` is played from `agent_params.rates` (hail answer rate, safe passage, territorial, fire-control restraint, pirate speed response) and `reaction_delay_s`. Partners have no working copy, no target and never appear in an adjustment; the record's crew entry carries `role` and `derived_from` | LANES D8, INTERFACES §3.2. **JL: `PARTNERS_RUN` can be flipped on** |
+| 23 | Runtime defaults JL asked for (reply C): `calm_down_rate` 1 (range 0.2 to 3), `detection` 20 nm (range 5 to 40) | For the default envelope |
+| 24 | Maps are twice as large. Scripted crews start at a forward position per scenario (`nav.start` in `trainees/*.js`) and follow a route along Red's zone, so the first hail comes about 6 minutes in. Any scripted crew opens the range from a unit that locks fire-control radar on it; a CGF holds its ground when the ownship is leaving | Hails arrive early enough for short runs, and weak crews no longer stall at weapons-ready |
+| 25 | Simulation speed control (×15 to ×480, keys `+`/`-`); demo steps set `speed` and `focus` so demos run fast through quiet stretches and slow down at the moments that matter. New 5-minute demo `demos/vision.js`; setup guide `RUNNING.md` | Devin's request |
+| 26 | Pushed directly to `main` | JL's decision (CLAUDE.md, 2026-10-29) |
+
+## Needs a decision from JL
+
+A to H are answered in `docs/project/replies-to-devin-decisions.md` and built (A remediation only, B 2400 s, D record forwarded, G validators used by the tests). Open:
+
+| # | Question | What the runtime does now | Recommendation |
+|---|---|---|---|
+| J | **Steering against another seat's "down".** §5.1: "any seat `down` wins". So while another seat is easing off, an instructor's steering (always "up") changes no settings until no seat is down. The steered seat's target does switch at once | Follows §5.1 literally | Let an active steering directive win over the pane's direction for its own seat's settings (steering is an explicit instructor order). Needs a line in §5.1 |
+| K | **`weight.team` in the default envelope** (decision 21) | Used only where the envelope lists it (the local runtime does) | Add it to `fixtures/envelope-default.js` |

@@ -230,8 +230,8 @@ test('D2: the weak-hail trainee\'s CGFs press hails within two cycles; trainee A
   assert.notEqual(nav.target, 'hail_discipline');
 });
 
-test('D2 remediation mode: pressure eases once the weak trainee starts answering hails', () => {
-  const { a } = adapt({}, { band_mode: 'remediation' });
+test('D2 (remediation, INTERFACES §6): pressure stays on while hails are missed and eases once they are answered', () => {
+  const { a } = adapt();
   let t = 0;
   const step = evs => a.evaluate(evs, (t += 30));
   step([]); step([]);
@@ -246,15 +246,44 @@ test('D2 remediation mode: pressure eases once the weak trainee starts answering
   assert.ok(easing.some(x => x.pressure_direction === 'down' && x.target_competency === 'hail_discipline'));
 });
 
-test('D2 challenge mode (INTERFACES §6): cruising raises pressure, struggling eases it', () => {
+test('D7: every engine adjustment names its cause: history before live evidence, live after it', () => {
   const { a } = adapt();
   let t = 0;
   const step = evs => a.evaluate(evs, (t += 30));
-  step([]); step([]);
-  step([1, 2, 3, 4, 5].map(() => ev('navigation', 'trainee_b', 'hail_acknowledged', 'hail_discipline', 'success', t)));
-  assert.equal(a.liveState().seats.find(s => s.seat === 'navigation').pressureDirection, 'up');
-  step([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(() => ev('navigation', 'trainee_b', 'hail_ignored', 'hail_discipline', 'fail', t)));
-  assert.equal(a.liveState().pressureDirection, 'down');
+  const early = step([]).concat(step([]));
+  const nav = early.filter(x => x.seat === 'navigation');
+  assert.ok(nav.length && nav.every(x => x.cause === 'history'));
+  step([1, 2, 3, 4].map(() => ev('navigation', 'trainee_b', 'hail_ignored', 'hail_discipline', 'fail', t)));
+  const later = step([]).concat(step([]), step([]));
+  assert.ok(later.some(x => x.seat === 'navigation' && x.cause === 'live'));
+  a.steer({ raw_text: 'x', trainee_id: 'trainee_b', competency: 'collision_avoidance', intensity: 'medium', duration_s: 300 });
+  const steered = step([]).filter(x => x.source === 'instructor_steer');
+  assert.ok(steered.length && steered.every(x => !('cause' in x)), 'a steer is the instructor\'s, not one of the three signals');
+});
+
+test('D6/D7: the opposition\'s teamwork ("weight.team") follows the crew\'s capability, tagged cause "team"', () => {
+  const env = Object.assign({}, config().envelope, { 'weight.team': { min: 0.3, max: 2.0, base: 1.0 } });
+  const strongCrew = [
+    { seat: 'weapons', trainee_id: 'trainee_c05', agent_profile: 'trainees/strong.js' },
+    { seat: 'sensors', trainee_id: 'trainee_c08', agent_profile: 'trainees/strong.js' },
+    { seat: 'navigation', trainee_id: 'trainee_a', agent_profile: 'trainees/strong.js' }];
+  const weakCrew = [
+    { seat: 'weapons', trainee_id: 'trainee_c03', agent_profile: 'trainees/strong.js' },
+    { seat: 'sensors', trainee_id: 'trainee_c04', agent_profile: 'trainees/strong.js' },
+    { seat: 'navigation', trainee_id: 'trainee_c07', agent_profile: 'trainees/strong.js' }];
+  const teamAfter = crew => {
+    const { a } = adapt({ envelope: env, crew });
+    const out = [];
+    for (let c = 1; c <= 12; c++) out.push(...a.evaluate([], c * 30));
+    return { value: a.settings['weight.team'], adj: out.filter(x => x.setting === 'weight.team') };
+  };
+  const s = teamAfter(strongCrew), w = teamAfter(weakCrew);
+  assert.ok(s.value > 1, `capable crew faces a better-drilled force (${s.value})`);
+  assert.ok(w.value < s.value, `a weaker crew faces less teamwork (${w.value} < ${s.value})`);
+  for (const x of s.adj.concat(w.adj)) {
+    assert.equal(x.cause, 'team');
+    assert.ok(x.new >= env['weight.team'].min && x.new <= env['weight.team'].max);
+  }
 });
 
 test('D2: live evidence moves the target within the session', () => {
@@ -279,11 +308,12 @@ test('§5.1: one change per setting per cycle (the largest request), never summe
   assert.ok(c2.every(x => !c1.some(y => y.setting === x.setting)), 'a setting changed in cycle 1 waits out its cooldown');
 });
 
-test('§7: adjustment records have exactly the contract fields', () => {
-  const { a } = adapt();
+test('§7: adjustment records have exactly the contract fields and pass the contract validator', () => {
+  const { a, CGF } = adapt();
   const [x] = a.evaluate([], 30);
   deq(Object.keys(x).sort(), ['adjustment_id', 't', 'session_id', 'force', 'setting', 'old', 'new', 'requested', 'clamped',
-    'target_competency', 'seat', 'pressure_direction', 'source', 'policy', 'evidence_event_ids', 'explanation'].sort());
+    'target_competency', 'seat', 'pressure_direction', 'source', 'policy', 'evidence_event_ids', 'explanation', 'cause'].sort());
+  deq(a.evaluate([], 60).concat(a.evaluate([], 90)).flatMap(y => CGF.contracts.validateAdjustment(y)), []);
   assert.equal(x.explanation, null);   // the reasoning panel fills it, never the policy
   assert.equal(x.policy, 'rules_v1');
 });
@@ -293,7 +323,7 @@ test('D3: every adjustment gets a template reason whose numbers come from the re
   const { record, CGF } = session({ duration_s: 2400 });
   const byId = Object.fromEntries(record.events.map(e => [e.event_id, e]));
   for (const adj of record.adjustments) {
-    const text = CGF.reasoning.explain(adj, { trainee_id: record.crew.find(m => m.seat === adj.seat).trainee_id, eventsById: byId, band_mode: 'challenge', min_window: 3 });
+    const text = CGF.reasoning.explain(adj, { trainee_id: record.crew.find(m => m.seat === adj.seat).trainee_id, eventsById: byId, min_window: 3 });
     assert.ok(text.length > 20);
     assert.ok(text.includes(`from ${Math.round(adj.old * 100) / 100} to ${Math.round(adj.new * 100) / 100}`));
     assert.ok(adj.pressure_direction === 'up' ? /raise the pressure|create exposure|keep pressing/.test(text) : /ease the pressure/.test(text));

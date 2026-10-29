@@ -68,8 +68,13 @@
     const keys = Object.keys(S.forces).filter(k => k !== S.ownShip.force);
     $('forceHarnesses').innerHTML = keys.map(k => {
       const f = S.forces[k], H = sim.forceHarness[k];
+      // teamwork (js/sim/team.js): the harness's value unless the instructor sets one for this force
+      const tw = CGF.teamworkOf ? Math.round(CGF.teamworkOf(k) * 100) : 0;
       return `<div class="forceRow"><b style="color:${f.color}">${esc(f.tag)} · ${esc(f.label)}</b>
-        <select data-force="${k}">${H ? '' : '<option value="">(no harness)</option>'}${harnessOptions(H && H.id, CGF.harnessesFor(k))}</select></div>`;
+        <select data-force="${k}">${H ? '' : '<option value="">(no harness)</option>'}${harnessOptions(H && H.id, CGF.harnessesFor(k))}</select></div>` +
+        (H && H.armed ? `<div class="slider"><span class="small muted">Teamwork</span>
+        <input type="range" data-team="${k}" min="0" max="100" step="5" value="${tw}" title="How well this force's units share a picture and act together">
+        <span id="tw-${k}">${tw}%</span></div>` : '');
     }).join('');
     $('forceList').innerHTML = Object.entries(S.forces).map(([k, f]) => {
       const H = sim.forceHarness[k], n = sim.units.filter(u => u.force === k).length;
@@ -426,7 +431,24 @@
     $('forceHarnesses').addEventListener('change', e => {
       const sel = e.target.closest('select[data-force]');
       if (sel && sel.value) CGF.inject.setForceHarness(sel.dataset.force, sel.value);
+      const tw = e.target.closest('input[data-team]');
+      if (tw) CGF.setTeamwork(tw.dataset.team, parseInt(tw.value, 10) / 100);
     });
+    $('forceHarnesses').addEventListener('input', e => {
+      const tw = e.target.closest('input[data-team]');
+      if (tw && $('tw-' + tw.dataset.team)) $('tw-' + tw.dataset.team).textContent = tw.value + '%';
+    });
+    CGF.on('team-config', buildForceControls);
+
+    // Simulation speed (header): sim seconds per real second; demos change it too
+    const syncSpeed = () => {
+      const v = String(CGF.params.timeScale), sel = $('speedSel');
+      if (![...sel.options].some(o => o.value === v)) sel.insertAdjacentHTML('beforeend', `<option value="${v}">×${v}</option>`);
+      sel.value = v;
+    };
+    $('speedSel').addEventListener('change', e => { CGF.params.timeScale = parseInt(e.target.value, 10); CGF.emit('params'); });
+    CGF.on('params', syncSpeed);
+    syncSpeed();
 
     document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
       activeTab = t.dataset.tab;
@@ -501,6 +523,8 @@
         case 'Escape': CGF.demo.stop(); break;
         case 'c': case 'C': CGF.render.focus(CGF.sim.own); break;   // centre on and follow the ownship
         case 'o': case 'O': CGF.render.overview(); break;            // back to the whole map
+        case '+': case '=': CGF.params.timeScale = Math.min(960, CGF.params.timeScale * 2); CGF.emit('params'); break;   // faster
+        case '-': case '_': CGF.params.timeScale = Math.max(15, Math.round(CGF.params.timeScale / 2)); CGF.emit('params'); break;   // slower
         default: handled = false;
       }
       if (handled) { e.preventDefault(); if (tag === 'INPUT') e.target.blur(); }

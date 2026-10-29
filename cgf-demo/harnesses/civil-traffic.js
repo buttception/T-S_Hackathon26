@@ -5,6 +5,7 @@ CGF.registerHarness({
   id: 'civil-traffic',
   name: 'Civil traffic',
   description: 'Ships, vehicles or airliners following their routes. They keep clear of the ownship and run from any confrontation.',
+  teamwork: 0,              // 0..1: how well its units share a picture and act together (CGF teamwork)
   kind: 'civil',
   affiliation: 'neutral',
   armed: false,

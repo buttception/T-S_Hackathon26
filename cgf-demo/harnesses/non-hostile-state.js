@@ -4,6 +4,7 @@ CGF.registerHarness({
   id: 'non-hostile-state',
   name: 'Non-hostile state',
   description: 'Protective but friendly. Queries, escorts and protests; never uses force.',
+  teamwork: 0.5,              // 0..1: how well its units share a picture and act together (CGF teamwork)
   kind: 'state',
   affiliation: 'neutral',
   baseTension: 5, aggression: 0.8, decayPerMin: 3, ackRelief: 15,

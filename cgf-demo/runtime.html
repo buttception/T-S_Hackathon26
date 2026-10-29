@@ -23,6 +23,10 @@
       <div class="row">
         <button id="btnRun" class="primary">Start</button>
         <button id="btnReset">Restart</button>
+        <select id="speedSel" title="Simulation speed: sim seconds per real second (keys + and -)">
+          <option value="15">×15</option><option value="30">×30</option><option value="60">×60</option>
+          <option value="120">×120</option><option value="240">×240</option><option value="480">×480</option>
+        </select>
         <select id="modeSel" title="Exercise: objective and failure state end the run. Freeplay: open-ended, nothing ends it.">
           <option value="exercise">Exercise</option>
           <option value="freeplay">Freeplay</option>
@@ -60,10 +64,6 @@
               <option value="adaptive">Adaptive</option>
               <option value="fixed">Fixed</option>
             </select>
-            <select id="rsnBand" title="How the live success rate maps to pressure">
-              <option value="challenge">Challenge band (INTERFACES §6)</option>
-              <option value="remediation">Remediation (PLAN G1)</option>
-            </select>
             <input type="text" id="rsnDuration" value="2400" size="5" title="Run length in sim seconds">
             <button id="btnRsnStart" class="primary">Start</button>
           </div>
@@ -78,6 +78,9 @@
           <button id="btnSteerParse">Parse</button>
         </div>
         <div id="steerPreview" class="preview" hidden></div>
+
+        <h2>Opposition teamwork</h2>
+        <div id="rsnTeam"></div>
 
         <h2>Adjustments and why</h2>
         <label class="small muted"><input type="checkbox" id="rsnLlm"> Rephrase reasons with the local LLM (numbers are checked; falls back to the template)</label>
@@ -122,6 +125,7 @@
           <span>Drag the map</span><span>Pan</span>
           <span>Mouse wheel</span><span>Zoom in or out at the pointer</span>
           <span><kbd>C</kbd> / <kbd>O</kbd></span><span>Centre on and follow the ownship / whole-map overview</span>
+          <span><kbd>+</kbd> / <kbd>-</kbd></span><span>Simulation faster / slower (also the speed list at the top)</span>
         </div>
       </section>
 
@@ -239,6 +243,7 @@
 <script src="js/sim/rng.js"></script>
 <script src="js/sim/events.js"></script>
 <script src="js/sim/apply.js"></script>
+<script src="js/sim/team.js"></script>
 <script src="js/sim/crew-agent.js"></script>
 <script src="trainees/strong.js"></script>
 <script src="trainees/weak_hail_discipline.js"></script>

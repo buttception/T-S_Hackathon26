@@ -6,6 +6,7 @@ CGF.registerHarness({
   id: 'raiders',
   name: 'Raiders / piracy (non-state)',
   description: 'Opportunistic raiders. Encouraged by slow, predictable targets; deterred by speed, manoeuvre and visible weapons.',
+  teamwork: 0.4,              // 0..1: how well its units share a picture and act together (CGF teamwork)
   kind: 'non-state',
   affiliation: 'hostile',
   baseTension: 10, aggression: 1.2, decayPerMin: 4, ackRelief: 0,
