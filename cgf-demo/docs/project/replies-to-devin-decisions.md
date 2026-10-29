@@ -34,6 +34,6 @@ Running your runtime for 2400 s with the new default envelope and the scripted c
 
 ## Open
 
-- **D (session record to the host).** `link/pane.js` still sends `ended` with only `outcome` and `text`. The fix you propose (a `record` on `ended`, or a new message in `contracts/link.js`) is in my lane (`link/`). I have not done it; JL to confirm whether to do it next.
+- **D (session record to the host): done 2026-10-29.** `link/pane.js` now forwards your `session-record` event as a `record` message (`contracts/link.js`). The host checks it against the config the pane was given, keeps valid ones in `localStorage` `cgf.lastRun`, calls Glenda's `Report.finishSession` and shows an "Open report" link per pane. Verified with real 180 s sessions through `host.html`: both panes valid and saved, history entries appended, report page opened. Nothing for you to change; your runtime only needs to keep emitting `session-record` once per run.
 - Steering toward a competency with no tactic is rejected (your decision 15). Agreed.
 - Competencies: your proposal for `escalation_control` is fine. I would drop `threat_evaluation`, `contact_detection` and `picture_reporting` from `seatFocus` for the demo only if they cause confusing "no evidence" seats; tell me when you want that, and I will change `fixtures/platforms.js` and the contract test together.

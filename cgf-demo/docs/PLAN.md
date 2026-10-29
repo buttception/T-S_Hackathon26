@@ -42,6 +42,8 @@ Adjustments change the CGF's own settings, never the trainee's score or the scen
 
 ## 2b. Crew and AI partners (added 2026-10-29, JL)
 
+**TENTATIVE (JL, 2026-10-29): build only after the outstanding core items are cleared. Single crew is decided; AI partners are not.**
+
 A run has one crew on one platform. Each seat is either:
 
 | Role | Who plays it | Adapted to? | Assessed? |
@@ -104,7 +106,7 @@ Full file lists, tasks and acceptance tests per person are in `docs/LANES.md`.
 **G1 (the readiness gate):** One crew, one pane, scripted crew, run twice on the same seed.
 - Run 1: the navigation trainee's profile is weak at hail discipline. The CGFs visibly shift toward hail pressure within two evaluation cycles. The other trainee seat's target differs, so the reasons differ per seat.
 - The live signal works: when the scripted trainee starts acknowledging hails, the pressure eases.
-- At least one seat is an AI partner built from history (`derived_from`). It plays from its parameters, is never targeted, and its profile is not updated.
+- (Tentative, only if AI partners are confirmed) At least one seat is an AI partner built from history (`derived_from`). It plays from its parameters, is never targeted, and its profile is not updated.
 - Every adjustment stays inside the envelope. Fixed mode produces zero adjustments.
 - After run 1, `Assess.update` moves the profile and the allocation page shows the new bars and a new predicted target. Run 2 with the same seed starts from that target.
 - All of this shows in the instructor panel with template explanations, each tagged `live`, `history` or `team`.
@@ -218,7 +220,7 @@ Design delivers specs and mockups only. It never edits simulation, engine or oth
 |---|---|---|
 | 0:00 | Problem: one instructor, many trainees, fixed scenarios train the average trainee | Title slide |
 | 0:30 | Instructor sets the envelope | Setup panel |
-| 1:00 | Same strait. The crew's navigation trainee has a profile weak at hail discipline; their CGFs start pressing hails. An AI partner built from an older run fills the weapons seat. The log says why, tagged `history` | Pane, profile strip, log |
+| 1:00 | Same strait. The crew's navigation trainee has a profile weak at hail discipline; their CGFs start pressing hails. (If AI partners are confirmed: an AI partner built from an older run fills the weapons seat.) The log says why, tagged `history` | Pane, profile strip, log |
 | 2:00 | The trainee starts acknowledging hails; the pressure eases (`live`). History set the target, current behaviour set the intensity | Profile strip and log |
 | 2:30 | Instructor types "test the navigation trainee's collision avoidance". The parsed directive is shown, then the CGFs shift | Steering box and pane |
 | 3:15 | Toggle fixed mode for assessment | Mode toggle, log goes quiet |

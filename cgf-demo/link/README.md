@@ -58,12 +58,25 @@ Defined and validated in `contracts/link.js`. Every message is `{ cgfLink: 1, ty
 | host to pane | `start`, `pause`, `restart` | none |
 | pane to host | `status` | `t`, `running`, `outcome`, `stats`; sent when something changes |
 | pane to host | `ended` | `outcome`, `text` |
+| pane to host | `record` | `record`: the INTERFACES §9.1 session record, once when an adaptive run ends |
 | pane to host | `error` | `message` |
 | reserved | `events` (pane to host), `apply` (host to pane) | for the adaptation loop; not sent yet |
 
+## Session records
+
+When an adaptive run reaches its duration, Devin's runtime emits the `session-record` event (`CGF.on('session-record', fn)`). `link/pane.js` forwards it as a `record` message and does not look inside it. The host (`link/host.js`):
+
+1. checks it with `hostLink.checkRecord(record, config, pane)`: valid under `CGF.contracts.validateSessionRecord` (with every adjusted value inside the allocation's envelope) and the same pane, scenario, seed, mode, platform type and crew as the config the pane was given;
+2. keeps only valid records, in `localStorage` under `cgf.lastRun` as `{ allocation_id, records: { A, B } }` (`hostLink.mergeRun`), and shows invalid ones with their first errors and "not saved";
+3. calls Glenda's `Report.finishSession(record)`, which builds each crew member's report, appends the history entries and returns the report page URL, shown as "Open report for pane A";
+4. fires `cgf:session-record` on the host window (`detail: { pane, record, errors, run }`) for anything that wants to react, such as the competency update;
+5. offers "Export session records" to download the run as JSON.
+
+A restart clears a pane's record on the page. The stored run is replaced when the next valid record for that pane arrives.
+
 ## Tests
 
-Open `tests/link.html` in Chrome or Edge, from the folder, with no server. It runs the protocol checks, then loads the real `runtime.html?pane=T` in an iframe and walks the whole handshake (hello, init, ready, start, pause, restart, bad inputs). It also checks that `runtime.html` with no `?pane=` sends nothing. Wait until the summary reads `27 / 27 passed`. It takes about 30 seconds.
+Open `tests/link.html` in Chrome or Edge, from the folder, with no server. It runs the protocol checks and the host's record checks, then loads the real `runtime.html?pane=T` in an iframe and walks the whole handshake (hello, init, ready, start, pause, restart, bad inputs). It then runs two short sessions to their end, one adaptive and one fixed, and checks the record that arrives. It also checks that `runtime.html` with no `?pane=` sends nothing. Wait until the summary reads `34 / 34 passed`. It takes about 60 seconds.
 
 `tests/allocate.html` covers the allocation page and the contract validators.
 

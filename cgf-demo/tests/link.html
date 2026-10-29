@@ -66,6 +66,13 @@
     eq(L.validateMessage(msg('init', { config: {} })), []);
     for (const t of ['start', 'pause', 'restart']) eq(L.validateMessage(msg(t)), [], t);
   });
+  test('a record message validates, and is rejected without an object record', () => {
+    eq(L.validateMessage(msg('record', { record: {} })), []);
+    ok(L.validateMessage(msg('record', {})).length, 'missing');
+    ok(L.validateMessage(msg('record', { record: [] })).length, 'array');
+    ok(L.validateMessage(msg('record', { record: 'x' })).length, 'string');
+    eq(L.TYPES.record.from, 'pane');
+  });
   test('the reserved loop messages validate but are not sent yet', () => {
     eq(L.validateMessage(msg('events', { events: [] })), []);
     eq(L.validateMessage(msg('apply', { adjustments: [] })), []);
@@ -117,6 +124,35 @@
   test('expandAllocation gives each pane its own crew', () => {
     const [a, b] = C.expandAllocation(allocation());
     eq([a.crew[0].trainee_id, b.crew[0].trainee_id], ['trainee_a', 'trainee_b']);
+  });
+
+  // ---- session records on the host (INTERFACES §9.1)
+  const cfgA = () => C.expandAllocation(allocation())[0];
+  const recFor = (config, pane, over) => Object.assign({ session_id: 's_x', pane, scenario: config.scenario, seed: config.seed, mode: config.mode,
+    platform: config.platform.type, crew: config.crew.map(m => ({ seat: m.seat, trainee_id: m.trainee_id })), outcome: 'success', duration_s: 600,
+    events: [], adjustments: [] }, over || {});
+  test('checkRecord accepts a valid record that matches the config', () => eq(H.checkRecord(recFor(cfgA(), 'A'), cfgA(), 'A'), []));
+  test('checkRecord rejects a record for another pane, scenario, seed, mode, platform or crew', () => {
+    const c = cfgA(), has = (r, re) => ok(H.checkRecord(r, c, 'A').some(m => re.test(m)), 'expected ' + re + ' in ' + JSON.stringify(H.checkRecord(r, c, 'A')));
+    has(recFor(c, 'B'), /record\.pane/);
+    has(recFor(c, 'A', { scenario: 'sea-air' }), /record\.scenario/);
+    has(recFor(c, 'A', { seed: 99 }), /record\.seed/);
+    has(recFor(c, 'A', { mode: 'fixed' }), /record\.mode/);
+    has(recFor(c, 'A', { platform: 'tank', crew: [{ seat: 'commander', trainee_id: 'trainee_a' }, { seat: 'driver', trainee_id: 'trainee_c01' }] }), /record\.platform/);
+    has(recFor(c, 'A', { crew: recFor(c, 'A').crew.slice().reverse() }), /crew/);
+  });
+  test('checkRecord rejects a malformed record and an adjustment outside the allocation\'s envelope', () => {
+    ok(H.checkRecord({}, cfgA(), 'A').length, 'empty');
+    ok(H.checkRecord(null, cfgA(), 'A').length, 'null');
+    const c = cfgA(), adj = { adjustment_id: 'a_1', t: 30, session_id: 's_x', force: 'all', setting: 'sensitivity', old: 1, new: 9, requested: 9, clamped: false,
+      target_competency: 'hail_discipline', seat: 'navigation', pressure_direction: 'up', source: 'engine', policy: 'rules_v1', evidence_event_ids: [], explanation: null };
+    ok(H.checkRecord(recFor(c, 'A', { adjustments: [adj] }), c, 'A').some(m => /outside the envelope|hard range|inside/.test(m)), 'out of envelope');
+  });
+  test('mergeRun adds a pane, keeps the other, drops another allocation\'s records, and does not mutate', () => {
+    const a = { x: 1 }, b = { x: 2 };
+    const r1 = H.mergeRun(null, 'alloc_t', 'A', a); eq(r1, { allocation_id: 'alloc_t', records: { A: a } });
+    const r2 = H.mergeRun(r1, 'alloc_t', 'B', b); eq(Object.keys(r2.records), ['A', 'B']); eq(Object.keys(r1.records), ['A']);
+    eq(H.mergeRun(r2, 'alloc_other', 'A', a).records, { A: a });
   });
 
   // ---- the real runtime, linked
@@ -209,6 +245,31 @@
     linked.frame.contentWindow.postMessage('start', '*');
     await sleep(1200);
     ok(!linked.inbox.slice(n).some(m => m.type === 'status' && m.running === true), 'ran on a malformed message');
+  });
+
+  // ---- a finished run reaches the host as a session record
+  async function runToEnd(config) {   // a fresh linked pane, run to its duration; resolves with { ended, record }
+    const f = openFrame('../runtime.html?pane=T');
+    await f.next(m => m.type === 'hello', 20000);
+    f.send('init', { config }); await f.next(m => m.type === 'ready', 15000);
+    const ended = f.next(m => m.type === 'ended', 90000), record = f.next(m => m.type === 'record', 90000);
+    f.send('start');
+    return { ended: await ended, record: await record, inbox: f.inbox };
+  }
+  await atest('an adaptive run ends with ended and one valid session record that matches the config', async () => {
+    const config = clone(cfg); config.duration_s = 120; config.eval_interval_s = 30;
+    const r = await runToEnd(config);
+    eq(L.validateMessage(r.record), []); eq(L.validateMessage(r.ended), []);
+    eq(H.checkRecord(r.record.record, config, 'T'), []);
+    eq(r.inbox.filter(m => m.type === 'record').length, 1, 'exactly one record');
+    ok(r.record.record.duration_s >= 120, 'ran the full duration');
+    ok(r.record.record.adjustments.length > 0, 'an adaptive run adjusts');
+  });
+  await atest('a fixed-mode run sends a valid record with no adjustments (invariant 2, through the link)', async () => {
+    const config = clone(cfg); config.mode = 'fixed'; config.duration_s = 120; config.eval_interval_s = 30;
+    const r = await runToEnd(config);
+    eq(H.checkRecord(r.record.record, config, 'T'), []);
+    eq([r.record.record.mode, r.record.record.adjustments.length], ['fixed', 0]);
   });
 
   // ---- the runtime on its own stays untouched

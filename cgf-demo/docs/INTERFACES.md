@@ -134,7 +134,9 @@ Derivation: `expandAllocation(allocation) -> ScenarioConfig` returns the one sec
 
 Handoff: the page writes the `Allocation` to `localStorage` under `cgf.allocation` (the Lead confirms the key). The URL-encoded fallback carries the same object.
 
-### 3.2 AI partners (proposed 2026-10-29, to confirm with Devin and Glenda)
+### 3.2 AI partners (TENTATIVE, proposed 2026-10-29)
+
+**TENTATIVE (JL, 2026-10-29): build only after the outstanding core items are cleared. Single crew is decided; AI partners are not.** Do not implement `role: "partner"`, `derived_from` or `agent_params` yet; all crew entries are trainees.
 
 A `partner` seat is an AI crewmate. It lets one trainee practise with a full crew, with crewmates who behave as a person did in older runs.
 
@@ -305,7 +307,7 @@ Owner: Glenda (report lane). The report is built from the session record (§9.1)
 
 ### 9.1 Session record and history entry (proposed 2026-10-29, to confirm with Devin and Glenda)
 
-**Session record**: emitted by the runtime (Devin) when a run ends, passed by the host page to the report and the competency update.
+**Session record**: emitted by the runtime (Devin) when a run ends, passed by the host page to the report and the competency update. **Built 2026-10-29:** the pane sends it to the host as the `record` message (§11); the host validates it with `CGF.contracts.validateSessionRecord` plus a match against the pane's config, stores valid records under `cgf.lastRun`, calls `Report.finishSession` and shows an "Open report" link per pane. It also fires a `cgf:session-record` event on the host window (`detail: {pane, record, errors, run}`) for the competency update to hook into, and an "Export session records" button downloads the run as JSON.
 
 ```json
 {
@@ -355,7 +357,7 @@ Owner: Glenda (report lane). The report is built from the session record (§9.1)
 | Entries for a trainee | Glenda | `History.entries(trainee_id) -> entry[]` (proposed 2026-10-29, for AI partners) |
 | Partner parameters | JL | `Assess.partnerParams(derived_from) -> agent_params` (section 3.2) |
 | Recent context | Glenda | `History.context(trainee_id, n) -> {weak[], strong[], sessions}` |
-| Update competency | JL | `Assess.update(sessionRecord, report) -> Profile` |
+| Update competency | JL (`js/assess/assess.js`, built) | `Assess.update(sessionRecord, reports?) -> {trainee_id: Profile}`. One entry per crew member. Evidence is the record's events (+1 alpha per success, +1 beta per fail, per competency); the reports are accepted to fix the order and are not read. Applied once per session and trainee (`cgf.assessed`). Also `Assess.profile(id)`, `Assess.profiles()` (seeded, overridden by stored), `Assess.means(profile)` |
 
 ## 10. Module calls
 
@@ -388,6 +390,7 @@ The runtime is an iframe of `runtime.html?pane=run` (the page was `index.html` u
 | `start`, `pause`, `restart` | host to pane | none. `restart` reloads the scenario from the same config |
 | `status` | pane to host | `t`, `running`, `outcome`, `stats` (warnings, ignored, acks, maxTension). Sent when something changes |
 | `ended` | pane to host | `outcome` (`success` or `fail`), `text` |
+| `record` | pane to host | `record`: the §9.1 session record, sent once when an adaptive run ends. Devin's runtime emits it as the `session-record` event and `link/pane.js` forwards it. The host checks it (`hostLink.checkRecord`: valid under §9.1, adjusted values inside the allocation's envelope, and the same pane, scenario, seed, mode, platform and crew as the config the pane was given), keeps only valid records under `localStorage` `cgf.lastRun` as `{allocation_id, records: {A, B}}`, and calls Glenda's `Report.finishSession` to build the reports, append the history entries and get the report page URL |
 | `error` | pane to host | `message` |
 | `events` | pane to host | Event array. **Reserved** for the adaptation loop, not sent yet |
 | `apply` | host to pane | Adjustment array. **Reserved**, not sent yet |

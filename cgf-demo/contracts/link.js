@@ -19,6 +19,7 @@
     ready:  { from: 'pane', fields: { scenario: 'string', domain: 'string', platform: 'object', crew: 'array' } },
     status: { from: 'pane', fields: { t: 'number', running: 'boolean', outcome: 'nullable-string', stats: 'object' } },
     ended:  { from: 'pane', fields: { outcome: 'string', text: 'string' } },
+    record: { from: 'pane', fields: { record: 'object' } },                               // the INTERFACES §9.1 session record, once per adaptive run
     error:  { from: 'pane', fields: { message: 'string' } },
     // host to pane
     init:    { from: 'host', fields: { config: 'object' } },                               // a §3 scenario config
