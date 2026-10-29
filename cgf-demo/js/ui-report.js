@@ -237,7 +237,24 @@
     jumpTimer = setTimeout(() => el.classList.remove('rp-jump-target'), 2000);
   }
 
+  // Back-to-top button: shown once the header has scrolled out of view. Fixed placement is the design lane's
+  // (.rp-to-top); without it the button sits after the report.
+  function initToTop() {
+    const btn = $('rpTop');
+    if (!btn) return;
+    const update = () => { btn.hidden = window.scrollY < 400; };
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+    btn.addEventListener('click', () => {
+      const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+      const h = document.querySelector('.rp-header h1');
+      if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+    });
+  }
+
   function init() {
+    initToTop();
     $('rpPrint').addEventListener('click', () => window.print());
     $('rpExport').addEventListener('click', exportJson);
     $('rpTrainee').addEventListener('change', e => {
