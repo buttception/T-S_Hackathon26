@@ -114,27 +114,6 @@ $s.Shapes.Title.AlternativeText = 'Adaptive CGF Trainer'
 [void](T $s 48 436 470 24 'Air, sea and land platforms. Runs offline from a file.' 16 $MUTED)
 Notes $s "Open by naming the gap: one instructor, many trainees, one scripted enemy. We built a trainer where the enemy adapts to each trainee and the instructor stays in command. Everything shown uses synthetic data."
 
-# ---------------------------------------------------------------- criteria
-$s = NewSlide $PANEL 'How the deck answers the five judging criteria' 36 62 864 60 $STRONG
-Eyebrow $s 'Judging criteria' $ACCENT
-$rows = @(
-  @('Criterion', 'What we show', 'Slides'),
-  @("Demonstrated potential  ${dot}  30%", "The key challenge is met in the prototype: the enemy targets each trainee${ap}s weak spot, adapts to how they perform, and says why.", '4, 9'),
-  @("Readiness  ${dot}  30%", 'The core loop runs end to end from a file. What is left is listed plainly.', '15'),
-  @("Uniqueness  ${dot}  20%", 'It targets the weakness, not the overall difficulty, with the instructor in command.', '14'),
-  @("Adoption of AI  ${dot}  20%", 'A learned trainee model, an adaptive policy, and an optional local language model.', '13'),
-  @("Market potential  ${dot}  20%", 'Fewer simulator sessions and instructor hours, estimated in S$ with stated assumptions.', '16'))
-$ts = $s.Shapes.AddTable($rows.Count, 3, 48, 140, 864, 330)
-$tbl = $ts.Table; $tbl.Columns.Item(1).Width = 270; $tbl.Columns.Item(2).Width = 514; $tbl.Columns.Item(3).Width = 80
-StyleTable $tbl @($RAISED, $PANEL) $SUNK
-for ($r = 1; $r -le $rows.Count; $r++) {
-  $tbl.Rows.Item($r).Height = $(if ($r -eq 1) { 34 } else { 62 })
-  for ($c = 1; $c -le 3; $c++) { CellText $tbl $r $c $rows[$r - 1][$c - 1] $(if ($c -eq 1 -and $r -gt 1) { 16 } else { 15 }) $(if ($r -eq 1 -or $c -eq 1) { $STRONG } else { $TEXT }) ($r -eq 1 -or $c -eq 1) }
-}
-$ts.Name = 'Criteria table'; $ts.AlternativeText = 'The five judging criteria, what the deck shows for each, and the slides'
-Footer $s 'ADAPTIVE CGF TRAINER' $MUTED
-Notes $s "Use this as the map. Each criterion has a slide that answers its guiding question: does the prototype solve the key challenge, what else needs doing, how novel is it, how is AI used, and what is the value in S dollars. Slide numbers are in the right-hand column."
-
 # ---------------------------------------------------------------- 2 problem
 $s = NewSlide $PANEL 'One instructor, many trainees, one scripted enemy' 40 62 864 100 $STRONG
 Eyebrow $s "The problem" $ACCENT
@@ -148,7 +127,6 @@ Notes $s "One instructor runs many trainees. A fixed scenario trains the average
 # ---------------------------------------------------------------- challenge
 $s = NewSlide $BG "The key challenge: train each person${ap}s weak spot, without losing control" 36 62 864 100 $STRONG
 Eyebrow $s "The key challenge" $ACCENT
-Tag $s "Demonstrated potential  ${dot}  30%"
 $cw = 272
 $cols = @(
   @('THE CHALLENGE', "A scripted enemy cannot target one trainee${ap}s weak spot, ease off when they struggle or push when they excel. An instructor cannot retune it by hand for every seat.", $false),
@@ -193,7 +171,6 @@ Notes $s "Four steps, each a page that opens from a file. The report feeds the c
 # ---------------------------------------------------------------- 5 allocate
 $s = NewSlide $PANEL 'Choose the platform, seat the crew, set the limits' 36 62 864 100 $STRONG
 Eyebrow $s "Allocate" $ACCENT
-Tag $s "Readiness  ${dot}  30%"
 Block $s 48 176 250 'Six platforms' 'Fighter, warship and tank, two models each, with their own seats.'
 Block $s 48 282 250 'Know the trainee' 'Competency bars and focus areas per seat, plus a private note.'
 Block $s 48 388 250 'Practice or assess' 'The mode badge, run length and the envelope are set before start.'
@@ -204,7 +181,6 @@ Notes $s "Live beat if the demo runs: pick the warship, press Suggest demo crew,
 # ---------------------------------------------------------------- 6 run
 $s = NewSlide $BG 'The enemy reacts to this crew, not a script' 36 62 864 100 $STRONG
 Eyebrow $s "Run" $ACCENT
-Tag $s "Demonstrated potential  ${dot}  30%"
 [void](Pic $s 'runtime.png' 48 176 590 'The runtime: a strait transit map with red, black, pirate and neutral contacts, and the contact list beside it')
 Block $s 662 176 250 'Targets the focus area' 'The first pressure lands on the competency the profile says needs it.'
 Block $s 662 282 250 'Forces cooperate' 'A unit that meets a response shares it, and nearby units join in.'
@@ -215,7 +191,6 @@ Notes $s "Warship crew on the strait transit scenario, the one scenario with a c
 # ---------------------------------------------------------------- reasoning
 $s = NewSlide $PANEL 'Every adjustment shows what, why and on what evidence' 36 62 864 100 $STRONG
 Eyebrow $s "Explained" $ACCENT
-Tag $s "Demonstrated potential  ${dot}  30%"
 [void](PicAt $s 'reasoning.png' 48 176 400 330 'The reasoning panel during a run: a live raise of the ignored-warning weight from 2.2 to 2.5, with the evidence events and the reason')
 [void](T $s 472 176 440 24 'Success rate over the last 10 events on the target' 16 $STRONG $true)
 $zones = @(@(472, 168, 'below 40%', "$dn Ease off", $SUNK, $BORDER2, $MUTED, $STRONG), @(650, 126, "40${dsh}70%", 'Hold', $RAISED, $BORDER, $MUTED, $STRONG), @(786, 126, 'above 70%', "$up Raise", $AIBG, $VIOL, $AITEXT, 'F3ECFF'))
@@ -233,7 +208,6 @@ Notes $s "The screenshot is a real entry from the demo run: trainee_b handled 4 
 # ---------------------------------------------------------------- 8 control
 $s = NewSlide $BG "The instructor stays in command" 40 62 864 60 $STRONG
 Eyebrow $s "Control" $ACCENT
-Tag $s "Adoption of AI  ${dot}  20%"
 $items = @(
   @('1', 'Limits the AI cannot leave', 'Min, base and max for each setting. A clamped value is marked.', $false),
   @('2', 'Fixed mode for assessment', 'Zero adjustments, a different badge. Practice and assessment stay apart.', $false),
@@ -254,7 +228,6 @@ Notes $s "Answer the standing worry: does adaptation break standardised assessme
 # ---------------------------------------------------------------- 9 debrief
 $s = NewSlide $PANEL 'The report feeds the profile for next time' 36 62 864 100 $STRONG
 Eyebrow $s "Debrief" $ACCENT
-Tag $s "Readiness  ${dot}  30%"
 Block $s 48 176 250 'One debrief per trainee' 'Events handled, focus area, and why the CGFs acted.'
 Block $s 48 282 250 'Pressure over time' "A chart of CGF pressure against the trainee${ap}s success rate."
 Block $s 48 388 250 'Then the update' 'The profile and history change, and the next target is predicted.'
@@ -265,7 +238,6 @@ Notes $s "Code computes every figure in the report; the narrative is a template.
 # ---------------------------------------------------------------- 10 cohort
 $s = NewSlide $BG 'Where the whole intake is developing' 36 62 864 100 $STRONG
 Eyebrow $s "Cohort" $ACCENT
-Tag $s "Readiness  ${dot}  30%"
 [void](Pic $s 'cohort.png' 48 176 590 'The cohort overview: competency means across 22 trainees and a heatmap by trainee')
 Block $s 662 176 250 '22 synthetic trainees' 'A heatmap of competencies, with the evidence behind each cell.'
 Block $s 662 282 250 '5 of 9 measured' "The other four read $([char]0x201C)no evidence$([char]0x201D) until the simulator emits events for them."
@@ -275,8 +247,7 @@ Notes $s "The cohort view is for improving the curriculum, never for judging ind
 
 # ---------------------------------------------------------------- ai
 $s = NewSlide $BG 'Where AI is used, and where it is not' 40 62 864 60 $STRONG
-Eyebrow $s "How the solution uses AI" $ACCENT
-Tag $s "Adoption of AI  ${dot}  20%"
+Eyebrow $s "AI in the solution" $ACCENT
 $items = @(
   @('1', 'Learns who the trainee is', "A Beta estimate for each competency, updated from every session${ap}s events. It is the trainee model, and it persists.", $true),
   @('2', 'Decides how to push', "A rule-based policy picks the target and the step size every 30 s. A bandit policy is planned, not built.", $true),
@@ -298,7 +269,6 @@ Notes $s "Be precise about which parts are AI. The trainee model is statistical 
 # ---------------------------------------------------------------- unique
 $s = NewSlide $PANEL 'Why this is different' 40 62 864 60 $STRONG
 Eyebrow $s "Novelty" $ACCENT
-Tag $s "Uniqueness  ${dot}  20%"
 $rows = @(
   @('', 'Typical training simulator', 'This trainer'),
   @('What adapts', 'A fixed script, or overall difficulty', "The specific weak competency of each trainee"),
@@ -317,9 +287,8 @@ Footer $s "OUR READING OF COMMON PRACTICE  ${dot}  NOT A SURVEY OF PRODUCTS" $MU
 Notes $s "The novelty is what the enemy adapts to. Most adaptive training raises or lowers overall difficulty from this run's score. Here the target is a specific competency chosen from the trainee's history, and the pressure is set by what they are doing now. The instructor stays in command and can see every reason. Do not claim that nobody else has done this; this is our reading of common practice, not a product survey."
 
 # ---------------------------------------------------------------- ready
-$s = NewSlide $BG 'Readiness: what works today, and what is left' 36 62 864 100 $STRONG
-Eyebrow $s "Beyond the key challenge" $ACCENT
-Tag $s "Readiness  ${dot}  30%"
+$s = NewSlide $BG 'What works today, and what is left' 36 62 864 100 $STRONG
+Eyebrow $s "What is left" $ACCENT
 $L = @("The loop runs end to end: allocate, run, report, update", "Offline from a file: no server, no install", "Six platforms (air, sea, land) in allocation", "Adaptation on the sea scenario, five competencies", "Fixed assessment mode and instructor limits", "Report, cohort view and baseline comparison pages")
 $R = @("Competency events for air and land scenarios", "Crew and team competencies, crew report", "Adapter to a real simulator over HLA or DIS", "Trial with real cohorts", "Local model approved on the event laptops", "Division figures for the business case")
 [void](Box $s 48 176 420 290 $RAISED $BORDER)
@@ -331,12 +300,11 @@ $b.TextFrame.TextRange.ParagraphFormat.Bullet.Visible = -1; $b.TextFrame.TextRan
 $b = T $s 512 226 380 232 ($R -join "`r") 17 $AITEXT
 $b.TextFrame.TextRange.ParagraphFormat.Bullet.Visible = -1; $b.TextFrame.TextRange.ParagraphFormat.Bullet.Character = 8226; $b.TextFrame.TextRange.ParagraphFormat.SpaceAfter = 9; $b.TextFrame.Ruler.Levels(1).FirstMargin = 0; $b.TextFrame.Ruler.Levels(1).LeftMargin = 16
 Footer $s "NO COMPATIBILITY CLAIMED WITH ANY NAMED SIMULATOR OR STANDARD" $MUTED
-Notes $s "Readiness is the question: other than the key challenge, what else needs to be done? Left column is what runs today and was tested. Right column is the honest list of what is not built: competency signals for air and land, crew-level adaptation, an adapter to a real simulator over HLA or DIS, a trial with real cohorts, approval for a local model on the event laptops, and the division's figures. The engine changes a small explicit set of CGF settings, which is what makes the adapter feasible."
+Notes $s "Beyond the core loop, what else needs to be done? Left column is what runs today and was tested. Right column is the honest list of what is not built: competency signals for air and land, crew-level adaptation, an adapter to a real simulator over HLA or DIS, a trial with real cohorts, approval for a local model on the event laptops, and the division's figures. The engine changes a small explicit set of CGF settings, which is what makes the adapter feasible."
 
 # ---------------------------------------------------------------- business
-$s = NewSlide $PANEL 'Business case: value in S$ from fewer sessions' 36 62 864 60 $STRONG
-Eyebrow $s "Market potential and savings" $ACCENT
-Tag $s "Market potential  ${dot}  20%"
+$s = NewSlide $PANEL 'What fewer sessions to proficiency are worth in S$' 36 62 864 60 $STRONG
+Eyebrow $s "Business case" $ACCENT
 [void](Box $s 48 140 330 330 $RAISED $BORDER)
 [void](T $s 66 156 296 20 "ASSUMED ${dot} REPLACE WITH DIVISION FIGURES" 12 $CAUTION $true $MONO)
 $a = T $s 66 184 296 270 "200 trainees a year`r30 sessions to proficiency`r= 6,000 sessions a year`r`rValue of an avoided session = simulator running cost + instructor time`r`rr = share of sessions avoided by targeted practice, never yet measured" 15 $TEXT
@@ -352,7 +320,7 @@ for ($r = 1; $r -le $rows.Count; $r++) {
 $ts.Name = 'Savings sensitivity table'; $ts.AlternativeText = 'Annual saving in Singapore dollars for three avoided-session shares and three session values'
 [void](T $s 402 400 510 70 "Read as: if targeted practice avoids 10% of sessions and each avoided session is worth S`$2,000, the saving is S`$1.2M a year. Saving = sessions a year $mul r $mul value per session." 15 $MUTED)
 Footer $s "ILLUSTRATIVE ESTIMATE  ${dot}  r IS A HYPOTHESIS, NOT A RESULT" $MUTED
-Notes $s "The criterion asks for an estimate of value in Singapore dollars. This is a sensitivity grid built on stated assumptions, not a claim. The pool of 6,000 sessions a year (200 trainees times 30 sessions) and the value of S1,000 to S3,000 per avoided session are placeholders until the division supplies its own numbers; replace them and the grid follows from saving equals sessions times r times value. r, the share of sessions avoided, has never been measured: it is the hypothesis a trial would test. Say that out loud."
+Notes $s "The audience will want the value in Singapore dollars. This is a sensitivity grid built on stated assumptions, not a claim. The pool of 6,000 sessions a year (200 trainees times 30 sessions) and the value of S1,000 to S3,000 per avoided session are placeholders until the division supplies its own numbers; replace them and the grid follows from saving equals sessions times r times value. r, the share of sessions avoided, has never been measured: it is the hypothesis a trial would test. Say that out loud."
 
 # ---------------------------------------------------------------- 13 close
 $s = NewSlide $AIBG "Exercises each trainee${ap}s weak spot, inside limits the instructor sets, and explains every step." 40 150 800 190 'F3ECFF'
