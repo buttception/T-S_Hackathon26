@@ -103,7 +103,7 @@ Full file lists, tasks and acceptance tests per person are in `docs/LANES.md`.
 
 **G0:** Contracts in `docs/INTERFACES.md` match the validators in `contracts/`. Each lane has a stub that returns fixture data. The runner executes a full loop on stubs and writes an adjustment log. Fixed-step mode exists. The visual system (D1) is handed to Console.
 
-**G1 (the readiness gate):** One crew, one pane, scripted crew, run twice on the same seed.
+**G1 (the readiness gate):** One crew, one pane, scripted crew, run twice on the same seed. Demo platform and scenario (JL, 2026-10-29): a warship on `strait-transit`, the only scenario with a competency signal. Other platforms are allocation only.
 - Run 1: the navigation trainee's profile is weak at hail discipline. The CGFs visibly shift toward hail pressure within two evaluation cycles. The other trainee seat's target differs, so the reasons differ per seat.
 - The live signal works: when the scripted trainee starts acknowledging hails, the pressure eases.
 - (Tentative, only if AI partners are confirmed) At least one seat is an AI partner built from history (`derived_from`). It plays from its parameters, is never targeted, and its profile is not updated.

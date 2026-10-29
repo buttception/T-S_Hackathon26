@@ -80,3 +80,10 @@
 - **Runtime validators added** in `contracts/`: `validateEvent`, `validateAdjustment`, `validateSessionRecord`. Checked against real sessions from the runtime.
 - **G1 seating:** the hail-discipline trainee sits in the navigation seat.
 - **Open:** whether the pane sends the session record to the host (Devin's item D, in `link/`, JL's lane).
+
+## Decisions of 2026-10-29 (JL), after the lane review
+
+- **R3 adopted:** the names are "Adaptive practice" and "Fixed assessment", separate from Exercise and Freeplay, shown as an always-visible badge on the host (JL) and runtime (Devin).
+- **R9 decided:** "Why is it reacting?", tension and posture move out of the Trainee tab to the instructor view and the debrief. Devin implements it.
+- **Demo platform:** a warship on `strait-transit`. Fighters and tanks stay "allocation only" until a scenario emits their events.
+- **Glenda's open items** (partners in the report, R18, R20, R21, seeded history with sessions, validator fixtures) were handed to a separate agent on branch `glenda/outstanding`. When it pushes, `hostLink.forReport` in `link/host.js` can stop stripping partner entries; see `js/report/REQUESTS-FOR-JL.md`.
