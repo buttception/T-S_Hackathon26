@@ -9,15 +9,8 @@
   const CGF = window.CGF;
   const C = () => CGF.adaptClamp;
 
-  // Competency -> settings that put pressure on it (PLAN §7 mapping, checked against js/factors.js). Kept targeted:
-  // "aggression" scales every provocation at once, so it would escalate every CGF regardless of the target.
-  const TACTICS = {
-    hail_discipline:       ['sensitivity', 'weight.ignoredWarning'],
-    collision_avoidance:   ['weight.cpa', 'weight.proximity'],
-    territorial_awareness: ['weight.territorial', 'weight.contiguous', 'calm_down_rate'],
-    weapons_discipline:    ['weight.fcRadar', 'reaction_delay_s'],
-    piracy_response:       ['detection', 'weight.slowSpeed']
-  };
+  // Competency -> settings that put pressure on it: defined once in js/adapt/predict.js, shared with the allocation page
+  const TACTICS = window.Adapt.TACTICS;
 
   const STEP = 0.2;                            // fraction of the base-to-bound span moved per change
   const COOLDOWN_CYCLES = 2;                   // a setting changes at most once every this many cycles

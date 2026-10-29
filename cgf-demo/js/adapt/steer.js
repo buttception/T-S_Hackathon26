@@ -10,7 +10,10 @@
   'use strict';
   const CGF = window.CGF;
 
-  const COMPETENCIES = ['hail_discipline', 'collision_avoidance', 'territorial_awareness', 'weapons_discipline', 'piracy_response'];
+  // The catalog (INTERFACES §1) and the competencies that can be steered: those with a tactic (js/adapt/predict.js).
+  // The others are not measured by any event yet, so steering toward them could not change anything.
+  const COMPETENCIES = window.Adapt.catalog();
+  const STEERABLE = Object.keys(window.Adapt.TACTICS);
   const INTENSITIES = ['low', 'medium', 'high'];
   const FIELDS = ['raw_text', 'trainee_id', 'competency', 'intensity', 'duration_s'];
   const DURATION = [30, 1800];   // sim seconds a directive may last
@@ -21,7 +24,11 @@
     [/\b(collision|collisions|cpa|close quarters|closing|close pass\w*|avoid\w*)\b/, 'collision_avoidance'],
     [/\b(territor\w*|zone|zones|waters|border|incursion\w*)\b/, 'territorial_awareness'],
     [/\b(weapon\w*|fire[- ]?control|fc|radar lock|lock|restraint)\b/, 'weapons_discipline'],
-    [/\b(pira\w*|skiff\w*|raider\w*|bandit\w*)\b/, 'piracy_response']
+    [/\b(speed|pira\w*|skiff\w*|raider\w*|bandit\w*)\b/, 'speed_management'],
+    [/\b(threat\w*)\b/, 'threat_evaluation'],
+    [/\b(detect\w*|contact\w*)\b/, 'contact_detection'],
+    [/\b(picture|report\w*)\b/, 'picture_reporting'],
+    [/\b(escalat\w*|de-?escalat\w*)\b/, 'escalation_control']
   ];
 
   function validate(d, crew) {
@@ -29,7 +36,8 @@
     const errs = Object.keys(d).filter(k => !FIELDS.includes(k)).map(k => `directive: unknown field "${k}"`);
     if (typeof d.raw_text !== 'string' || !d.raw_text.trim()) errs.push('directive.raw_text: required');
     if (!(crew || []).some(m => m.trainee_id === d.trainee_id)) errs.push(`directive.trainee_id: "${d.trainee_id}" is not in this pane's crew`);
-    if (!COMPETENCIES.includes(d.competency)) errs.push(`directive.competency: one of ${COMPETENCIES.join(', ')}`);
+    if (!COMPETENCIES.includes(d.competency)) errs.push(`directive.competency: one of ${STEERABLE.join(', ')}`);
+    else if (!STEERABLE.includes(d.competency)) errs.push(`directive.competency: "${d.competency}" is not measured by the simulator yet, so it cannot be steered`);
     if (!INTENSITIES.includes(d.intensity)) errs.push(`directive.intensity: one of ${INTENSITIES.join(', ')}`);
     if (!Number.isInteger(d.duration_s) || d.duration_s < DURATION[0] || d.duration_s > DURATION[1]) errs.push(`directive.duration_s: whole seconds, ${DURATION[0]} to ${DURATION[1]}`);
     return errs;
@@ -56,7 +64,7 @@
   const SCHEMA = {
     type: 'object',
     properties: {
-      trainee_id: { type: 'string' }, competency: { type: 'string', enum: COMPETENCIES },
+      trainee_id: { type: 'string' }, competency: { type: 'string', enum: STEERABLE },
       intensity: { type: 'string', enum: INTENSITIES }, duration_s: { type: 'integer' }
     },
     required: ['trainee_id', 'competency', 'intensity', 'duration_s']
@@ -66,7 +74,7 @@
     return `You turn a training instructor's steering request into one JSON directive for an adaptive simulator.
 Reply with JSON only: {"trainee_id":"<id>","competency":"<competency>","intensity":"low|medium|high","duration_s":<seconds>}
 Crew (seat: trainee_id): ${crew.map(m => `${m.seat}: ${m.trainee_id}`).join(', ')}
-Competencies: ${COMPETENCIES.join(', ')}
+Competencies: ${STEERABLE.join(', ')} (the others are not measured yet)
 "Trainee B" means trainee_b. Default intensity medium, default duration ${DEFAULT_DURATION} seconds (30 to 1800).`;
   }
 

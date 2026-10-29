@@ -22,8 +22,6 @@
   const WINDOW = 10;             // §6 rolling window length
   const BAND = [0.4, 0.7];       // §6 challenge band
   const MIN_WINDOW = 3;          // fewer target events than this: no live evidence yet, so raise exposure
-  const EVIDENCE_MIN = 8;        // alpha + beta for "enough evidence" (§5; contracts.EVIDENCE_MIN)
-  const COMPETENCIES = ['hail_discipline', 'collision_avoidance', 'territorial_awareness', 'weapons_discipline', 'piracy_response'];
 
   const mean = b => b.alpha / (b.alpha + b.beta);
   const pad = (n, w) => String(n).padStart(w, '0');
@@ -32,7 +30,7 @@
     const config = opts.config, envelope = config.envelope || {};
     const P = CGF.adaptPolicy, clamp = CGF.adaptClamp.clamp;
     const remediation = opts.band_mode === 'remediation';
-    const evidenceMin = (CGF.contracts && CGF.contracts.EVIDENCE_MIN) || EVIDENCE_MIN;
+    const COMPETENCIES = window.Adapt.catalog();   // INTERFACES §1 (js/adapt/predict.js)
 
     const seats = config.crew.map(m => {
       const prof = (opts.profiles || {})[m.trainee_id];
@@ -55,11 +53,10 @@
     const allEvents = [], adjustments = [], lastChange = {};   // lastChange: setting -> cycle number
     let nAdj = 0, lastNow = 0, paneDirection = 'hold', cycleNo = 0;
 
+    // The same rule the allocation page previews (Adapt.pickTarget in js/adapt/predict.js), on the live working copy
     function targetFor(s) {
       if (s.steer && s.steer.active) return s.steer.directive.competency;
-      const enough = c => s.working[c].alpha + s.working[c].beta >= evidenceMin;
-      const weakest = list => list.filter(enough).sort((a, b) => mean(s.working[a]) - mean(s.working[b]) || COMPETENCIES.indexOf(a) - COMPETENCIES.indexOf(b))[0];
-      return weakest(s.focus) || weakest(COMPETENCIES) || null;
+      return window.Adapt.pickTarget(s.working, s.focus, COMPETENCIES).competency;
     }
 
     // Takes in events (working copies, windows, the session log) without adjusting anything
@@ -146,7 +143,7 @@
 
     function liveState() {
       const view = s => ({
-        seat: s.seat, trainee_id: s.trainee_id, target: s.target, windowSuccessRate: s.rate, windowCount: s.n,
+        seat: s.seat, trainee_id: s.trainee_id, focus: s.focus.slice(), target: s.target, windowSuccessRate: s.rate, windowCount: s.n,
         pressureDirection: s.direction, steering: s.steer ? s.steer.directive : null,
         workingProfile: Object.fromEntries(COMPETENCIES.map(c => [c, Math.round(mean(s.working[c]) * 1000) / 1000])),
         evidence: Object.fromEntries(COMPETENCIES.map(c => [c, s.working[c].alpha + s.working[c].beta])),
@@ -173,10 +170,11 @@
     return { evaluate, observe, steer, liveState, endSession, seats, settings, config, adjustments };
   }
 
-  // Module-level calls of INTERFACES §10 act on the session that js/adapt/runtime.js has started in this page
+  // Module-level calls of INTERFACES §10 act on the session that js/adapt/runtime.js has started in this page.
+  // CGF.Adapt and window.Adapt are the same object (js/adapt/predict.js creates window.Adapt).
   const cur = () => { if (!CGF.Adapt.current) throw new Error('no adaptation session is running'); return CGF.Adapt.current; };
-  CGF.Adapt = Object.assign(CGF.Adapt || {}, {
-    WINDOW, BAND, MIN_WINDOW, COMPETENCIES, create, current: null,
+  CGF.Adapt = window.Adapt = Object.assign(window.Adapt || {}, {
+    WINDOW, BAND, MIN_WINDOW, create, current: null,
     evaluate: (events, now) => cur().evaluate(events, now),
     steer: d => cur().steer(d),
     liveState: () => cur().liveState(),

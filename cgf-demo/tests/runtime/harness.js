@@ -16,7 +16,7 @@ const SCRIPTS = [
   'js/sim/rng.js', 'js/sim/events.js', 'js/sim/apply.js', 'js/sim/crew-agent.js',
   'trainees/strong.js', 'trainees/weak_hail_discipline.js',
   'js/llm.js',
-  'js/adapt/clamp.js', 'js/adapt/policy-rules.js', 'js/adapt/adapt.js', 'js/adapt/steer.js', 'js/adapt/runtime.js',
+  'js/adapt/predict.js', 'js/adapt/clamp.js', 'js/adapt/policy-rules.js', 'js/adapt/adapt.js', 'js/adapt/steer.js', 'js/adapt/runtime.js',
   'js/ui-reasoning.js'
 ];
 

@@ -16,6 +16,5 @@
   const LOWER_IS_HARDER = { reaction_delay_s: true, calm_down_rate: true };
   const harderSign = setting => (LOWER_IS_HARDER[setting] ? -1 : 1);
 
-  CGF.Adapt = CGF.Adapt || {};
   CGF.adaptClamp = { clamp, harderSign };
 })();

@@ -11,7 +11,8 @@
 
   const LABEL = {
     hail_discipline: 'hail discipline', collision_avoidance: 'collision avoidance', territorial_awareness: 'territorial awareness',
-    weapons_discipline: 'weapons discipline', piracy_response: 'piracy response'
+    weapons_discipline: 'weapons discipline', speed_management: 'speed management', threat_evaluation: 'threat evaluation',
+    contact_detection: 'contact detection', picture_reporting: 'picture reporting', escalation_control: 'escalation control'
   };
   const SETTING_LABEL = {
     aggression: 'CGF aggression', sensitivity: 'CGF sensitivity', reaction_delay_s: 'CGF reaction delay (s)',
@@ -95,12 +96,15 @@
   function renderSeats(live) {
     if (!live) return '<div class="muted">No adaptive session. In a linked pane it starts when the host sends the allocation; here you can start a local one below.</div>';
     return live.seats.map(s => {
-      const bars = Object.entries(s.workingProfile).map(([c, m]) =>
+      // only the seat's own competencies (INTERFACES §1.1), plus the target if it falls outside them
+      const shown = Object.entries(s.workingProfile).filter(([c]) => (s.focus || []).includes(c) || c === s.target);
+      const bars = shown.map(([c, m]) =>
         `<div class="factor"><span>${c === s.target ? '<b>' : ''}${esc(compLabel(c))}${c === s.target ? '</b>' : ''}</span>` +
         `<div class="bar"><div style="width:${Math.round(m * 100)}%;background:var(--accent)"></div></div><span>${fmt(m)}</span></div>`).join('');
       const win = s.windowSuccessRate == null ? `no ${esc(compLabel(s.target))} events yet`
         : `${s.window.filter(w => w.ok).length} of ${s.windowCount} recent ${esc(compLabel(s.target))} events handled`;
-      return `<div class="contact"><span><b>${esc(s.seat)}</b> · ${esc(s.trainee_id)}</span><span>${esc(arrow(s.pressureDirection))}</span>` +
+      const prof = CGF.adaptRuntime.profileFor(s.trainee_id), who = prof && prof.name ? `${prof.name} (${s.trainee_id})` : s.trainee_id;
+      return `<div class="contact"><span><b>${esc(s.seat)}</b> · ${esc(who)}</span><span>${esc(arrow(s.pressureDirection))}</span>` +
         `<span class="meta">target: <b>${esc(compLabel(s.target))}</b> · ${win}${s.steering ? ` · <b>steered</b> (${esc(s.steering.intensity)})` : ''}</span>` +
         `<div style="grid-column:1/3">${bars}</div></div>`;
     }).join('');

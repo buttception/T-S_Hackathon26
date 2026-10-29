@@ -5,7 +5,7 @@
 //   collision_avoidance    alter course when another vessel's CPA is too close
 //   territorial_awareness  steer back out of foreign claimed zones
 //   weapons_discipline     switch fire-control radar on an escalating unit, or hold
-//   piracy_response        speed up when raiders close in
+//   speed_management       speed up when raiders close in
 // and the navigation seat (owner of collision_avoidance) follows the profile's route.
 // All chance comes from CGF.rng seeded per seat, so a seed replays exactly.
 //
@@ -50,7 +50,7 @@
     crew.forEach((c, i) => { rngs[c.seat] = CGF.rng((config.seed * 7919 + (i + 1) * 104729) >>> 0); });
     A = {
       hail: agentOf('hail_discipline'), nav: agentOf('collision_avoidance'), zone: agentOf('territorial_awareness'),
-      weapons: agentOf('weapons_discipline'), piracy: agentOf('piracy_response'),
+      weapons: agentOf('weapons_discipline'), piracy: agentOf('speed_management'),
       wp: 0, warnings: {}, fcOffAt: null, escalations: {}, sprintUntil: -1, raiders: {}, complyUntil: -1, complyFrom: null
     };
     return [];

@@ -6,7 +6,8 @@
 //   CGF.simEvents.log()     every event of the session so far
 //
 // Each competency event names the seat that caused it (§4 "seat"): the first seat, in seat order, whose focus
-// list (fixtures/platforms.js seatFocus) contains the competency.
+// list (fixtures/platforms.js seatFocus, INTERFACES §1.1) contains the competency. A competency no seat lists
+// (speed_management on a warship) belongs to the seat that steers the vehicle: the one that owns collision avoidance.
 (function () {
   'use strict';
   const CGF = window.CGF, U = CGF.util;
@@ -21,16 +22,17 @@
     territorial_incursion: ['territorial_awareness', 'fail'],
     fc_restraint:          ['weapons_discipline', 'success'],
     fc_radar_lock:         ['weapons_discipline', 'fail'],
-    pirate_speed_response: ['piracy_response', 'success'],
-    pirate_slow_response:  ['piracy_response', 'fail'],
+    pirate_speed_response: ['speed_management', 'success'],
+    pirate_slow_response:  ['speed_management', 'fail'],
     tension_peak:          [null, null],
     exercise_failed:       [null, null]
   };
-  // Used only if fixtures/platforms.js is not loaded; the fixture is the source (provisional mapping)
+  // Used only if fixtures/platforms.js is not loaded; the fixture is the source (INTERFACES §1.1)
   const SEAT_FOCUS_FALLBACK = {
-    fighter: { pilot: ['collision_avoidance', 'territorial_awareness', 'hail_discipline'], weapon: ['weapons_discipline', 'piracy_response'] },
-    warship: { weapons: ['weapons_discipline'], sensors: ['piracy_response'], navigation: ['collision_avoidance', 'territorial_awareness', 'hail_discipline'] },
-    tank:    { commander: ['hail_discipline', 'weapons_discipline', 'piracy_response'], driver: ['collision_avoidance', 'territorial_awareness'] }
+    fighter: { pilot: ['collision_avoidance', 'territorial_awareness', 'speed_management'], weapon: ['weapons_discipline', 'contact_detection', 'threat_evaluation'] },
+    warship: { weapons: ['weapons_discipline', 'threat_evaluation', 'escalation_control'], sensors: ['contact_detection', 'picture_reporting', 'threat_evaluation'],
+               navigation: ['collision_avoidance', 'territorial_awareness', 'hail_discipline'] },
+    tank:    { commander: ['threat_evaluation', 'weapons_discipline', 'hail_discipline'], driver: ['collision_avoidance', 'territorial_awareness', 'speed_management'] }
   };
 
   // Detection thresholds, in the scenario's distance units before range scaling
@@ -47,12 +49,12 @@
     return (t && t.seatFocus) || SEAT_FOCUS_FALLBACK[platformType] || {};
   }
 
-  // The seat that owns a competency: the first seat, in crew order, whose focus includes it
+  // The seat that owns a competency: the first seat, in crew order, whose focus includes it; otherwise the seat
+  // that steers (owns collision_avoidance); otherwise the first seat
   function seatFor(competency, crew, platformType) {
     if (!competency) return null;
-    const focus = seatFocus(platformType);
-    const m = crew.find(c => (focus[c.seat] || []).includes(competency));
-    return m || crew[0] || null;
+    const focus = seatFocus(platformType), owns = c => m => (focus[m.seat] || []).includes(c);
+    return crew.find(owns(competency)) || crew.find(owns('collision_avoidance')) || crew[0] || null;
   }
 
   const round = v => Math.round(v * 100) / 100;

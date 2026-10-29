@@ -19,6 +19,11 @@ was changed.
 | 9 | Scripted crews comply after acknowledging a hail (turn away for 180 s, then resume the route); the weak-hail profile ignores early hails and answers after four | Realistic behaviour, and it gives the G1 "trainee starts answering" beat regardless of timing |
 | 10 | Reasons are templates computed from the adjustment record and its evidence events. An optional local-LLM rephrasing is discarded if it contains any number not in the template | Invariant 5; works with the LLM off (invariant 4) |
 | 11 | Session id = `s_<yyyymmdd>_<hhmmss>_<pane>`, from the wall clock at session start (outside the simulation); tests pass a fixed id | Unique per run for Glenda's history; the simulation itself stays clock-free (invariant 3 holds for a given id) |
+| 12 | Follows JL's 9-competency catalog (`90ccaa3`): the pirate speed events now measure `speed_management`; the competency list comes from `contracts.COMPETENCIES` | INTERFACES §1, §1.1, §4 |
+| 13 | A competency that no seat lists (`speed_management` on a warship) belongs to the seat that steers, the one that owns `collision_avoidance` | Speed is set by whoever steers (the Officer of the Deck on a warship) |
+| 14 | **`Adapt.predictTarget` is built** (JL's request): `js/adapt/predict.js`, standalone, pure, never throws. It defines `Adapt.pickTarget`, and the live policy calls that same function, so the preview and the live target cannot disagree (a test checks every seeded trainee in every seat of every platform). `settings` lists the tactic's settings. **JL: add `<script src="js/adapt/predict.js"></script>` to `allocate.html`** | `docs/project/request-devin-predict-target.md` |
+| 15 | Steering toward a competency with no tactic (the four not measured yet) is rejected with "not measured by the simulator yet" | It could not change anything, so applying it would mislead the instructor |
+| 16 | **The four new competencies:** none is measured honestly yet, so none has an event or tactic. Proposal: `escalation_control` can be measured next, from whether the weapons seat's actions push a CGF over the tension peak (the `tension_peak` and `fc_restraint` signals already exist). `threat_evaluation`, `contact_detection` and `picture_reporting` need trainee actions the simulator does not model (classifying, selecting or reporting contacts); defer them, or drop them from `seatFocus` for the demo | INTERFACES §4 asks Devin to decide which can be measured honestly |
 
 ## Needs a decision from JL
 
@@ -31,5 +36,5 @@ was changed.
 | E | **§9.1 example.** Uses seat `"tao"` (the warship seats are `weapons`, `sensors`, `navigation`); `platform` is a string there but `{type, model}` in §3 | Follows §9.1: `platform: "warship"`, with the real seat ids | Fix the example; confirm `platform` is the type string |
 | F | **G1 seating.** Hail discipline belongs to the navigation seat, but the §3 / §3.1 examples put `trainee_b` in the weapons seat, where the target is weapons discipline | Follows `seatFocus` | Put `trainee_b` at navigation in the demo allocation (or move hail discipline in `seatFocus`) |
 | G | **Validators.** `contracts/` has no `validateEvent` or session-record validator | `tests/runtime/` checks the §4, §7 and §9.1 shapes | Add them to `contracts/`; the runtime will call them |
-| H | **Profile `name`.** §5 adds `name`, but `validateProfile` rejects unknown fields | The runtime reads only `competencies` | Update `validateProfile` |
+| H | ~~**Profile `name`.**~~ Resolved by JL in `90ccaa3` (`validateProfile` accepts `name`) | The Reasoning tab now shows the name beside the trainee id | None |
 | I | **Process.** This branch was merged to `main` directly | | Review the merge; revert or adjust if anything conflicts with the lane plan |
