@@ -499,13 +499,35 @@
         case 'r': case 'R': A.toggleFc(); break;
         case ' ': A.toggleRun(); break;
         case 'Escape': CGF.demo.stop(); break;
+        case 'c': case 'C': CGF.render.focus(CGF.sim.own); break;   // centre on and follow the ownship
+        case 'o': case 'O': CGF.render.overview(); break;            // back to the whole map
         default: handled = false;
       }
       if (handled) { e.preventDefault(); if (tag === 'INPUT') e.target.blur(); }
     });
 
     const canvas = $('map');
+    // Drag to pan. A press that moves less than a few pixels is still a click (select a contact or steer).
+    const DRAG_PX = 4;
+    let press = null, dragged = false;
+    canvas.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      press = { x: e.clientX, y: e.clientY, lastX: e.clientX, lastY: e.clientY }; dragged = false;
+      canvas.setPointerCapture(e.pointerId);
+    });
+    canvas.addEventListener('pointermove', e => {
+      if (!press) return;
+      if (!dragged && Math.hypot(e.clientX - press.x, e.clientY - press.y) < DRAG_PX) return;
+      dragged = true; canvas.style.cursor = 'grabbing';
+      CGF.render.panBy(e.clientX - press.lastX, e.clientY - press.lastY);
+      press.lastX = e.clientX; press.lastY = e.clientY;
+    });
+    const release = () => { press = null; canvas.style.cursor = ''; };
+    canvas.addEventListener('pointerup', release);
+    canvas.addEventListener('pointercancel', release);
+
     canvas.addEventListener('click', e => {
+      if (dragged) { dragged = false; return; }   // the end of a drag is not a click
       const r = canvas.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top;
       let best = null, bestD = 14;
       for (const u of CGF.sim.units) {
@@ -516,10 +538,11 @@
       if (best) { selectUnit(best); return; }
       CGF.actions.orderHeadingTo(U.bearing(CGF.displayedOwn(), CGF.render.toWorld(sx, sy)));
     });
+    // Scroll to zoom in or out at the pointer
     canvas.addEventListener('wheel', e => {
       e.preventDefault();
-      const base = CGF.scenario.view.half;
-      CGF.render.view.half = U.clamp(CGF.render.view.half * (e.deltaY > 0 ? 1.1 : 0.9), base * 0.25, base * 1.7);
+      const r = canvas.getBoundingClientRect();
+      CGF.render.zoomAt(Math.pow(1.0015, e.deltaY), e.clientX - r.left, e.clientY - r.top);
     }, { passive: false });
   }
 

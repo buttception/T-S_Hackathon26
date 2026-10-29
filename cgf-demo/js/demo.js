@@ -37,6 +37,9 @@
     select(u) { if (u) CGF.sim.selected = u; },
     tab(name) { CGF.emit('demo-tab', name); },
     params(p) { Object.assign(CGF.params, p); CGF.emit('params'); },
+    // Camera: glide to and follow an entity of interest (unit, unit name, 'own' or {x, y}); half = zoom
+    focus(target, half) { if (CGF.render && CGF.render.focus) CGF.render.focus(target, { half }); },
+    overview() { if (CGF.render && CGF.render.overview) CGF.render.overview(); },
     // Load another scenario mid-demo (keeps the demo running)
     load(id, opts) {
       clearSteer();

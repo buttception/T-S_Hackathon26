@@ -18,6 +18,60 @@
   const toScreen = (x, y) => [W / 2 + (x - cam.x) * scale, H / 2 - (y - cam.y) * scale];
   const toWorld = (sx, sy) => ({ x: cam.x + (sx - W / 2) / scale, y: cam.y - (sy - H / 2) / scale });
 
+  // ------------------------------------------------------------ camera
+  // The instructor pans by dragging and zooms with the wheel; demos move the camera with focus() / overview().
+  // A focus glides there; a focus on a unit keeps following it until the user pans or another focus is set.
+  const glide = { follow: null, to: null, half: null, last: 0 };
+  const ZOOM_MIN = 0.12, ZOOM_MAX = 2;   // zoom limits, as fractions of the scenario's default view
+
+  const halfLimits = () => { const b = CGF.scenario.view.half; return [b * ZOOM_MIN, b * ZOOM_MAX]; };
+  const fitScale = () => Math.min(W, H) / (2 * view.half);
+
+  // target: a unit (followed), a {x, y} point, or a unit name. opts.half: zoom to this half-width (default: keep)
+  function focus(target, opts) {
+    if (typeof target === 'string') target = CGF.sim.units.find(u => u.name === target) || (target === 'own' ? CGF.sim.own : null);
+    if (!target) return;
+    const isUnit = target === CGF.sim.own || CGF.sim.units.includes(target);
+    glide.follow = isUnit && !(opts && opts.follow === false) ? target : null;
+    glide.to = { x: target.x, y: target.y };
+    glide.half = opts && opts.half ? U.clamp(opts.half, ...halfLimits()) : null;
+  }
+  function overview() {
+    glide.follow = null; glide.to = { x: 0, y: 0 }; glide.half = CGF.scenario.view.half;
+  }
+  // Drag: move the map with the pointer (screen pixels). Stops any focus or follow.
+  function panBy(dx, dy) {
+    glide.follow = null; glide.to = null;
+    cam.x -= dx / scale; cam.y += dy / scale;
+  }
+  // Wheel: zoom by factor, keeping the map point under the pointer where it is
+  function zoomAt(factor, sx, sy) {
+    glide.half = null;
+    const before = toWorld(sx, sy);
+    view.half = U.clamp(view.half * factor, ...halfLimits());
+    scale = fitScale();
+    const after = toWorld(sx, sy);
+    cam.x += before.x - after.x; cam.y += before.y - after.y;
+    if (glide.follow) glide.follow = null;   // zooming at a point other than the followed unit stops following
+  }
+  function stepCamera() {
+    const now = performance.now(), dt = glide.last ? Math.min(0.1, (now - glide.last) / 1000) : 0;
+    glide.last = now;
+    if (glide.follow) {
+      if (glide.follow !== CGF.sim.own && !CGF.sim.units.includes(glide.follow)) glide.follow = null;
+      else glide.to = { x: glide.follow.x, y: glide.follow.y };
+    }
+    const k = 1 - Math.exp(-4 * dt);   // smooth, frame-rate independent
+    if (glide.to) {
+      cam.x += (glide.to.x - cam.x) * k; cam.y += (glide.to.y - cam.y) * k;
+      if (!glide.follow && Math.abs(glide.to.x - cam.x) + Math.abs(glide.to.y - cam.y) < view.half * 0.002) glide.to = null;
+    }
+    if (glide.half) {
+      view.half += (glide.half - view.half) * k;
+      if (Math.abs(glide.half - view.half) < glide.half * 0.002) { view.half = glide.half; glide.half = null; }
+    }
+  }
+
   function polyPath(poly) {
     ctx.beginPath();
     poly.forEach(([x, y], i) => { const [sx, sy] = toScreen(x, y); i ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy); });
@@ -94,7 +148,9 @@
     }
     ctx = canvas.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    W = r.width; H = r.height; scale = Math.min(W, H) / (2 * view.half);
+    W = r.width; H = r.height;
+    stepCamera();
+    scale = fitScale();
     const own = sim.own, shownOwn = CGF.displayedOwn(), instructor = opts && opts.instructor;
     const forceColor = key => (S.forces[key] && S.forces[key].color) || CGF.style.defaultForceColor;
 
@@ -204,7 +260,11 @@
   }
 
   // Each scenario sets its own default zoom
-  CGF.on('reset', () => { view.half = CGF.scenario.view.half; });
+  // Each scenario opens on its default view, centred on the map
+  CGF.on('reset', () => {
+    view.half = CGF.scenario.view.half; cam.x = 0; cam.y = 0;
+    glide.follow = null; glide.to = null; glide.half = null;
+  });
 
-  CGF.render = { draw, toWorld, toScreen, view, cam };
+  CGF.render = { draw, toWorld, toScreen, view, cam, focus, overview, panBy, zoomAt, following: () => glide.follow };
 })();

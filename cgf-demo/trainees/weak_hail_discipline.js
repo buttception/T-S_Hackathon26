@@ -8,7 +8,7 @@ CGF.registerTraineeAgent('trainees/weak_hail_discipline.js', {
   hail: { ack: [{ after_hails: 0, p: 0.1 }, { after_hails: 4, p: 0.9 }], delay_s: [20, 60] },
   nav: {
     speed: 24,
-    routes: { 'strait-transit': [[-2, -22], [0, -14], [4, -4], [8, 6], [10, 32]] },
+    routes: { 'strait-transit': [[-4, -44], [0, -28], [8, -8], [16, 12], [20, 64]] },
     cpa_margin: 1.5,
     respect_zones: true
   },
