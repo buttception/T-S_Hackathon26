@@ -10,9 +10,9 @@
 //
 // Experience picks WHAT to exercise: per seat, the weakest focus competency with enough evidence in the
 // working profile (the stored profile, updated live by this session's events). Current behaviour sets HOW HARD:
-// the success rate of that competency's last N events against the band (§6, remediation, decided by JL): while
-// the trainee is still missing the target (below the band) keep the pressure on; once they meet it (above the
-// band) ease off.
+// the success rate of that competency's last N events against the band (§6, challenge, decided by JL): while
+// the trainee is doing well (above the band) raise the pressure; while they are struggling (below the band) ease
+// off.
 //
 // Every engine adjustment names its cause (§7, LANES D7): "history" (no live evidence yet, so the target and the
 // first steps come from the stored profile), "live" (the live success rate), or "team" (the opposition's
@@ -98,7 +98,7 @@
         s.direction = !s.target ? 'hold'
           : (s.steer && s.steer.active) ? 'up'
           : w.length < MIN_WINDOW ? 'up'
-          : s.rate > BAND[1] ? 'down' : s.rate < BAND[0] ? 'up' : 'hold';
+          : s.rate > BAND[1] ? 'up' : s.rate < BAND[0] ? 'down' : 'hold';
       }
       if (config.mode === 'fixed') { paneDirection = 'hold'; return []; }   // invariant 2: fixed mode never adjusts
 

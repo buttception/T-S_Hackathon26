@@ -230,20 +230,20 @@ test('D2: the weak-hail trainee\'s CGFs press hails within two cycles; trainee A
   assert.notEqual(nav.target, 'hail_discipline');
 });
 
-test('D2 (remediation, INTERFACES §6): pressure stays on while hails are missed and eases once they are answered', () => {
+test('D2 (challenge, INTERFACES §6): pressure eases while hails are missed and rises once they are answered', () => {
   const { a } = adapt();
   let t = 0;
   const step = evs => a.evaluate(evs, (t += 30));
   step([]); step([]);
   const fails = [1, 2, 3, 4].map(() => ev('navigation', 'trainee_b', 'hail_ignored', 'hail_discipline', 'fail', t));
-  const pressing = step(fails);
-  assert.ok(pressing.every(x => x.pressure_direction === 'up'));
-  assert.equal(a.liveState().seats.find(s => s.seat === 'navigation').pressureDirection, 'up');
+  const easing = step(fails);
+  assert.equal(a.liveState().seats.find(s => s.seat === 'navigation').pressureDirection, 'down');
+  assert.ok(easing.every(x => x.pressure_direction === 'down'));
   step([]);
   const answers = [1, 2, 3, 4, 5, 6, 7, 8].map(() => ev('navigation', 'trainee_b', 'hail_acknowledged', 'hail_discipline', 'success', t));
-  const easing = step(answers).concat(step([]), step([]));
-  assert.equal(a.liveState().pressureDirection, 'down');
-  assert.ok(easing.some(x => x.pressure_direction === 'down' && x.target_competency === 'hail_discipline'));
+  const pressing = step(answers).concat(step([]), step([]));
+  assert.equal(a.liveState().pressureDirection, 'up');
+  assert.ok(pressing.some(x => x.pressure_direction === 'up' && x.target_competency === 'hail_discipline'));
 });
 
 test('D7: every engine adjustment names its cause: history before live evidence, live after it', () => {
@@ -253,8 +253,8 @@ test('D7: every engine adjustment names its cause: history before live evidence,
   const early = step([]).concat(step([]));
   const nav = early.filter(x => x.seat === 'navigation');
   assert.ok(nav.length && nav.every(x => x.cause === 'history'));
-  step([1, 2, 3, 4].map(() => ev('navigation', 'trainee_b', 'hail_ignored', 'hail_discipline', 'fail', t)));
-  const later = step([]).concat(step([]), step([]));
+  const missed = step([1, 2, 3, 4].map(() => ev('navigation', 'trainee_b', 'hail_ignored', 'hail_discipline', 'fail', t)));   // below the band: eases back toward base this cycle
+  const later = missed.concat(step([]), step([]), step([]));
   assert.ok(later.some(x => x.seat === 'navigation' && x.cause === 'live'));
   a.steer({ raw_text: 'x', trainee_id: 'trainee_b', competency: 'collision_avoidance', intensity: 'medium', duration_s: 300 });
   const steered = step([]).filter(x => x.source === 'instructor_steer');
@@ -326,7 +326,7 @@ test('D3: every adjustment gets a template reason whose numbers come from the re
     const text = CGF.reasoning.explain(adj, { trainee_id: record.crew.find(m => m.seat === adj.seat).trainee_id, eventsById: byId, min_window: 3 });
     assert.ok(text.length > 20);
     assert.ok(text.includes(`from ${Math.round(adj.old * 100) / 100} to ${Math.round(adj.new * 100) / 100}`));
-    assert.ok(adj.pressure_direction === 'up' ? /raise the pressure|create exposure|keep pressing/.test(text) : /ease the pressure/.test(text));
+    assert.ok(adj.pressure_direction === 'up' ? /raise the pressure|create exposure/.test(text) : /ease the pressure/.test(text));
   }
 });
 

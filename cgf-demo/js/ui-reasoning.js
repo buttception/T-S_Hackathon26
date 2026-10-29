@@ -24,7 +24,7 @@
 
   // ------------------------------------------------------------ explanation templates (pure)
   // adj: §7 adjustment. ctx: { trainee_id, eventsById, min_window, team: {capability, basis} for a "team" adjustment }
-  // Remediation (INTERFACES §6): pressure stays on while the trainee misses the target, and eases once they meet it.
+  // Challenge (INTERFACES §6): pressure rises while the trainee handles the target well, and eases while they struggle with it.
   function explain(adj, ctx) {
     const who = `${ctx.trainee_id} (${adj.seat})`, comp = compLabel(adj.target_competency);
     const ev = (adj.evidence_event_ids || []).map(id => ctx.eventsById[id]).filter(Boolean);
@@ -41,8 +41,8 @@
       text = `No recent ${comp} evidence from ${who}, and it is the weakest of their focus competencies, so ${change} to create exposure.`;
     else
       text = up
-        ? `${who} handled only ${s} of the last ${n} ${comp} events, so ${change} to keep pressing it.`
-        : `${who} handled ${s} of the last ${n} ${comp} events, so ${change} to ease the pressure.`;
+        ? `${who} handled ${s} of the last ${n} ${comp} events, so ${change} to raise the pressure.`
+        : `${who} handled only ${s} of the last ${n} ${comp} events, so ${change} to ease the pressure.`;
     if (adj.clamped) text += ` The request (${fmt(adj.requested)}) was capped at the instructor's envelope.`;
     return text;
   }

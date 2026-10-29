@@ -4,8 +4,8 @@
 //   Debrief.next(trainee_id, {record, seat})       -> { target, mean, evidence, reason, pending, trend, lines[] }
 //
 // why() groups the adjustments that served the trainee's seat into phases (same target, same direction) and
-// explains each from the trainee's own events: the CGFs got sharper while the trainee was missing the target
-// (remediation, INTERFACES §6) and eased off once they met it. next() applies the target rule of INTERFACES
+// explains each from the trainee's own events: the CGFs got sharper while the trainee was handling the target
+// well (challenge, INTERFACES §6) and eased off while they were struggling with it. next() applies the target rule of INTERFACES
 // §5.1 to the trainee's profile, so the instructor sees which competency the CGFs will press next time and why.
 //
 // This is a view on the session record and the history, not part of the §9 report: the report keeps exactly
@@ -97,9 +97,10 @@
     const comp = lower(p.target), n = p.evidence.success + p.evidence.fail;
     const did = p.changes.map(c => c.behaviour).join(', ');
     if (p.source === 'instructor_steer') return `The instructor steered the CGFs onto ${comp}, so they ${did}.`;
-    if (p.direction === 'up' && !n) return `There was no recent ${comp} evidence yet, and it was the lowest-rated of the trainee's seat competencies, so the CGFs ${did} to create a chance to practise it.`;
-    if (p.direction === 'up') return `The trainee handled ${p.evidence.success} of their last ${n} ${comp} events, still missing the target, so the CGFs ${did} to keep pressing it.`;
-    if (p.direction === 'down') return `The trainee handled ${p.evidence.success} of their last ${n} ${comp} events, now meeting the target, so the CGFs ${did} to ease off.`;
+    const seen = p.so_far.success + p.so_far.fail;     // the policy needs 3 target events before it reads a success rate
+    if (p.direction === 'up' && (!n || seen < 3)) return `There was no recent ${comp} evidence yet, and it was the lowest-rated of the trainee's seat competencies, so the CGFs ${did} to create a chance to practise it.`;
+    if (p.direction === 'up') return `The trainee handled ${p.evidence.success} of their last ${n} ${comp} events, doing well on the target, so the CGFs ${did} to raise the challenge.`;
+    if (p.direction === 'down') return `The trainee handled only ${p.evidence.success} of their last ${n} ${comp} events, still struggling with the target, so the CGFs ${did} to ease off.`;
     return `The CGFs ${did}.`;
   }
 
@@ -112,9 +113,9 @@
     const lines = [];
     const targets = [...new Set(phases.map(p => p.target))];
     lines.push(`The CGFs adapted to this trainee in ${phases.length} ${phases.length === 1 ? 'phase' : 'phases'}, aimed at ${targets.map(lower).join(' and ')}.`);
-    if (ups && downs) lines.push('They got sharper while the trainee was missing the target and eased off once the trainee started meeting it.');
-    else if (ups) lines.push('They only got sharper: the trainee had not yet met the target by the end of the run.');
-    else lines.push('They only eased off: the trainee was already meeting the target.');
+    if (ups && downs) lines.push('They got sharper while the trainee was handling the target well and eased off while the trainee was struggling with it.');
+    else if (ups) lines.push('They only got sharper: the trainee kept handling the target well.');
+    else lines.push('They only eased off: the trainee was struggling with the target.');
     return lines;
   }
 
@@ -189,7 +190,7 @@
     }
     if (o.overall && o.overall !== o.target)
       lines.push(`${R.LABELS[o.overall] || o.overall} is still the trainee\u2019s lowest-rated overall (${o.overall_mean}); it is pressed whenever they sit in a seat that exercises it.`);
-    lines.push('While the trainee keeps missing the target the CGFs escalate sooner and react harder in that area; once the trainee handles it consistently they ease back toward the instructor’s base settings.');
+    lines.push('While the trainee handles the target well the CGFs escalate sooner and react harder in that area; while the trainee struggles with it they ease back toward the instructor’s base settings.');
     if (o.strongest && o.strongest !== o.target) lines.push(`${R.LABELS[o.strongest] || o.strongest} is the trainee’s strongest (${o.strongest_mean}), so the CGFs will not spend pressure there.`);
     if (o.thin.length) lines.push(`Not enough evidence yet for ${o.thin.map(lower).join(', ')}; these stay neutral until the trainee is tested on them.`);
     if (o.pending && latest) lines.push(`Includes this session (${latest.session_id}) ahead of the competency update.`);

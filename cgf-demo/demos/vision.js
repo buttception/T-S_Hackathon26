@@ -52,9 +52,9 @@
         do: a => a.focus('own', 22), hold: 8 },
 
       // 4. Current behaviour sets HOW HARD
-      { caption: 'Fast-forward: Ben starts answering the warnings…', speed: 480,
+      { caption: 'Fast-forward: Ben keeps missing the warnings…', speed: 480,
         until: a => navAdjustments(a).some(x => x.pressure_direction === 'down'), hold: 6, timeout: 60 },
-      { caption: 'Ben is doing well now, so the enemy eases off (tag: live).',
+      { caption: 'Ben is struggling, so the enemy eases off (tag: live). Had he been doing well, it would push harder.',
         do: a => { reasoning(a); a.focus('own', 22); }, speed: 30, hold: 21 },
 
       // 5. Teamwork from the harness and from the crew's skill

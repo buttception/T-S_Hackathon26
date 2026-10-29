@@ -23,18 +23,19 @@ function load(initial) {
 const plain = v => JSON.parse(JSON.stringify(v));
 const recordOf = (CGF, id) => plain(CGF.History.record(id));
 
-test('why: trainee_b phases go sharper on hails, then ease off, and skip the crewmate\'s adjustment', () => {
+test('why: trainee_b phases go sharper on hails while untested, ease off while failing, press again as he improves, and skip the crewmate\'s adjustment', () => {
   const CGF = load();
   const w = CGF.Debrief.why(recordOf(CGF, 's_20261030_02'), 'trainee_b');
   assert.deepEqual(plain(w.phases.map(p => [p.target, p.direction, p.adjustments.length])),
-    [['hail_discipline', 'up', 5], ['hail_discipline', 'down', 3]]);
+    [['hail_discipline', 'up', 2], ['hail_discipline', 'down', 3], ['hail_discipline', 'up', 3]]);
   assert.equal(w.crew_phases, 1);                                     // weight.territorial served trainee_c11
   const up = w.phases[0];
-  assert.deepEqual(plain(up.changes.find(c => c.setting === 'weight.ignoredWarning')), { setting: 'weight.ignoredWarning', old: 1, new: 1.5, clamped: false, behaviour: 'took ignored hails more seriously' });
-  assert.equal(up.changes.find(c => c.setting === 'reaction_delay_s').behaviour, 'reacted faster');
-  assert.match(up.reason, /keep pressing/);
-  assert.match(w.phases[1].reason, /ease off/);
-  assert.match(w.lines.join(' '), /sharper while the trainee was missing the target and eased off/);
+  assert.deepEqual(plain(up.changes.find(c => c.setting === 'weight.ignoredWarning')), { setting: 'weight.ignoredWarning', old: 1, new: 1.25, clamped: false, behaviour: 'took ignored hails more seriously' });
+  assert.match(up.reason, /no recent hail discipline evidence/i);   // fewer than 3 target events yet: exposure, not a success rate
+  assert.match(w.phases[1].reason, /struggling.*ease off/);
+  assert.equal(w.phases[2].changes.find(c => c.setting === 'reaction_delay_s').behaviour, 'reacted faster');
+  assert.match(w.phases[2].reason, /doing well.*raise the challenge/);
+  assert.match(w.lines.join(' '), /sharper while the trainee was handling the target well and eased off while the trainee was struggling/);
 });
 
 test('why: evidence counts are the trainee\'s own events from the record', () => {
@@ -45,6 +46,7 @@ test('why: evidence counts are the trainee\'s own events from the record', () =>
     const ev = rec.events.filter(e => ids.has(e.event_id) && e.trainee_id === 'trainee_b');
     assert.equal(p.evidence.success, ev.filter(e => e.outcome === 'success').length);
     assert.equal(p.evidence.fail, ev.filter(e => e.outcome === 'fail').length);
+    if (p.so_far.success + p.so_far.fail < 3) continue;       // before 3 target events the reason is the exposure probe, not a success rate
     assert.ok(p.reason.includes(`${p.evidence.success} of their last ${p.evidence.success + p.evidence.fail}`), p.reason);
   }
 });

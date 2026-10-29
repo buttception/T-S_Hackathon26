@@ -7,7 +7,7 @@ Instructors define CGFs and set the bounds within which each one may adapt. Each
 ## What the demo shows
 
 1. Same strait, same seed, two trainees side by side. CGFs facing the trainee with weak hail discipline press hails; CGFs facing the strong trainee do not.
-2. A profile strip per trainee. When the weak trainee starts acknowledging hails, the pressure eases.
+2. A profile strip per trainee. While the weak trainee keeps missing hails the pressure eases; when they answer, it rises.
 3. A live log explaining every adjustment and the evidence behind it.
 4. The instructor types "test trainee B's collision avoidance" and the CGFs shift.
 5. A toggle to fixed mode for assessment runs.

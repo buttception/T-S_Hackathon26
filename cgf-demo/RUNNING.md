@@ -51,7 +51,7 @@ Pick **Vision: adaptive CGF trainer (~7 min)** in the Demo list and press **Play
 2. Ben (trainee_b) is weak at answering radio warnings, according to his history, so the enemy tests that first (tag *history*).
 3. An enemy boat warns him and he does not answer.
 4. The enemy works as a team: the other boats join in.
-5. Fast-forward: Ben starts answering, so the enemy eases off (tag *live*).
+5. Fast-forward: Ben keeps missing the warnings, so the enemy eases off (tag *live*). A trainee who does well gets the opposite: the enemy pushes harder.
 6. The instructor switches the enemy to an elite force, and the trainer matches the enemy's teamwork to the crew's skill (tag *team*).
 7. A plain-English instruction steers the trainer onto collision avoidance.
 8. The session is saved for the report and Ben's history.

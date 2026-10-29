@@ -74,7 +74,7 @@
 
 ## Decisions of 2026-10-29 (JL), after Devin's adaptive runtime
 
-- **Band direction: remediation.** Keep pressing while the trainee is still missing the target, ease off once they meet it (INTERFACES §6, PLAN §2). One rule, no `band_mode` in the config. Devin removes the challenge mode.
+- **Band direction: challenge (reversed 2026-10-29, JL).** Raise the pressure while the trainee handles the target well, ease off while they struggle (INTERFACES §6, PLAN §2). One rule, no `band_mode` in the config. This replaces the same day's remediation decision; the rule is one line in `js/adapt/adapt.js`.
 - **Run length: 2400 s** default. First hails come about 15 minutes in. A validation run showed only four hail events in 2400 s, so the live signal may engage late (see `replies-to-devin-decisions.md`).
 - **Default envelope raised** to the runtime's defaults (aggression and sensitivity base 1.0, reaction delay base 30 s) and extended to every setting a tactic nudges.
 - **Runtime validators added** in `contracts/`: `validateEvent`, `validateAdjustment`, `validateSessionRecord`. Checked against real sessions from the runtime.

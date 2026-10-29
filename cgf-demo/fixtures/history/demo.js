@@ -113,9 +113,9 @@
         ['trainee_c11', 'collision_avoidance', 'SSS', 200, 200], ['trainee_c11', 'territorial_awareness', 'FSF', 300, 180]],
       peaks: [[250, 'trainee_b', 'ship_1'], [430, 'trainee_b', 'ship_2']],
       adjust: [[120, 'weight.ignoredWarning', 1.0, 1.25, 'up', 'hail_discipline'], [200, 'aggression', 0.4, 0.5, 'up', 'hail_discipline'],
-        [280, 'weight.ignoredWarning', 1.25, 1.5, 'up', 'hail_discipline'], [360, 'reaction_delay_s', 8, 6, 'up', 'hail_discipline'],
-        [440, 'aggression', 0.5, 0.6, 'up', 'hail_discipline'], [520, 'weight.ignoredWarning', 1.5, 1.35, 'down', 'hail_discipline'],
-        [600, 'aggression', 0.6, 0.5, 'down', 'hail_discipline'], [680, 'weight.ignoredWarning', 1.35, 1.25, 'down', 'hail_discipline'],
+        [280, 'weight.ignoredWarning', 1.25, 1.1, 'down', 'hail_discipline'], [360, 'aggression', 0.5, 0.45, 'down', 'hail_discipline'],
+        [440, 'weight.ignoredWarning', 1.1, 1.0, 'down', 'hail_discipline'], [600, 'aggression', 0.45, 0.5, 'up', 'hail_discipline'],
+        [680, 'weight.ignoredWarning', 1.0, 1.25, 'up', 'hail_discipline'], [740, 'reaction_delay_s', 8, 6, 'up', 'hail_discipline'],
         [760, 'weight.territorial', 1.0, 1.2, 'up', 'territorial_awareness']] }),
     profile_start: { trainee_b: prof('trainee_b', B[3]), trainee_c11: prof('trainee_c11', C11) }, means_end: {}
   });

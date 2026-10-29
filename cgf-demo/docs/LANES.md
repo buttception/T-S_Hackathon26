@@ -67,7 +67,7 @@ Tasks (Sim S1 to S7 keep their meaning from `PLAN.md` §7):
 | ID | Task | Acceptance |
 |---|---|---|
 | D1 | Fixed-step mode, event emission, scripted trainees, `apply`, known engine fixes (S1 to S4, S6) | As `PLAN.md` §7 |
-| D2 | Adaptation policy (old E3 to E5): at the start, tailor the CGFs from the seat's profile (picks the competency); during the run, raise or lower pressure from the live success rate; clamp to the envelope; fixed mode makes zero adjustments | Weak-hail trainee's CGFs press hails within two cycles; pressure eases when they improve |
+| D2 | Adaptation policy (old E3 to E5): at the start, tailor the CGFs from the seat's profile (picks the competency); during the run, raise or lower pressure from the live success rate; clamp to the envelope; fixed mode makes zero adjustments | Weak-hail trainee's CGFs press hails within two cycles; pressure eases while they keep missing hails and rises when they answer them |
 | D3 | **Instructor reasoning panel**: for every raise or lower of difficulty or hostility, show what changed (setting, old, new), the direction, the trainee actions that caused it (the evidence events) and a one-line reason. Reasons come from templates; the LLM may rephrase but never supplies a number | Every adjustment appears with direction, evidence and reason; works with the LLM off |
 | D4 | Steering text to a directive (old E6, C7), reusing `js/llm.js` | Invalid parses are rejected, never applied |
 | D5 | Emit the **session record** when a run ends (events, adjustments, outcome, seed, config) on the `ended` message path | Glenda and JL consume it without reading runtime internals |
