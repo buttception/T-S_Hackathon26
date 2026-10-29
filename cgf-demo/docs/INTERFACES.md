@@ -134,7 +134,9 @@ Derivation: `expandAllocation(allocation) -> ScenarioConfig` returns the one sec
 
 Handoff: the page writes the `Allocation` to `localStorage` under `cgf.allocation` (the Lead confirms the key). The URL-encoded fallback carries the same object.
 
-### 3.2 AI partners (proposed 2026-10-29, to confirm with Devin and Glenda)
+### 3.2 AI partners (TENTATIVE, proposed 2026-10-29)
+
+**TENTATIVE (JL, 2026-10-29): build only after the outstanding core items are cleared. Single crew is decided; AI partners are not.** Do not implement `role: "partner"`, `derived_from` or `agent_params` yet; all crew entries are trainees.
 
 A `partner` seat is an AI crewmate. It lets one trainee practise with a full crew, with crewmates who behave as a person did in older runs.
 

@@ -44,7 +44,7 @@ Tasks:
 | J4 | Competency update (old E1, E2): Beta posterior per competency from the session record and report facts; profile persistence in `localStorage` and seeded fixtures | A fixture session for the weak trainee lowers `hail_discipline`; the profile round-trips |
 | J5 | Allocation page reads the saved profile, so the bars move after a run | Bars change after a run |
 | J6 | Cohort data and heatmap data (old E8, C8; first to cut) | Matrix for the seeded cohort |
-| J7 | **AI partners** (added 2026-10-29): the allocation page lets the instructor mark a seat as `partner` and pick `derived_from` (a trainee and optional sessions); `Assess.partnerParams(derived_from) -> agent_params` computes the partner's success rates per event type from `History.entries`, else from profile means, else a default (INTERFACES §3.2) | A partner seat validates and gets `agent_params`; the same inputs give the same params |
+| J7 | **TENTATIVE: AI partners** (added 2026-10-29): the allocation page lets the instructor mark a seat as `partner` and pick `derived_from` (a trainee and optional sessions); `Assess.partnerParams(derived_from) -> agent_params` computes the partner's success rates per event type from `History.entries`, else from profile means, else a default (INTERFACES §3.2) | A partner seat validates and gets `agent_params`; the same inputs give the same params |
 | J8 | **Single crew** (added 2026-10-29): `Allocation` loses `slots` and `pane`; `expandAllocation` returns one config; `host.html` hosts one runtime; `link/` messages drop the pane letter (INTERFACES §3.1, §11); tests updated | Allocation, host and link tests pass for one crew; no reference to pane A or B remains except the `?pane=run` marker |
 
 ### Devin: simulation runtime and CGF behaviour
@@ -71,7 +71,7 @@ Tasks (Sim S1 to S7 keep their meaning from `PLAN.md` §7):
 | D5 | Emit the **session record** when a run ends (events, adjustments, outcome, seed, config) on the `ended` message path | Glenda and JL consume it without reading runtime internals |
 | D6 | **Cooperating CGFs**: units in a force share what they know through a shared picture (last known ownship position and heading, warnings issued, who has been alerted, current target), and act on it. Example: when one unit's warning is ignored, the others in its force know, so they escalate together, shadow from different bearings, or hand the ownship over between units. A unit that loses contact uses the last shared fix | Two units of one force show a coordinated response to one trainee action, visible in the reasoning panel. Same seed gives the same result. Sharing is one-way information; it never changes the trainee's score or a unit's position outside its own behaviour (invariant 8) |
 | D7 | **Three signals per CGF, stated together** in the reasoning panel: (a) reaction to the trainee's current actions (exists: tension factors), (b) customisation from the trainee's past training (D2, profile), (c) cooperation with other CGFs (D6). Each adjustment or behaviour change names which of the three caused it | Every entry in the panel carries a cause tag: `live`, `history` or `team` |
-| D8 | **Partner agents** (added 2026-10-29): `js/sim/crew-agent.js` plays a `partner` seat from `agent_params` (rates per event type, reaction delay) with the seeded generator; the adaptation policy ignores partner seats (no working copy, no target, no adjustment caused by their events); their events still carry `seat` | A partner seat acts from its params; two runs on one seed give identical events; no adjustment is ever caused by a partner seat |
+| D8 | **TENTATIVE: partner agents** (added 2026-10-29): `js/sim/crew-agent.js` plays a `partner` seat from `agent_params` (rates per event type, reaction delay) with the seeded generator; the adaptation policy ignores partner seats (no working copy, no target, no adjustment caused by their events); their events still carry `seat` | A partner seat acts from its params; two runs on one seed give identical events; no adjustment is ever caused by a partner seat |
 
 ### Glenda: end-of-training report and trainee history
 
@@ -125,7 +125,7 @@ Tasks:
 | From to | What | Where defined | Status |
 |---|---|---|---|
 | JL to Devin | Run config: platform, crew (each seat `trainee` or `partner`, with `agent_params` for partners), per-seat profile, scenario, seed, mode, envelope | INTERFACES §3, §3.2, §11 (`link-init`) | Built for two panes; single crew and partners proposed |
-| Glenda to JL | `History.entries(trainee_id) -> entry[]`, so `Assess.partnerParams` can read past runs | INTERFACES §9.1 | Proposed |
+| Glenda to JL (tentative) | `History.entries(trainee_id) -> entry[]`, so `Assess.partnerParams` can read past runs | INTERFACES §9.1 | Proposed |
 | Devin to Glenda and JL | **Session record** at the end of a run: events (§4), adjustments (§7), outcome, seed, config | INTERFACES §9.1, §11 (`record`) | Built 2026-10-29. Devin's runtime emits it, the pane forwards it, the host validates it, stores `cgf.lastRun` and calls `Report.finishSession`. Competency update (JL) not built |
 | Glenda to JL | **Report** facts per session | INTERFACES §9 | Proposed |
 | Glenda to JL and Devin | Trainee history summary | INTERFACES §9.1 | Proposed |
