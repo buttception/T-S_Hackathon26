@@ -1,5 +1,5 @@
 // Hands-off demo scripts. Each drives the trainee and the instructor automatically with captions.
-// Play from the "Demo" control at the top of the panel, or open index.html?demo=<id> (add &loop=1 to repeat).
+// Play from the "Demo" control at the top of the panel, or open runtime.html?demo=<id> (add &loop=1 to repeat).
 // Steps with a "prompt" type an instructor prompt visibly into the command box, then run it.
 // Injects are used at key moments so every run tells the same story regardless of timing.
 

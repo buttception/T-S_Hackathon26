@@ -5,10 +5,10 @@ harness demo, or a **2-minute pitch** using the sea + air demo.
 
 ## Before you start (2 minutes)
 
-- Open `index.html` in Chrome or Edge on the presenting laptop and make the window full screen (`F11`).
+- Open `runtime.html` in Chrome or Edge on the presenting laptop and make the window full screen (`F11`).
 - Choose **Harness reuse and prompting: sea, land, air** in the Demo dropdown, but don't press Play yet.
 - Turn off notifications. Unplug the network cable or switch on airplane mode: running offline is part of the pitch.
-- Backup: have `index.html?demo=harness&loop=1` open in a second tab. It plays by itself, so you can talk over it if anything goes wrong.
+- Backup: have `runtime.html?demo=harness&loop=1` open in a second tab. It plays by itself, so you can talk over it if anything goes wrong.
 
 ## 5-minute talk track (long demo)
 

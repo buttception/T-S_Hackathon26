@@ -1,5 +1,5 @@
-// Stand-alone project config: open index.html?config=projects/piracy-drill/config.js
-// Same engine, a different set of harnesses and scenarios. Paths are relative to index.html.
+// Stand-alone project config: open runtime.html?config=projects/piracy-drill/config.js
+// Same engine, a different set of harnesses and scenarios. Paths are relative to runtime.html.
 window.CGF_CONFIG = {
   title: 'Anti-Piracy Escort Trainer',
   subtitle: 'Blue force: Singapore',

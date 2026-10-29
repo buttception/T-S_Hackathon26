@@ -1,5 +1,5 @@
 // Project configuration. The engine in js/ is shared; a project is just this list of files.
-// Paths are relative to index.html. Use another project's config with index.html?config=projects/<name>/config.js
+// Paths are relative to runtime.html. Use another project's config with runtime.html?config=projects/<name>/config.js
 window.CGF_CONFIG = {
   title: 'CGF Trainer',
   subtitle: 'Blue force: Singapore · sea, land and air',
@@ -29,7 +29,7 @@ window.CGF_CONFIG = {
   ],
   defaultScenario: 'strait-transit',
 
-  // Hands-off demo scripts (Play demo button, or index.html?demo=harness&loop=1)
+  // Hands-off demo scripts (Play demo button, or runtime.html?demo=harness&loop=1)
   demos: [
     'demos/demos.js'
   ],

@@ -21,7 +21,7 @@
     if (!first) throw new Error('no scenarios loaded; check the "scenarios" list in ' + configPath);
     CGF.loadScenario(first);
 
-    // Hands-off mode: index.html?demo=tour (&loop=1 to repeat for an unattended stand)
+    // Hands-off mode: runtime.html?demo=tour (&loop=1 to repeat for an unattended stand)
     const qs = new URLSearchParams(location.search);
     if (qs.get('demo')) CGF.demo.start(qs.get('demo'), { loop: qs.get('loop') === '1' });
 

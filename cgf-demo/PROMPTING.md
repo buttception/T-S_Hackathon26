@@ -42,7 +42,7 @@ instructor text ──► context (live units, forces, allowed harnesses, states
 `http://localhost:8080`), and type the model name the server reports.
 
 **If Test connection fails with "cannot reach"** while the server is running, the browser is probably blocking the request because of
-the page's origin (opening `index.html` from disk uses a `file://` origin). Either:
+the page's origin (opening `runtime.html` from disk uses a `file://` origin). Either:
 - allow the origin on the model server (for Ollama, set the `OLLAMA_ORIGINS` environment variable, for example `OLLAMA_ORIGINS=*` on an isolated training machine, then restart Ollama), or
 - serve the trainer folder locally and open `http://localhost:8765`:
   ```bash

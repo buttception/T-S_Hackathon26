@@ -18,9 +18,9 @@ Other guides: [PRESENTING.md](PRESENTING.md) (how to demo it) and [PROMPTING.md]
 
 ## 1. Quick start
 
-1. Open `index.html` in Chrome or Edge (double-click it).
+1. Open `runtime.html` in Chrome or Edge (double-click it).
 2. Press **Start** (or `Space`) and steer to the green objective without starting a fight.
-3. Or pick a demo next to **Play demo** and watch. `Esc` hands you control. `index.html?demo=harness&loop=1` runs unattended.
+3. Or pick a demo next to **Play demo** and watch. `Esc` hands you control. `runtime.html?demo=harness&loop=1` runs unattended.
 
 If a locked-down browser blocks local scripts, serve the folder instead and open `http://localhost:8765`:
 
@@ -144,7 +144,7 @@ Each CGF unit has a **tension** score from 0 to 100 (shown as *alarm* for civil 
 
 ```
 cgf-demo/
-├── index.html, config.js, css/style.css
+├── runtime.html, config.js, css/style.css
 ├── js/                     Shared engine
 │   ├── util.js             Maths helpers
 │   ├── engine.js           Registries, domains and scaling, sim loop, tension model, CGF log, injects, modes
@@ -172,7 +172,7 @@ cgf-demo/
 
 ## 7. Extending it
 
-- **New project**: create `projects/<name>/config.js` listing plugins, harnesses, scenarios and demos (copy piracy-drill), then open `index.html?config=projects/<name>/config.js`.
+- **New project**: create `projects/<name>/config.js` listing plugins, harnesses, scenarios and demos (copy piracy-drill), then open `runtime.html?config=projects/<name>/config.js`.
 - **New harness**: copy any file in `harnesses/`. The fields are `id`, `name`, `kind`, `affiliation`, `armed`, `baseTension`, `aggression`, `decayPerMin`, `ackRelief`, `warnRepeatSec`, `ignoreAfterSec`, `failState`, `weights`, `ranges` and `states`. Each state has `name`, `min`, `behaviour`, `range`, `speedMult`, `msg` (placeholders `{unit}` `{force}` `{hdg}` `{own}` `{area}` `{ownType}`), `warn`, `fcRadar`, `action` and `standDown`.
 - **New scenario**: copy a file in `scenarios/`. The fields are `domain`, optional `scale`, `terms` and `view`, plus `forces` (`label`, `tag`, `kind`, `color`, `harness`), `ownShip`, `objective`, `land` (terrain), `zones` (`territorial` / `contiguous` with an `owner`), `lanes` (routes, with `style` `air` for airways), `units` (optional per-unit `domain`, `minSpd`, `patrol` or `route`) and `spawn` templates.
 - **Plugin**: `CGF.registerBehaviour`, `CGF.registerFactor` or `CGF.registerMalfunction` in a script listed under `plugins`.
