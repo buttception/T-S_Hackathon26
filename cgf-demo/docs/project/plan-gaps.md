@@ -6,6 +6,22 @@
 
 ---
 
+## Status update (2026-10-29, after the lane review, `main` at `c96d8fc`)
+
+The tables below were written at `34abfda`. Since then:
+
+| Gaps | Now |
+|---|---|
+| 1, 3 (Devin's lane empty, no event/adjustment/record validators) | Resolved: adaptive runtime (D1 to D5), validators in `contracts/`, `runner/run-tests.ps1` |
+| 2, 16 (§9.1 contracts only proposed) | Session record is built and flows through host and report. Not formally signed off by Devin and Glenda |
+| 7 (panes identical) | Superseded by one crew; scripted trainees exist in `trainees/` |
+| 29 (no cooperation) | Built in `js/sim/team.js` (D6); cause tags `live`, `history`, `team` exist |
+| 34 to 36, 38, 39 (partners, single crew, baseline) | Done on JL's side (J7 to J9); D8 built by Devin, JL to verify and lift `PARTNERS_RUN`. Report-side partner handling is with Glenda's agent |
+| 22 (run-of-show) | Demo platform decided: warship on `strait-transit`. The beat-by-beat run-of-show is still open |
+| 17 (Eevee markup) | Settled by `design/requests.md`; triage in `eevee-requests-triage.md` |
+| 20 to 25, 27, 28, 13, 18, 19, 21 | Still open (deck owner, savings figures, HLA/DIS slides, fallback and replay, `.gitattributes`, repo hygiene check, event clock, event rules, IT) |
+| 8, 9, 10, 11 | Not verified by this review; run `runner/run-tests.ps1` to confirm |
+
 ## A. Critical path: nothing downstream can start
 
 | # | Gap | Evidence | Owner |

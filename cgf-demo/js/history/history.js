@@ -3,7 +3,7 @@
 // fixtures/history/*.js as session records; their entries are built with Report.buildWith, so the
 // seeded facts are computed by the same code as live ones.
 //
-//   History.append(entry)                              append; an existing session_id is never overwritten
+//   History.append(entry)                              append; an existing session_id is never overwritten; a partner_ id is refused
 //   History.attachAssessment(trainee_id, session_id, means)   JL's competency update fills competency_means_end
 //   History.context(trainee_id, n) -> {weak[], strong[], sessions}   summary of the last n sessions
 //   History.list(trainee_id), History.find(trainee_id, session_id), History.trainees(), History.record(session_id)
@@ -29,7 +29,7 @@
   function seeded() {
     if (seedCache) return seedCache;
     seedCache = {};
-    for (const s of seedData()) for (const c of s.record.crew) {
+    for (const s of seedData()) for (const c of CGF.Report.traineesOf(s.record)) {
       const report = CGF.Report.buildWith(s.record, c.trainee_id, (s.profile_start || {})[c.trainee_id] || null);
       const entry = CGF.Report.entryFor(s.record, report);
       entry.competency_means_end = (s.means_end || {})[c.trainee_id] || null;
@@ -53,6 +53,7 @@
     const need = ['session_id', 'trainee_id', 'scenario', 'mode', 'outcome', 'report'];
     const missing = need.filter(k => entry == null || entry[k] == null);
     if (missing.length) throw new Error('history entry: missing ' + missing.join(', '));
+    if (/^partner_/.test(String(entry.trainee_id))) throw new Error('history entry: ' + entry.trainee_id + ' is an AI partner; partners get no history');
     if (find(entry.trainee_id, entry.session_id)) return;             // append-only: never overwrite
     const arr = stored(entry.trainee_id);
     arr.push(entry);

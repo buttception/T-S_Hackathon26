@@ -35,6 +35,9 @@
     return { cls: 'rp-level--developing rp-mid', text: 'Developing' };
   }
   // Classes by meaning (design/requests.md R17); the legacy rp-good / rp-bad ride along until report.css moves over
+  // One event is evidence about a competency, not a pass or fail of the session (R20): its own classes and words
+  const resultCls = o => o === 'success' ? 'rp-result--met' : o === 'fail' ? 'rp-result--missed' : '';
+  const resultText = o => o === 'success' ? 'met' : o === 'fail' ? 'missed' : '—';
   const outcomeCls = o => o === 'success' ? 'rp-outcome--success rp-good' : o === 'fail' ? 'rp-outcome--fail rp-bad' : '';
   const dirCls = d => d === 'up' ? 'rp-dir--up rp-bad' : d === 'down' ? 'rp-dir--down rp-good' : '';
 
@@ -74,7 +77,7 @@
       const errs = R.checkRecord(rec);
       if (errs.length) return { error: errs.join('; ') };
       // The host normally appended these already; in a browser that keeps file:// storage per page, add them here
-      for (const c of rec.crew) if (!H.find(c.trainee_id, rec.session_id)) H.append(R.entryFor(rec, R.build(rec, c.trainee_id)));
+      for (const c of R.traineesOf(rec)) if (!H.find(c.trainee_id, rec.session_id)) H.append(R.entryFor(rec, R.build(rec, c.trainee_id)));
       return { sessions: [rec.session_id], records: { [rec.session_id]: rec } };
     }
     if (qs.get('session')) return { sessions: qs.get('session').split(',').filter(Boolean), records: {} };
@@ -87,7 +90,7 @@
   }
 
   function entriesFor(sid, rec) {
-    const ids = rec ? rec.crew.map(c => c.trainee_id) : H.trainees();
+    const ids = rec ? R.traineesOf(rec).map(c => c.trainee_id) : H.trainees();
     return ids.map(t => H.find(t, sid)).filter(Boolean);
   }
 
@@ -99,7 +102,10 @@
         const f = e.report.facts, [s, fl] = totals(f), bw = bestAndWorst(f);
         return `<tr><td><a href="#t-${esc(e.session_id)}-${esc(e.trainee_id)}">${esc(e.trainee_id)}</a></td><td>${esc(seatLabel(seatOf(e.trainee_id)))}</td>` +
           `<td>${s} / ${fl}</td><td class="rp-level--strength rp-good">${esc(label(bw.best))}</td><td class="rp-level--focus rp-bad">${esc(label(bw.worst))}</td><td>${esc(label(D.next(e.trainee_id, { record: rec }).target))}</td></tr>`;
-      }).join('') + '</tbody></table>';
+      }).join('') +
+      // AI partners are listed, not assessed (INTERFACES §3.2): one line each, no figures
+      (rec ? R.partnersOf(rec) : []).map(p => `<tr class="rp-partner"><td>${esc(p.trainee_id)}</td><td>${esc(seatLabel(p.seat))}</td>` +
+        `<td colspan="4" class="muted">${esc(R.partnerLine(p))}; not assessed</td></tr>`).join('') + '</tbody></table>';
   }
 
   function competencyTable(e) {
@@ -200,7 +206,7 @@
     const events = `<details class="rp-moments rp-moments-events"><summary>Trainee events (${ev.length})</summary>` +
       (ev.length ? `<table class="rp-table"><thead><tr><th>Time</th><th>Trainee</th><th>What happened</th><th>Competency</th><th>Result</th></tr></thead><tbody>` +
         ev.map(e => `<tr><td>${mmss(e.t)}</td><td>${esc(e.trainee_id)}</td><td>${esc(R.EVENT_LABELS[e.type] || e.type)}</td><td>${esc(e.competency ? label(e.competency) : '—')}</td>` +
-          `<td class="${outcomeCls(e.outcome)}">${esc(e.outcome || '—')}</td></tr>`).join('') +
+          `<td class="${resultCls(e.outcome)}">${resultText(e.outcome)}</td></tr>`).join('') +
         '</tbody></table>' : '<p class="muted small">No events were recorded in this session.</p>') + '</details>';
     const adjustments = `<details class="rp-moments rp-moments-adjustments"><summary>CGF adjustments (${adj.length})</summary>` +
       (adj.length ? `<table class="rp-table"><thead><tr><th>Time</th><th>Difficulty</th><th>What the CGFs did</th><th>Setting</th><th>Change</th><th>Aimed at</th><th>For</th><th>Source</th></tr></thead><tbody>` +
@@ -216,7 +222,7 @@
     if (!entries.length) return `<section class="rp-session"><h2>${esc(sessionTitle(sid))}</h2><p>No report found for this session (${esc(sid)}).</p></section>`;
     const e0 = entries[0];
     const meta = [rec && rec.pane ? `Pane ${rec.pane}` : null, sid, titleCase(e0.scenario), e0.mode, rec ? `seed ${rec.seed}` : null,
-      rec ? dur(rec.duration_s) : null, rec ? `${titleCase(rec.platform)} crew of ${rec.crew.length}` : null].filter(Boolean).join(' · ');
+      rec ? dur(rec.duration_s) : null, rec ? `${titleCase(rec.platform)} crew of ${rec.crew.length}${R.partnersOf(rec).length ? ` (${R.partnersOf(rec).length} AI partner${R.partnersOf(rec).length === 1 ? '' : 's'})` : ''}` : null].filter(Boolean).join(' · ');
     return `<section class="rp-session">
       <h2>${esc(sessionTitle(sid))} <span class="rp-outcome ${outcomeCls(e0.outcome)}">${e0.outcome === 'success' ? '✓ Completed' : '✗ Failed'}</span></h2>
       <p class="muted">${esc(meta)}</p>
@@ -237,7 +243,7 @@
     const multi = new Set(here.map(h => h.sid)).size > 1;
     const others = H.trainees().filter(t => !here.some(h => h.trainee === t));
     $('rpTrainee').innerHTML = '<option value="">Jump to a trainee…</option>' +
-      (here.length ? `<optgroup label="In this report">${here.map(h => `<option value="#${esc(h.id)}">${esc(nameOf(h.trainee))}${multi ? ` · ${esc(h.sid)}` : ''}</option>`).join('')}</optgroup>` : '') +
+      (here.length ? `<optgroup label="In this report">${here.map(h => `<option value="#${esc(h.id)}">${esc(nameOf(h.trainee))}${multi ? ` · ${esc(sessionTitle(h.sid))}` : ''}</option>`).join('')}</optgroup>` : '') +
       (others.length ? `<optgroup label="Other trainees (opens their latest report)">${others.map(t => `<option value="${esc(t)}">${esc(nameOf(t))}</option>`).join('')}</optgroup>` : '');
     window.__rpShown = want;
   }
