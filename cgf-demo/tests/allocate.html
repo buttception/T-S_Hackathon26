@@ -10,13 +10,14 @@
 </style>
 </head>
 <body>
-<h1>Allocation tests (contracts + buildRunConfigs)</h1>
+<h1>Allocation tests (contracts, platforms, crews, allocation)</h1>
 <div id="summary">running…</div>
 <ul id="results"></ul>
 
 <script src="../js/util.js"></script>
 <script src="../contracts/contracts.js"></script>
 <script src="../fixtures/envelope-default.js"></script>
+<script src="../fixtures/platforms.js"></script>
 <script src="../fixtures/profiles/roster.js"></script>
 <script src="../js/ui-allocate.js"></script>
 <script>
@@ -29,18 +30,62 @@
   const near = (a, b) => ok(Math.abs(a - b) < 1e-9, `got ${a}, want ${b}`);
   const clone = o => JSON.parse(JSON.stringify(o));
 
+  const DOMAINS = { 'strait-transit': 'sea', 'sea-air': 'sea', 'border-patrol': 'land', 'airspace-patrol': 'air' };
+  const ids = Object.keys(DOMAINS), domainOf = id => DOMAINS[id] || 'sea';
+  const ctx = { scenarioIds: ids, domainOf, models: F.platformModels };
+  const build = s => A.buildAllocation(s, F.envelopeDefault);
+  const cfgs = s => C.expandAllocation(build(s));
+
+  // A ready selection: warship, two crews of three
   const sel = () => ({
-    slots: { A: 'trainee_a', B: 'trainee_b' },
-    agents: { A: 'trainees/strong.js', B: 'trainees/weak_hail_discipline.js' },
+    platform: { type: 'warship', model: 'formidable' },
+    crews: { A: { weapons: 'trainee_a', sensors: 'trainee_c01', navigation: 'trainee_c02' },
+             B: { weapons: 'trainee_b', sensors: 'trainee_c03', navigation: 'trainee_c04' } },
+    agents: { A: { weapons: 'trainees/strong.js', sensors: 'trainees/strong.js', navigation: 'trainees/strong.js' },
+              B: { weapons: 'trainees/weak_hail_discipline.js', sensors: 'trainees/strong.js', navigation: 'trainees/strong.js' } },
     opts: clone(A.DEFAULTS)
   });
-  const ids = ['strait-transit', 'border-patrol'];
+  // The same for any platform type, filled from the roster in order
+  function filled(type, model) {
+    const s = A.withPlatform(sel(), { type, model }, ids, domainOf), pool = F.profiles.map(p => p.trainee_id);
+    let n = 0;
+    for (const c of A.SLOTS) for (const seat of A.seatsOf(type)) { s.crews[c][seat] = pool[n++]; s.agents[c][seat] = 'trainees/strong.js'; }
+    return s;
+  }
 
   // ---- fixtures
   test('envelope fixture is valid', () => eq(C.validateEnvelope(F.envelopeDefault), []));
   test('every roster profile is valid', () => F.profiles.forEach(p => eq(C.validateProfile(p), [], p.trainee_id)));
   test('roster has 2 demo trainees and 20 cohort trainees', () => eq(F.profiles.length, 22));
   test('trainee ids are unique', () => eq(new Set(F.profiles.map(p => p.trainee_id)).size, F.profiles.length));
+
+  // ---- platform catalog
+  test('three platform types with 2, 3 and 2 seats', () => {
+    eq(Object.keys(F.platformTypes), ['fighter', 'warship', 'tank']);
+    eq(['fighter', 'warship', 'tank'].map(t => F.platformTypes[t].seats.length), [2, 3, 2]);
+  });
+  test('seat ids in the catalog match the contract', () => {
+    for (const t of Object.keys(F.platformTypes)) eq(F.platformTypes[t].seats, C.SEATS_BY_TYPE[t], t);
+  });
+  test('two models per type, each with a source and a definition for every seat', () => {
+    for (const t of Object.keys(F.platformTypes)) {
+      const ms = F.platformModels.filter(m => m.type === t);
+      eq(ms.length, 2, t);
+      ms.forEach(m => {
+        ok(/^https:\/\//.test(m.source), m.id + ' source');
+        eq(Object.keys(m.seats), C.SEATS_BY_TYPE[t], m.id + ' seats');
+        Object.values(m.seats).forEach(d => ok(d.label && d.text, m.id + ' seat text'));
+      });
+    }
+  });
+  test('model ids are unique', () => eq(new Set(F.platformModels.map(m => m.id)).size, F.platformModels.length));
+  test('every competency is covered by some seat of every platform type', () => {
+    for (const [t, info] of Object.entries(F.platformTypes)) {
+      const covered = new Set(Object.values(info.seatFocus).flat());
+      C.COMPETENCIES.forEach(k => ok(covered.has(k), `${t} misses ${k}`));
+      eq(Object.keys(info.seatFocus), info.seats, t + ' focus seats');
+    }
+  });
 
   // ---- mean and evidence
   test('mean is alpha / (alpha + beta)', () => {
@@ -75,73 +120,246 @@
     ok(C.validateEnvelope({ bogus: { min: 0, max: 1, base: 0.5 } }).length > 0);
   });
 
-  // ---- buildRunConfigs
-  test('builds two valid configs in slot order', () => {
-    const cfgs = A.buildRunConfigs(sel(), F.envelopeDefault);
-    eq(cfgs.length, 2);
-    cfgs.forEach((c, i) => eq(C.validateScenarioConfig(c, { scenarios: ids }), [], 'slot ' + i));
-    eq(cfgs.map(c => c.trainee.trainee_id), ['trainee_a', 'trainee_b']);
+  // ---- the allocation (INTERFACES §3.1)
+  test('builds a valid allocation with two panes in order', () => {
+    const a = build(sel());
+    eq(C.validateAllocation(a, ctx), []);
+    eq(a.slots.map(s => s.pane), ['A', 'B']);
+    eq(a.slots.map(s => s.crew[0].trainee_id), ['trainee_a', 'trainee_b']);
+    eq(Object.keys(a), ['allocation_id', 'created_at_session', 'shared', 'slots']);
+    eq(a.created_at_session, null);
   });
-  test('both configs share scenario, seed, mode, timing and envelope', () => {
-    const [a, b] = A.buildRunConfigs(sel(), F.envelopeDefault);
-    for (const k of ['scenario_id', 'scenario', 'seed', 'mode', 'duration_s', 'eval_interval_s', 'envelope']) eq(a[k], b[k], k);
+  test('the allocation id is a valid id and follows the seed and platform', () => {
+    const s = sel(); s.opts.seed = 99;
+    eq(build(s).allocation_id, 'alloc_99_warship');
   });
-  test('each slot keeps its own agent profile', () => {
-    const [a, b] = A.buildRunConfigs(sel(), F.envelopeDefault);
-    eq([a.trainee.agent_profile, b.trainee.agent_profile], ['trainees/strong.js', 'trainees/weak_hail_discipline.js']);
+  test('expandAllocation gives one valid scenario config per pane', () => {
+    const c = cfgs(sel());
+    eq(c.length, 2);
+    c.forEach((x, i) => eq(C.validateScenarioConfig(x, ctx), [], 'pane ' + i));
   });
-  test('config envelopes are copies, not shared references', () => {
-    const [a, b] = A.buildRunConfigs(sel(), F.envelopeDefault);
-    a.envelope.aggression.max = 0.5;
-    eq(b.envelope.aggression.max, 0.8); eq(F.envelopeDefault.aggression.max, 0.8);
+  test('derived configs share everything except scenario_id and crew', () => {
+    const [a, b] = cfgs(sel());
+    eq([a.scenario_id, b.scenario_id], ['alloc_1234_warship_A', 'alloc_1234_warship_B']);
+    for (const k of ['scenario', 'platform', 'seed', 'mode', 'duration_s', 'eval_interval_s', 'envelope']) eq(a[k], b[k], k);
+    ok(JSON.stringify(a.crew) !== JSON.stringify(b.crew), 'crews differ');
   });
-  test('breaking a config field makes validation fail', () => {
-    const [c] = A.buildRunConfigs(sel(), F.envelopeDefault);
-    const bad = (mut) => { const x = clone(c); mut(x); return C.validateScenarioConfig(x).length > 0; };
+  test('each seat keeps its own agent profile', () => {
+    const [a, b] = cfgs(sel());
+    eq(a.crew.map(m => m.agent_profile), ['trainees/strong.js', 'trainees/strong.js', 'trainees/strong.js']);
+    eq(b.crew.map(m => m.agent_profile), ['trainees/weak_hail_discipline.js', 'trainees/strong.js', 'trainees/strong.js']);
+  });
+  test('expanding does not share references with the allocation', () => {
+    const a = build(sel()), [c] = C.expandAllocation(a);
+    c.envelope.aggression.max = 0.5; c.crew[0].trainee_id = 'x'; c.platform.type = 'tank';
+    eq(a.shared.envelope.aggression.max, 0.8); eq(a.slots[0].crew[0].trainee_id, 'trainee_a'); eq(a.shared.platform.type, 'warship');
+  });
+  test('config envelopes are copies of the fixture', () => {
+    const a = build(sel()); a.shared.envelope.aggression.max = 0.5;
+    eq(F.envelopeDefault.aggression.max, 0.8);
+  });
+  test('breaking a derived config field makes validation fail', () => {
+    const [c] = cfgs(sel());
+    const bad = mut => { const x = clone(c); mut(x); return C.validateScenarioConfig(x).length > 0; };
     ok(bad(x => { x.mode = 'easy'; }), 'mode');
     ok(bad(x => { x.seed = 1.5; }), 'seed');
     ok(bad(x => { x.eval_interval_s = x.duration_s; }), 'interval');
     ok(bad(x => { x.extra = 1; }), 'extra field');
-    ok(bad(x => { delete x.trainee.agent_profile; }), 'agent');
+    ok(bad(x => { delete x.crew[0].agent_profile; }), 'agent');
     ok(bad(x => { x.envelope.aggression.base = 5; }), 'envelope');
+    ok(bad(x => { x.trainee = { trainee_id: 'trainee_a', agent_profile: 'x' }; }), 'old trainee field');
   });
-  test('the same selection builds byte-identical configs', () => {
-    eq(JSON.stringify(A.buildRunConfigs(sel(), F.envelopeDefault)), JSON.stringify(A.buildRunConfigs(sel(), F.envelopeDefault)));
+  test('breaking the allocation itself makes validation fail', () => {
+    const bad = mut => { const x = build(sel()); mut(x); return C.validateAllocation(x, ctx).length > 0; };
+    ok(bad(x => { x.extra = 1; }), 'extra field');
+    ok(bad(x => { x.allocation_id = 'Bad Id'; }), 'id');
+    ok(bad(x => { x.created_at_session = 5; }), 'created_at_session');
+    ok(bad(x => { x.slots.pop(); }), 'one slot');
+    ok(bad(x => { x.slots.push(clone(x.slots[0])); }), 'three slots');
+    ok(bad(x => { x.slots[1].pane = 'A'; }), 'pane twice');
+    ok(bad(x => { x.slots.reverse(); }), 'panes out of order');
+    ok(bad(x => { x.slots[0].extra = 1; }), 'slot extra field');
+    ok(bad(x => { delete x.shared.seed; }), 'missing shared seed');
+    ok(bad(x => { x.shared.extra = 1; }), 'shared extra field');
+    ok(bad(x => { x.shared.seed = -1; }), 'shared seed');
+    ok(bad(x => { x.shared = null; }), 'shared null');
+    ok(bad(x => { x.slots = null; }), 'slots null');
   });
-  test('selectionFrom restores what buildRunConfigs built', () => {
+  test('the same selection builds byte-identical allocations', () => {
+    eq(JSON.stringify(build(sel())), JSON.stringify(build(sel())));
+  });
+  test('selectionFrom restores what buildAllocation built', () => {
     const s = sel(); s.opts.seed = 99; s.opts.mode = 'fixed';
-    eq(A.selectionFrom(A.buildRunConfigs(s, F.envelopeDefault)), s);
+    eq(A.selectionFrom(build(s), ctx), s);
   });
-  test('selectionFrom returns null for bad input', () => {
-    eq(A.selectionFrom(null), null); eq(A.selectionFrom([{}, {}]), null); eq(A.selectionFrom([1]), null);
+  test('selectionFrom returns null for bad input, including the older formats', () => {
+    eq(A.selectionFrom(null, ctx), null); eq(A.selectionFrom('x', ctx), null); eq(A.selectionFrom([], ctx), null);
+    eq(A.selectionFrom({}, ctx), null); eq(A.selectionFrom([{}, {}], ctx), null); eq(A.selectionFrom([null, undefined], ctx), null);
+    const older = cfgs(sel());                       // the earlier format: an array of per-pane configs
+    eq(A.selectionFrom(older, ctx), null);
+    const oldest = older.map(c => { const o = clone(c); delete o.platform; delete o.crew;   // one trainee per pane
+      o.trainee = { trainee_id: 'trainee_a', agent_profile: 'trainees/strong.js' }; return o; });
+    eq(A.selectionFrom(oldest, ctx), null);
+  });
+
+  // ---- platform types and seats
+  test('seat counts per type: fighter 2, warship 3, tank 2', () => {
+    eq(A.seatsOf('fighter'), ['pilot', 'weapon']);
+    eq(A.seatsOf('warship'), ['weapons', 'sensors', 'navigation']);
+    eq(A.seatsOf('tank'), ['commander', 'driver']);
+  });
+  test('every model builds a valid allocation with the right number of seats', () => {
+    for (const m of F.platformModels) {
+      const s = filled(m.type, m.id), a = build(s);
+      eq(A.checkSelection(s, ctx), {}, m.id);
+      a.slots.forEach(slot => eq(slot.crew.length, A.seatsOf(m.type).length, m.id));
+      eq(C.validateAllocation(a, ctx), [], m.id);
+    }
+  });
+  test('a crew with the wrong number of seats is rejected', () => {
+    const a = build(filled('tank', 'leopard2sg'));
+    a.slots[0].crew.push({ seat: 'gunner', trainee_id: 'trainee_c09', agent_profile: 'x' });
+    ok(C.validateAllocation(a, ctx).length > 0, 'tank with 3');
+    const b = build(filled('tank', 'leopard2sg')); b.slots[1].crew.pop();
+    ok(C.validateAllocation(b, ctx).length > 0, 'tank with 1');
+  });
+  test('seat ids must match the platform type and order', () => {
+    const a = build(sel()); a.slots[0].crew[0].seat = 'pilot';
+    ok(C.validateAllocation(a, ctx).length > 0, 'pilot on a warship');
+    const b = build(sel()); [b.slots[0].crew[0], b.slots[0].crew[1]] = [b.slots[0].crew[1], b.slots[0].crew[0]];
+    ok(C.validateAllocation(b, ctx).length > 0, 'order');
+  });
+  test('an unknown platform type is rejected', () => {
+    const a = build(sel()); a.shared.platform.type = 'submarine';
+    ok(C.validateAllocation(a, ctx).length > 0);
+  });
+  test('the same trainee in two seats of one crew is rejected', () => {
+    const a = build(sel()); a.slots[0].crew[1].trainee_id = a.slots[0].crew[0].trainee_id;
+    ok(C.validateAllocation(a, ctx).length > 0);
+  });
+  test('the same trainee in both crews is rejected', () => {
+    const a = build(sel()); a.slots[1].crew[2].trainee_id = a.slots[0].crew[0].trainee_id;
+    ok(C.validateAllocation(a, ctx).some(m => /two seats/.test(m)));
+  });
+
+  // ---- scenario domain follows the platform type
+  test('each platform type maps to one domain: fighter air, warship sea, tank land', () => {
+    eq(C.DOMAIN_BY_TYPE, { fighter: 'air', warship: 'sea', tank: 'land' });
+  });
+  test('a scenario of the wrong domain is rejected by the selection check and the validator', () => {
+    const s = sel(); s.opts.scenario = 'border-patrol';
+    ok('scenario' in A.checkSelection(s, ctx));
+    ok(C.validateAllocation(build(s), ctx).some(m => /border-patrol/.test(m)));
+  });
+  test('a scenario without a domain field counts as sea', () => {
+    eq(A.domainOfIn({ a: {}, b: { domain: 'land' } })('a'), 'sea');
+    eq(A.domainOfIn({ a: {}, b: { domain: 'land' } })('b'), 'land');
+    eq(A.domainOfIn({})('missing'), 'sea');
+  });
+  test('defaultScenarioFor picks a scenario of the matching domain', () => {
+    eq(A.defaultScenarioFor('tank', ids, domainOf), 'border-patrol');
+    eq(A.defaultScenarioFor('fighter', ids, domainOf), 'airspace-patrol');
+    eq(A.defaultScenarioFor('warship', ids, domainOf), 'strait-transit');
+    eq(A.defaultScenarioFor('tank', ['strait-transit'], domainOf), null);
+  });
+
+  // ---- switching platform with crews partly filled
+  test('another model of the same type keeps the crews', () => {
+    const s = A.withPlatform(sel(), { type: 'warship', model: 'lcs-independence' }, ids, domainOf);
+    eq(s.crews, sel().crews); eq(s.agents, sel().agents); eq(s.platform.model, 'lcs-independence');
+  });
+  test('another platform type clears the seats that no longer exist', () => {
+    const s = A.withPlatform(sel(), { type: 'tank', model: 'leopard2sg' }, ids, domainOf);
+    eq(s.crews, { A: { commander: null, driver: null }, B: { commander: null, driver: null } });
+    eq(s.agents, { A: { commander: '', driver: '' }, B: { commander: '', driver: '' } });
+  });
+  test('seat ids that exist in both platforms are carried over', () => {
+    const base = A.withPlatform(sel(), { type: 'tank', model: 'leopard2sg' }, ids, domainOf);
+    base.crews.A.driver = 'trainee_a'; base.agents.A.driver = 'trainees/strong.js';
+    const again = A.withPlatform(base, { type: 'tank', model: 'm1a2sepv3' }, ids, domainOf);
+    eq(again.crews.A.driver, 'trainee_a'); eq(again.agents.A.driver, 'trainees/strong.js');
+  });
+  test('changing the platform type moves the scenario to a matching domain', () => {
+    const s = A.withPlatform(sel(), { type: 'fighter', model: 'f15e' }, ids, domainOf);
+    eq(s.opts.scenario, 'airspace-patrol');
+    const t = A.withPlatform(s, { type: 'tank', model: 'leopard2sg' }, ids, domainOf);
+    eq(t.opts.scenario, 'border-patrol');
+    const w = A.withPlatform(t, { type: 'warship', model: 'formidable' }, ids, domainOf);
+    eq(w.opts.scenario, 'strait-transit');
+  });
+  test('a scenario that already matches the new type is kept', () => {
+    const s = sel(); s.opts.scenario = 'sea-air';
+    eq(A.withPlatform(s, { type: 'warship', model: 'lcs-independence' }, ids, domainOf).opts.scenario, 'sea-air');
+  });
+  test('withPlatform does not change the selection it is given', () => {
+    const s = sel(), before = JSON.stringify(s);
+    A.withPlatform(s, { type: 'fighter', model: 'f15e' }, ids, domainOf);
+    eq(JSON.stringify(s), before);
+  });
+
+  // ---- seating trainees
+  test('seating a trainee fills the seat and takes the default agent', () => {
+    const s = A.withPlatform(sel(), { type: 'tank', model: 'leopard2sg' }, ids, domainOf);
+    const n = A.seatTrainee(s, 'A', 'commander', 'trainee_b', 'trainees/weak_hail_discipline.js');
+    eq(n.crews.A.commander, 'trainee_b'); eq(n.agents.A.commander, 'trainees/weak_hail_discipline.js');
+  });
+  test('seating a trainee who is already seated moves them', () => {
+    const n = A.seatTrainee(sel(), 'B', 'sensors', 'trainee_a', 'x');
+    eq(n.crews.B.sensors, 'trainee_a'); eq(n.crews.A.weapons, null); eq(n.agents.A.weapons, '');
+    const seated = A.SLOTS.flatMap(c => Object.values(n.crews[c])).filter(Boolean);
+    eq(new Set(seated).size, seated.length);
+  });
+  test('reseating a seat keeps an agent already chosen for it', () => {
+    const n = A.seatTrainee(sel(), 'A', 'weapons', 'trainee_c20', 'trainees/weak_hail_discipline.js');
+    eq(n.agents.A.weapons, 'trainees/strong.js');
+  });
+  test('nextEmptySeat walks crew A then crew B and stays put when full', () => {
+    let s = A.withPlatform(sel(), { type: 'fighter', model: 'f15e' }, ids, domainOf);
+    eq(A.nextEmptySeat(s, { crew: 'A', seat: 'pilot' }), { crew: 'A', seat: 'weapon' });   // all empty: the next seat
+    s = A.seatTrainee(s, 'A', 'pilot', 'trainee_a', 'x');
+    eq(A.nextEmptySeat(s, { crew: 'A', seat: 'pilot' }), { crew: 'A', seat: 'weapon' });
+    s = A.seatTrainee(s, 'A', 'weapon', 'trainee_b', 'x');
+    eq(A.nextEmptySeat(s, { crew: 'A', seat: 'weapon' }), { crew: 'B', seat: 'pilot' });
+    s = A.seatTrainee(s, 'B', 'pilot', 'trainee_c01', 'x'); s = A.seatTrainee(s, 'B', 'weapon', 'trainee_c02', 'x');
+    eq(A.nextEmptySeat(s, { crew: 'B', seat: 'weapon' }), { crew: 'B', seat: 'weapon' });
+  });
+  test('swapping crews swaps seats and agents together', () => {
+    const s = sel(); [s.crews.A, s.crews.B] = [s.crews.B, s.crews.A]; [s.agents.A, s.agents.B] = [s.agents.B, s.agents.A];
+    const [a, b] = cfgs(s);
+    eq(a.crew[0], { seat: 'weapons', trainee_id: 'trainee_b', agent_profile: 'trainees/weak_hail_discipline.js' });
+    eq(b.crew[0].trainee_id, 'trainee_a');
   });
 
   // ---- selection checks
-  test('a ready selection has no errors', () => eq(A.checkSelection(sel(), ids), {}));
-  test('empty slots block handoff', () => {
-    const s = sel(); s.slots.B = null;
-    ok('slotB' in A.checkSelection(s, ids));
+  test('a ready selection has no errors', () => eq(A.checkSelection(sel(), ctx), {}));
+  test('every empty seat blocks handoff, named by crew and seat', () => {
+    const s = A.withPlatform(sel(), { type: 'tank', model: 'leopard2sg' }, ids, domainOf);
+    eq(Object.keys(A.checkSelection(s, ctx)).filter(k => k.startsWith('seat_')).sort(),
+      ['seat_A_commander', 'seat_A_driver', 'seat_B_commander', 'seat_B_driver']);
   });
-  test('the same trainee in both slots is rejected', () => {
-    const s = sel(); s.slots.B = 'trainee_a';
-    ok('slotB' in A.checkSelection(s, ids));
+  test('the same trainee in two seats is flagged', () => {
+    const s = sel(); s.crews.B.navigation = 'trainee_a';
+    ok('seat_B_navigation' in A.checkSelection(s, ctx));
   });
   test('a missing agent blocks handoff', () => {
-    const s = sel(); s.agents.A = '';
-    ok('agentA' in A.checkSelection(s, ids));
+    const s = sel(); s.agents.A.sensors = '';
+    ok('agent_A_sensors' in A.checkSelection(s, ctx));
   });
-  test('scenarios without a competency signal are rejected', () => {
-    const s = sel(); s.opts.scenario = 'border-patrol';
-    ok('scenario' in A.checkSelection(s, ids));
+  test('an unknown model, or a model of another type, is flagged', () => {
+    const s = sel(); s.platform.model = 'nope'; ok('platform' in A.checkSelection(s, ctx));
+    const t = sel(); t.platform.model = 'f15e'; ok('platform' in A.checkSelection(t, ctx));
   });
   test('bad seed, duration and interval are flagged on their own fields', () => {
     const s = sel(); s.opts.seed = 1.5; s.opts.duration_s = 0; s.opts.eval_interval_s = NaN;
-    const e = A.checkSelection(s, ids);
+    const e = A.checkSelection(s, ctx);
     ok('seed' in e && 'duration_s' in e && 'eval_interval_s' in e);
   });
   test('interval must be shorter than duration', () => {
     const s = sel(); s.opts.eval_interval_s = s.opts.duration_s;
-    ok('eval_interval_s' in A.checkSelection(s, ids));
+    ok('eval_interval_s' in A.checkSelection(s, ctx));
+  });
+  test('a scenario that is not loaded is flagged', () => {
+    const s = sel(); s.opts.scenario = 'nope'; ok('scenario' in A.checkSelection(s, ctx));
   });
 
   // ---- seeds and link
@@ -150,10 +368,9 @@
     ok(A.nextSeed(1234) !== 1234);
     let s = 1; for (let i = 0; i < 1000; i++) { s = A.nextSeed(s); ok(Number.isInteger(s) && s >= 0 && s <= 0x7fffffff, 'range'); }
   });
-  test('the hand-off link round-trips the configs', () => {
-    const cfgs = A.buildRunConfigs(sel(), F.envelopeDefault);
-    const url = A.handoffUrl(cfgs);
-    eq(JSON.parse(decodeURIComponent(url.split('alloc=')[1])), cfgs);
+  test('the hand-off link round-trips the allocation', () => {
+    const a = build(sel());
+    eq(JSON.parse(decodeURIComponent(A.handoffUrl(a).split('alloc=')[1])), a);
   });
 
   const failed = results.filter(r => r[1]);
