@@ -23,13 +23,11 @@
   background: var(--accent); color: var(--text-on-accent); font-weight: 700; font-size: 11px; }
 
 .bar { display: inline-block; vertical-align: middle; width: 70px; height: 8px; background: var(--data-track); border-radius: 4px; overflow: hidden; }
-/* Competency bars use one neutral data colour, so a low score never reads as hostile or as failure.
-   !important overrides the red/amber/green that js/ui-allocate.js sets inline (barColor); drop it once
-   that inline colour is removed (design/requests.md R1). */
-.bar i { display: block; height: 100%; background: var(--data-fill) !important; }
-.mini b[style*="#"] { background: var(--data-fill) !important; }
-.bar.thin { opacity: .45; }
-.bar.prior { opacity: .25; }
+/* Competency bars: one neutral data colour, so a low score never reads as hostile or as failure.
+   Bar length shows the value; opacity is reserved for evidence (thin, none), so the two never look alike. */
+.bar i { display: block; height: 100%; background: var(--data-fill); }
+.bar.thin { opacity: var(--data-thin); }
+.bar.prior { opacity: var(--data-prior); }
 .val { display: inline-block; vertical-align: middle; margin-left: 6px; width: 32px; font-family: Consolas, monospace; font-size: 12px; }
 
 .crew { margin: 8px 0; }
