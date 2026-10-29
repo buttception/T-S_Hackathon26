@@ -39,6 +39,7 @@ test('timeline: one marker per result, failures as rings, valid single style att
   assert.equal(count(svg, /rp-chart-phase /g), 2);
   assert.equal(count(svg, /<[^>]*\sstyle="[^"]*"[^>]*\sstyle="/g), 0);
   assert.doesNotMatch(svg, /#[0-9a-f]{3,6}\b/i);                    // theme tokens only, no hard-coded colours
+  assert.match(svg, /stroke:var\(--rp-chart-pressure, var\(--warn\)\)/);   // a role variable the design lane can set
 });
 
 test('timeline: fixed mode still plots the results but no pressure', () => {
@@ -52,9 +53,9 @@ test('profile and trend: one row per competency shown, one point per session plu
   const CGF = load();
   const e = CGF.History.list('trainee_b').slice(-1)[0];
   const prof = CGF.ReportCharts.profile(e, CGF.Debrief.nextProfile('trainee_b').comps);
-  assert.equal(count(prof, /rp-chart-start/g), 5);
-  assert.equal(count(prof, /rp-chart-next"/g), 5);
+  assert.equal(count(prof, /class="rp-chart-start"/g), 5);
+  assert.equal(count(prof, /class="rp-chart-next"/g), 5);
   const tr = CGF.ReportCharts.trend(CGF.History.list('trainee_b'), 'hail_discipline', 0.3);
-  assert.equal(count(tr, /rp-chart-pt/g), 5);
-  assert.equal(count(tr, /rp-chart-pressed/g), 3);
+  assert.equal(count(tr, /class="rp-chart-pt/g), 5);
+  assert.equal(count(tr, /rp-chart-pt rp-chart-pressed"/g), 3);
 });
