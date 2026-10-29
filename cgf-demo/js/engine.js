@@ -194,10 +194,12 @@
 
   // ------------------------------------------------------------ CGF action log
   // Important actions taken by CGF units, kept for the after-action review and exportable as CSV.
-  CGF.record = (u, action, detail, cause) => {
+  // src: 'instructor' or 'llm' for instructor-caused entries (sim.injectSource is set while an LLM plan runs), else 'engine'.
+  // change: { from, to } state names, for a state change
+  CGF.record = (u, action, detail, cause, change) => {
     const sim = CGF.sim;
     const entry = { t: sim.t, time: U.fmtTime(sim.t), unit: u ? u.name : '-', force: u ? CGF.forceOf(u).label : '-',
-      forceKey: u ? u.force : '', action, detail: detail || '', state: u && CGF.stateOf(u) ? CGF.stateOf(u).name : '',
+      forceKey: u ? u.force : '', action, detail: detail || '', src: cause === 'instructor' ? (sim.injectSource || 'instructor') : 'engine', change: change || null, state: u && CGF.stateOf(u) ? CGF.stateOf(u).name : '',
       tension: u && u.tension != null ? Math.round(u.tension) : '', cause: cause != null ? cause : (u ? CGF.reasons(u) : '') };
     sim.actions.push(entry);
     if (sim.actions.length > 2000) sim.actions.shift();
@@ -302,7 +304,7 @@
     const reasons = cause || CGF.drivers(u);
     u.stateIdx = idx; u.pendingIdx = null; u.contrib = {};
     CGF.log(`${u.name}: ${old.name} → ${st.name}${cause ? ' (' + cause + ')' : ''}`, up ? 'alert' : 'sys');
-    CGF.record(u, up ? (st.action || `Escalated to ${st.name}`) : (st.standDown || `Stood down to ${st.name}`), `${old.name} → ${st.name}`, reasons);
+    CGF.record(u, up ? (st.action || `Escalated to ${st.name}`) : (st.standDown || `Stood down to ${st.name}`), `${old.name} → ${st.name}`, reasons, { from: old.name, to: st.name });
     if (up && st.msg) CGF.record(u, 'Radio call', radio(u, st.msg), reasons);
     // the state change is reported before any new warning, so a warning it supersedes is closed first
     CGF.emit('sim:state', u, H.states.indexOf(old), idx);

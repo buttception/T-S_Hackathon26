@@ -23,11 +23,17 @@
     while (el.childNodes.length > 250) el.removeChild(el.firstChild);
     el.scrollTop = el.scrollHeight;
   }
+  // Each entry carries its source (design R12): src-engine, src-instructor or src-llm; a state change is a state-chip
+  const SRC_LABEL = { instructor: 'Instructor', llm: 'Instructor via LLM' };
   function actionHtml(a) {
     const f = CGF.scenario.forces[a.forceKey];   // force colours are force identity (scenario data); no force: muted class
-    return `<div class="act"><span class="muted">${a.time}</span> <b ${f ? `style="color:${f.color}"` : 'class="unit--none"'}>${esc(a.unit)}</b> ${esc(a.action)}` +
+    const src = a.src || 'engine';
+    const detail = a.change ? `<div class="cause"><span class="state-chip">${esc(a.change.from)}</span> → <span class="state-chip">${esc(a.change.to)}</span></div>`
+      : a.detail ? `<div class="cause">${esc(a.detail)}</div>` : '';
+    return `<div class="act src-${src}"><span class="muted">${a.time}</span> <b ${f ? `style="color:${f.color}"` : 'class="unit--none"'}>${esc(a.unit)}</b> ${esc(a.action)}` +
       `${a.state ? ` <span class="muted">[${esc(a.state)}${a.tension !== '' ? ' · ' + a.tension : ''}]</span>` : ''}` +
-      `${a.cause ? `<div class="cause">Why: ${esc(a.cause)}</div>` : ''}${a.detail ? `<div class="cause">${esc(a.detail)}</div>` : ''}</div>`;
+      `${SRC_LABEL[src] ? ` <span class="srcTag">${SRC_LABEL[src]}</span>` : ''}` +
+      `${a.cause && !SRC_LABEL[src] ? `<div class="cause">Why: ${esc(a.cause)}</div>` : ''}${detail}</div>`;
   }
   function renderActions() {
     const list = CGF.sim.actions.filter(a => !actFilter || a.forceKey === actFilter || !a.forceKey).slice(-300).reverse();
@@ -35,10 +41,13 @@
   }
 
   // ------------------------------------------------------------ builders
+  // Slider key -> the setting name the instructor's envelope uses (INTERFACES §2)
+  const ENVELOPE_KEY = { aggression: 'aggression', sensitivity: 'sensitivity', reaction: 'reaction_delay_s', decay: 'calm_down_rate', detection: 'detection' };
   function buildSliders() {
     $('sliders').innerHTML = SLIDERS.map(s => `<div class="slider"><span>${s.label}</span>
       <input type="range" id="sl-${s.key}" min="${s.min}" max="${s.max}" step="${s.step}" value="${CGF.params[s.key]}">
-      <span id="sv-${s.key}">${s.fmt(CGF.params[s.key])}</span></div>`).join('');
+      <span id="sv-${s.key}">${s.fmt(CGF.params[s.key])}</span></div>` +
+      (ENVELOPE_KEY[s.key] ? `<div class="envelope muted small" id="env-${s.key}" hidden></div>` : '')).join('');
     for (const s of SLIDERS) $('sl-' + s.key).addEventListener('input', e => {
       CGF.params[s.key] = parseFloat(e.target.value); $('sv-' + s.key).textContent = s.fmt(CGF.params[s.key]);
     });
@@ -119,8 +128,32 @@
   const injTarget = () => CGF.sim.units.find(u => u.name === $('injTarget').value) || null;
 
   // ------------------------------------------------------------ periodic refresh
+  // Adaptation on or off, always visible (design R3; the same names and classes as the allocation page)
+  function refreshModeBadge() {
+    const A = CGF.Adapt && CGF.Adapt.current, el = $('modeBadge');
+    const [cls, text] = !A ? ['mode-none', 'No adaptive session'] : A.config.mode === 'fixed'
+      ? ['mode-fixed', '■ Fixed assessment · no adjustments'] : ['mode-adaptive', '↻ Adaptive practice'];
+    if (el.textContent !== text) { el.className = 'modeBadge ' + cls; el.textContent = text; }
+  }
+
+  // The instructor's envelope under each adjustable slider, and a mark when the engine's last request was clamped (design R14)
+  function refreshEnvelopes() {
+    const A = CGF.Adapt && CGF.Adapt.current, env = A ? A.config.envelope || {} : {};
+    for (const s of SLIDERS) {
+      const el = $('env-' + s.key), e = env[ENVELOPE_KEY[s.key]];
+      if (!el) continue;
+      el.hidden = !e;
+      if (!e) continue;
+      const last = A.adjustments.filter(a => a.setting === ENVELOPE_KEY[s.key]).pop();
+      const html = `Instructor limits ${s.fmt(e.min)} to ${s.fmt(e.max)} · start ${s.fmt(e.base)}` +
+        (last && last.clamped ? ` · <span class="clamped">clamped: asked for ${s.fmt(last.requested)}</span>` : '');
+      if (el.innerHTML !== html) el.innerHTML = html;
+    }
+  }
+
   function refresh() {
     const sim = CGF.sim, S = CGF.scenario, o = sim.own, shown = CGF.displayedOwn();
+    refreshModeBadge(); refreshEnvelopes();
     const zones = CGF.zonesAt(shown).filter(z => z.owner !== o.force);
     $('hud').textContent =
       `${U.fmtTime(sim.t)}   x${CGF.params.timeScale}   ${sim.mode === 'freeplay' ? 'FREEPLAY' : 'EXERCISE'}${sim.fog ? '   FOG' : ''}\n` +
@@ -171,14 +204,17 @@
 
     const st = sim.stats, fleeing = CGF.cgfs().filter(u => !CGF.harnessOf(u).armed && u.stateIdx >= 2).length;
     const peaks = Object.entries(st.peak).map(([k, pk]) => [`Peak state · ${S.forces[k].label}`, pk.name]);
-    $('aar').innerHTML = [
-      ['Elapsed', U.fmtDur(sim.t)], ...peaks, ['Max armed tension', Math.round(st.maxTension)],
-      ['Merchants diverting/fleeing now', fleeing],
-      ['Time in foreign territorial waters', U.fmtDur(st.terrSec)], ['Time in foreign claimed zones', U.fmtDur(st.contSec)],
-      ['Fire-control radar used', U.fmtDur(st.fcSec)], ['Warnings received', st.warnings], ['Warnings ignored', st.ignored],
-      ['Hails acknowledged', st.acks], ['CGF actions logged', sim.actions.length], ['Instructor injects', st.injects],
-      ['Malfunctions injected', st.malfs], ['Live harness swaps', st.swaps]
-    ].map(([a, b]) => `<span>${esc(a)}</span><span>${esc(b)}</span>`).join('');
+    // grouped (design R10): how it went, what the trainee did, the neutrals, and what the instructor did
+    const groups = [
+      ['Run', [['Elapsed', U.fmtDur(sim.t)], ...peaks, ['Max armed tension', Math.round(st.maxTension)]]],
+      ['Trainee', [['Warnings received', st.warnings], ['Warnings ignored', st.ignored], ['Hails acknowledged', st.acks],
+        ['Time in foreign territorial waters', U.fmtDur(st.terrSec)], ['Time in foreign claimed zones', U.fmtDur(st.contSec)],
+        ['Fire-control radar used', U.fmtDur(st.fcSec)]]],
+      ['Neutral traffic', [['Merchants diverting/fleeing now', fleeing]]],
+      ['Instructor', [['Instructor injects', st.injects], ['Malfunctions injected', st.malfs], ['Live harness swaps', st.swaps], ['CGF actions logged', sim.actions.length]]]
+    ];
+    $('aar').innerHTML = groups.map(([title, rows]) => `<div class="aarGroup"><h3>${esc(title)}</h3><div class="aar">` +
+      rows.map(([a, b]) => `<span>${esc(a)}</span><span>${esc(b)}</span>`).join('') + '</div></div>').join('');
 
     drawChart();
   }
@@ -326,6 +362,7 @@
     $('btnCmd').disabled = true;
     try {
       const r = await CGF.llm.interpret(text);
+      modelReachable = true; refreshParserBadge();
       const okCount = r.plan.filter(p => p.ok).length;
       if (!okCount && opts.fallback && S.fallback) throw new Error(r.question ? `model asked: ${r.question}` : 'model returned no usable commands');
       if (!okCount) {
@@ -340,6 +377,7 @@
       }
       return { via: 'llm', result: r };
     } catch (err) {
+      if (!/model (asked|returned)/.test(err.message)) { modelReachable = false; refreshParserBadge(); }
       addLog(`LLM: ${err.message}`, 'alert');
       if (S.fallback) {
         showPreview(`<div class="cmdbad">LLM unavailable: ${esc(err.message)}</div><div class="meta">Used the keyword parser instead.</div>`);
@@ -358,8 +396,20 @@
     $('llmProvider').value = S.provider; $('llmUrl').value = S.url; $('llmModel').value = S.model;
     $('llmFallback').checked = !!S.fallback;
     $('llmStatus').textContent = S.enabled ? `${S.model} @ ${S.url}${S.fallback ? ' · keyword fallback on' : ''}` : 'fixed command words, no model';
+    refreshParserBadge();
     $('cmd').placeholder = S.enabled ? 'e.g. make the red jets more aggressive and have the black drone block BLUE-1'
       : 'e.g. escalate R-21 · set black to hostile · spawn red · gps drift · load air';
+  }
+
+  // Which parser is active (design R11): is-llm (model reached), is-fallback (keyword parser: chosen, or the model
+  // failed and the fallback took over), is-offline (model unreachable and no fallback)
+  let modelReachable = null;   // unknown until a prompt or a connection test
+  function refreshParserBadge() {
+    const S = CGF.llm.settings, el = $('parserBadge');
+    const [cls, text] = !S.enabled ? ['is-fallback', 'Keyword parser']
+      : modelReachable === false ? (S.fallback ? ['is-fallback', 'Keyword parser · model unavailable'] : ['is-offline', 'Local LLM unavailable'])
+      : ['is-llm', 'Local LLM'];
+    el.className = 'parserBadge ' + cls; el.textContent = text;
   }
 
   // Shows a prompt being typed into the instructor command box (used by hands-off demos)
@@ -406,7 +456,11 @@
 
     $('btnRun').addEventListener('click', CGF.actions.toggleRun);
     $('btnReset').addEventListener('click', () => CGF.loadScenario(CGF.scenario.id, currentHarnessIds()));
-    $('btnLoadScenario').addEventListener('click', () => CGF.loadScenario($('scenarioSel').value));
+    // Loading discards the running exercise, so ask first once it has started (design R13)
+    $('btnLoadScenario').addEventListener('click', () => {
+      if (CGF.sim.t > 0 && !confirm('Load this scenario? The current exercise will be discarded.')) return;
+      CGF.loadScenario($('scenarioSel').value);
+    });
     $('harnessSel').addEventListener('change', showHarnessDesc);
     $('injTarget').addEventListener('change', refreshStateOptions);
     $('actFilter').addEventListener('change', e => { actFilter = e.target.value; renderActions(); });
@@ -507,7 +561,9 @@
         const models = await CGF.llm.test();
         const has = models.some(m => m === CGF.llm.settings.model || m.split(':')[0] === CGF.llm.settings.model.split(':')[0]);
         $('llmTestResult').textContent = `Connected. Models: ${models.join(', ') || 'none'}${has ? '' : ` · "${CGF.llm.settings.model}" not found`}`;
-      } catch (err) { $('llmTestResult').textContent = 'Not reachable: ' + err.message; }
+        modelReachable = true;
+      } catch (err) { $('llmTestResult').textContent = 'Not reachable: ' + err.message; modelReachable = false; }
+      refreshParserBadge();
     });
     refreshLlmControls();
 

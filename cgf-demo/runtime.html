@@ -19,7 +19,7 @@
 
   <aside id="panel">
     <div id="panelHead">
-      <h1 id="title">CGF Maritime Trainer <small>· loading…</small></h1>
+      <div class="row"><h1 id="title" class="grow">CGF Maritime Trainer <small>· loading…</small></h1><span id="modeBadge" class="modeBadge mode-none"></span></div>
       <div class="row">
         <button id="btnRun" class="primary">Start</button>
         <button id="btnReset">Restart</button>
@@ -108,12 +108,13 @@
         <div id="why"></div>
 
         <h2>After-action summary</h2>
-        <div class="aar" id="aar"></div>
+        <div id="aar" class="aarGroups"></div>
 
         <h2>Event log</h2>
         <div id="log" class="logbox"></div>
 
-        <h2>Controls</h2>
+        <details class="keysRef">
+        <summary>Keyboard and mouse</summary>
         <div class="keys">
           <span><kbd>A</kbd>/<kbd>D</kbd> <kbd>←</kbd>/<kbd>→</kbd></span><span>Order heading −/+ 5°</span>
           <span><kbd>W</kbd>/<kbd>S</kbd> <kbd>↑</kbd>/<kbd>↓</kbd></span><span>Order speed +/− 2 kts</span>
@@ -127,6 +128,7 @@
           <span><kbd>C</kbd> / <kbd>O</kbd></span><span>Centre on and follow the ownship / whole-map overview</span>
           <span><kbd>+</kbd> / <kbd>-</kbd></span><span>Simulation faster / slower (also the speed list at the top)</span>
         </div>
+        </details>
       </section>
 
       <!-- INSTRUCTOR -->
@@ -141,7 +143,7 @@
             <option value="llm">Local LLM</option>
             <option value="keyword">Keyword parser</option>
           </select>
-          <span id="llmStatus" class="muted small grow"></span>
+          <span id="parserBadge" class="parserBadge"></span><span id="llmStatus" class="muted small grow"></span>
         </div>
         <div class="row">
           <input type="text" id="cmd" placeholder="e.g. make the red jets more aggressive and have the black drone block BLUE-1">
@@ -195,6 +197,8 @@
         <div class="row"><select id="scenarioSel" class="grow"></select><button id="btnLoadScenario">Load (restart)</button></div>
         <div id="forceList" class="small"></div>
 
+        <details class="advanced">
+        <summary>Advanced: harness files and local LLM server</summary>
         <h2>Harness library</h2>
         <div class="row"><select id="harnessSel" class="grow"></select></div>
         <p id="harnessDesc" class="muted small"></p>
@@ -217,6 +221,8 @@
         <label class="small muted"><input type="checkbox" id="llmFallback"> Fall back to the keyword parser if the model is unavailable</label>
         <div class="row"><button id="btnLlmTest">Test connection</button><span id="llmTestResult" class="small muted grow"></span></div>
         <div class="muted small">Runs entirely on-prem: the page only talks to the model server at this URL. Nothing is sent anywhere else.</div>
+
+        </details>
 
         <h2>CGF parameters (live)</h2>
         <div id="sliders"></div>
