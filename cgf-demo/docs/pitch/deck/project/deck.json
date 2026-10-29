@@ -1,0 +1,17 @@
+{
+  "v": 4,
+  "createdOnFiles": { "v": 1, "at": "2026-10-29T12:00:00Z" },
+  "lists": "css",
+  "title": "Adaptive CGF Trainer",
+  "order": ["cover", "problem", "idea", "loop", "allocate", "run", "reasoning", "control", "debrief", "cohort", "roadmap", "business", "close"],
+  "sections": {
+    "s1": { "description": "Instructors cannot tune the enemy for each trainee, and the trainer fixes that.", "start": "cover" },
+    "s2": { "description": "The loop in action: allocate, run, explain, control.", "start": "loop" },
+    "s3": { "description": "After the run: debrief, cohort, what comes next and why it pays.", "start": "debrief" }
+  },
+  "faces": {
+    "ibm-plex-sans": { "family": "IBM Plex Sans", "href": "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" },
+    "jetbrains-mono": { "family": "JetBrains Mono", "href": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" }
+  },
+  "designSystems": []
+}
