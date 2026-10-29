@@ -8,7 +8,7 @@ CGF.registerTraineeAgent('trainees/strong.js', {
   nav: {
     speed: 24,
     // A probing route straight at Red's patrol boats, so every crew meets hails early in a run
-    routes: { 'strait-transit': [[-2, -22], [0, -14], [4, -4], [8, 6], [10, 32]] },
+    routes: { 'strait-transit': [[-4, -44], [0, -28], [8, -8], [16, 12], [20, 64]] },
     cpa_margin: 1.5,
     respect_zones: true
   },
