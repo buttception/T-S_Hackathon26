@@ -23,6 +23,9 @@ HTML and JavaScript files.
 the folder on localhost, and opens the vision demo full screen. When the demo ends it shows Ben's debrief, then the
 trainee data. `run-demo.bat --no-open` checks the set-up without opening the browser.
 
+**To start again cleanly:** double-click `stop-demo.bat`. It stops the web server and Ollama (`--keep-llm` keeps the model
+loaded for a quicker restart, `--browser` also closes every Edge and Chrome window, `--dry-run` only lists what it would stop).
+
 **By hand:**
 
 1. Open `runtime.html` in Chrome or Edge (double-click it, or drag it into the browser).
