@@ -1,5 +1,6 @@
 /* Colours come from tokens.css (Eevee). Use the tokens, not hex values. */
 @import url("tokens.css");
+@import url("report.css");   /* scoped to .rp-page, so it only affects report.html */
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   font: 13px/1.4 "Segoe UI", system-ui, Arial, sans-serif; }
