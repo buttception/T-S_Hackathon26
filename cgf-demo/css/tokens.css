@@ -85,6 +85,20 @@
   --rp-chart-track: var(--data-track);
   --rp-chart-grid: var(--border);
 
+  /* Runtime posture chart (js/ui.js drawChart reads --rt-chart-<role> with getComputedStyle; a canvas can't use var()).
+     The CGF line is the hostile side, the trainee line is ownship (friend), so both use force identity colours. */
+  --rt-chart-bg: var(--surface-sunken);
+  --rt-chart-grid: var(--border);
+  --rt-chart-cgf: var(--force-hostile-light);
+  --rt-chart-trainee: var(--force-friend-light);
+  /* CGF escalation level by harness state index (js/engine.js CGF.style.stateColors; map and contact cards).
+     Dark cockpit: the calm states carry no colour, only the last two need attention. No yellow or red (force colours). */
+  --escalation-0: var(--text-muted);
+  --escalation-1: var(--text-muted);
+  --escalation-2: var(--text-muted);
+  --escalation-3: var(--status-caution);
+  --escalation-4: var(--status-critical);
+
   /* Legacy names used by style.css, allocate.css and host.css today */
   --bg: var(--surface-bg);
   --panel: var(--surface-panel);

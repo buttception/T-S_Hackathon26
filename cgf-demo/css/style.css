@@ -83,6 +83,23 @@ select { max-width: 100%; }
 /* Event log lines: force colours for who, status for alerts, source colour for instructor actions */
 .l-sys { color: var(--source-cgf); } .l-own { color: var(--force-friend-light); } .l-hostile { color: var(--force-hostile-light); }
 .l-neutral { color: var(--force-neutral-light); } .l-alert { color: var(--status-caution); font-weight: 600; } .l-instr { color: var(--source-instructor); }
+/* Runtime colours as classes (design/requests.md R2). js/ui.js sets the class; the colour lives here. */
+#postureLabel.posture--cautious { color: var(--text-strong); }        /* normal: no colour */
+#postureLabel.posture--assertive { color: var(--status-caution); }
+#postureLabel.posture--provocative { color: var(--status-critical); }
+#postureBar { background: var(--rt-chart-trainee); }                  /* same colour as the trainee line in the chart */
+.hailPending { color: var(--status-caution); font-weight: 700; }
+.hailPending::before { content: "\26A0\00a0"; }
+.factor .bar > .factor--raise { background: var(--status-caution); }  /* raises the CGF's tension */
+.factor .bar > .factor--lower { background: var(--data-fill); }       /* lowers it; the +/- number gives the direction */
+.chartKey--cgf { color: var(--rt-chart-cgf); }
+.chartKey--trainee { color: var(--rt-chart-trainee); }
+.act .unit--none { color: var(--text-muted); }
+/* CGF escalation level on contact cards: state name and tension bar (R2 #8) */
+.esc-0 { --esc: var(--escalation-0); } .esc-1 { --esc: var(--escalation-1); } .esc-2 { --esc: var(--escalation-2); }
+.esc-3 { --esc: var(--escalation-3); } .esc-4 { --esc: var(--escalation-4); }
+.contact .escState { color: var(--esc); font-weight: 600; }
+.contact .bar > .escFill { background: var(--esc); }                       /* log entries with no force, e.g. "Scenario failed" */
 .aar { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 12px; }
 .aar span:nth-child(even) { font-family: Consolas, monospace; text-align: right; }
 #postureLabel { font-weight: 700; }
