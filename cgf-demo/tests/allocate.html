@@ -549,6 +549,61 @@
     bad(C.validateSessionRecord(mkRec({ adjustments: [mkAdj(), mkAdj({ setting: 'nope' })] })), /^record\.adjustments\[1\]/);
   });
 
+  // ---- AI partners (INTERFACES §3.2) and the adjustment cause (§7)
+  const pParams = () => ({ rates: { hail_acknowledged: 0.26, safe_passage: 0.75 }, reaction_delay_s: 20,
+    basis: { source: 'profile', sessions: 0, by_competency: { hail_discipline: 'profile' } } });
+  const partnerEntry = (seat, from) => ({ seat, trainee_id: 'partner_' + seat, role: 'partner', derived_from: { trainee_id: from || 'trainee_b' }, agent_params: pParams() });
+  const cfgWith = (seat, entry) => { const c = cfgs(sel())[0]; c.crew = c.crew.map(m => m.seat === seat ? entry : m); return c; };
+  const bad2 = (errs, re) => ok(errs.length > 0 && (!re || errs.some(m => re.test(m))), 'expected ' + (re || 'an error') + ', got ' + JSON.stringify(errs));
+
+  test('a crew with an AI partner in one seat validates, and so does the whole allocation', () => {
+    eq(C.validateScenarioConfig(cfgWith('weapons', partnerEntry('weapons'))), []);
+    const a = build(sel()); a.slots[0].crew[0] = partnerEntry('weapons');
+    eq(C.validateAllocation(a, { scenarios: ids, domainOf }), []);
+  });
+  test('a partner needs its own partner_ id, a derived_from trainee and valid agent_params, and takes no agent_profile', () => {
+    const v = mut => { const e = partnerEntry('weapons'); mut(e); return C.validateScenarioConfig(cfgWith('weapons', e)); };
+    bad2(v(e => { e.trainee_id = 'trainee_c05'; }), /partner id/);
+    bad2(v(e => { delete e.derived_from; }), /derived_from/);
+    bad2(v(e => { delete e.agent_params; }), /agent_params/);
+    bad2(v(e => { e.agent_profile = 'trainees/strong.js'; }), /unknown field "agent_profile"/);
+    bad2(v(e => { e.derived_from = { trainee_id: 'partner_sensors' }; }), /not of another partner/);
+    bad2(v(e => { e.derived_from = { trainee_id: 'trainee_b', session_ids: [1] }; }), /session_ids/);
+  });
+  test('a trainee id may not look like a partner id, and a crew cannot be all partners', () => {
+    const e = { seat: 'weapons', trainee_id: 'partner_x', agent_profile: 'trainees/strong.js' };
+    bad2(C.validateScenarioConfig(cfgWith('weapons', e)), /partner/);
+    const all = cfgs(sel())[0]; all.crew = all.crew.map(m => partnerEntry(m.seat));
+    bad2(C.validateScenarioConfig(all), /at least one seat must be a trainee/);
+  });
+  test('agent_params checks the rates, the delay and the basis', () => {
+    const v = mut => { const p = pParams(); mut(p); return C.validateAgentParams(p, 'p'); };
+    eq(v(() => {}), []);
+    bad2(v(p => { p.rates.hail_ignored = 0.5; }), /not a success event type/);
+    bad2(v(p => { p.rates.hail_acknowledged = 1.2; }), /0 to 1/);
+    bad2(v(p => { p.rates = {}; }), /at least one/);
+    bad2(v(p => { p.reaction_delay_s = 400; }), /reaction_delay_s/);
+    bad2(v(p => { p.basis.source = 'guess'; }), /basis.source/);
+    bad2(v(p => { p.basis.sessions = -1; }), /sessions/);
+    bad2(v(p => { p.basis.by_competency = { hail_discipline: 'guess' }; }), /by_competency/);
+    bad2(v(p => { p.extra = 1; }), /unknown field/);
+  });
+  test('a session record can list a partner, its events validate, and no adjustment may name a partner seat', () => {
+    const crew = [{ seat: 'weapons', trainee_id: 'partner_weapons', role: 'partner', derived_from: { trainee_id: 'trainee_b' } },
+      { seat: 'sensors', trainee_id: 'trainee_c03' }, { seat: 'navigation', trainee_id: 'trainee_b' }];
+    const partnerEv = mkEv({ trainee_id: 'partner_weapons', seat: 'weapons', type: 'fc_restraint', competency: 'weapons_discipline', outcome: 'success' });
+    eq(C.validateSessionRecord(mkRec({ crew, events: [partnerEv], adjustments: [mkAdj()] })), []);
+    bad2(C.validateSessionRecord(mkRec({ crew, events: [], adjustments: [mkAdj({ seat: 'weapons' })] })), /AI partner seat/);
+    bad2(C.validateSessionRecord(mkRec({ crew: crew.map((m, i) => i ? m : { seat: m.seat, trainee_id: m.trainee_id, role: 'partner' }) })), /derived_from/);
+    bad2(C.validateSessionRecord(mkRec({ crew: crew.map((m, i) => i === 1 ? Object.assign({}, m, { derived_from: { trainee_id: 'trainee_b' } }) : m) })), /only a partner has one/);
+  });
+  test('adjustment.cause is optional, and when present is live, history or team', () => {
+    eq(C.validateAdjustment(mkAdj()), []);
+    for (const cause of ['live', 'history', 'team']) eq(C.validateAdjustment(mkAdj({ cause })), [], cause);
+    bad2(C.validateAdjustment(mkAdj({ cause: 'vibes' })), /adjustment.cause/);
+    eq(C.CAUSES, ['live', 'history', 'team']);
+  });
+
   // ---- decisions of 2026-10-29: run length and the default envelope
   test('the default run is 2400 s with an evaluation every 30 s', () => {
     eq([A.DEFAULTS.duration_s, A.DEFAULTS.eval_interval_s], [2400, 30]);

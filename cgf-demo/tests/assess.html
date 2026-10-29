@@ -132,6 +132,18 @@
     ok(A.cohort().trainee_b.hail_discipline < m0.trainee_b.hail_discipline, 'cohort follows the update');
   });
 
+  test('Assess.update skips an AI partner: no profile, no history, and the real trainee is still updated', () => {
+    const crew = [{ seat: 'weapons', trainee_id: 'partner_weapons', role: 'partner', derived_from: { trainee_id: 'trainee_b' } },
+      { seat: 'sensors', trainee_id: 'trainee_c01' }, { seat: 'navigation', trainee_id: 'trainee_b' }];
+    const rec = Object.assign(record([1, 2, 3].map(n => hailFail(n, 'trainee_b')).concat([ev(9, 'partner_weapons', 'weapons', 'fc_radar_lock', 'weapons_discipline', 'fail')])), { crew });
+    const before = clone(A.profile('trainee_b'));
+    const out = A.update(rec);
+    ok(!('partner_weapons' in out), 'the partner is not in the result');
+    eq(Object.keys(localStorage).filter(k => k.startsWith('cgf.profile.partner')), [], 'no stored partner profile');
+    eq(A.profile('partner_weapons').sessions_completed, 0);
+    ok(out.trainee_b.sessions_completed === before.sessions_completed + 1, 'the trainee is updated');
+  });
+
   // ---- cohort summary (J6)
   test('cohortSummary counts only profiles with enough evidence, and says null where nobody is rated', () => {
     const s = A.cohortSummary(), m = A.cohort();

@@ -63,6 +63,7 @@
     if (!record || !Array.isArray(record.crew) || !Array.isArray(record.events)) throw new Error('Assess.update: a session record is required');
     const known = competencies(), done = applied(), out = {};
     for (const member of record.crew) {
+      if (member.role === 'partner') continue;   // an AI partner is never assessed and never gets a profile (INTERFACES §3.2)
       const id = member.trainee_id, tag = record.session_id + '|' + id;
       if (done.includes(tag)) { out[id] = profile(id); continue; }
       const p = profile(id);

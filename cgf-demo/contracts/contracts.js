@@ -86,7 +86,49 @@
     return errs;
   }
 
-  // The crew must fill exactly the seats of the platform type, in order, with a different trainee in each seat.
+  // ---- Crew entries (INTERFACES §3, §3.2). A seat is played by a `trainee` (the default) or by an AI `partner`.
+  const ROLES = ['trainee', 'partner'];
+  const PARTNER_ID_RE = /^partner_[a-z0-9_]+$/;          // a partner's own id in a run; a trainee id never looks like this
+  const PARAM_SOURCES = ['history', 'profile', 'default'];
+  const MAX_REACTION_DELAY_S = 300;
+  const successEventTypes = () => Object.keys(EVENT_TYPES).filter(t => EVENT_TYPES[t][1] === 'success');   // EVENT_TYPES is defined below
+
+  // derived_from: whose older runs shape a partner. Never another partner.
+  function validateDerivedFrom(d, at) {
+    if (!isObj(d)) return [`${at}: must be {trainee_id, session_ids?}`];
+    const errs = extraKeys(d, ['trainee_id', 'session_ids'], at);
+    if (!isStr(d.trainee_id) || !ID_RE.test(d.trainee_id) || PARTNER_ID_RE.test(d.trainee_id)) errs.push(`${at}.trainee_id: the id of a trainee, not of another partner`);
+    if ('session_ids' in d && (!Array.isArray(d.session_ids) || !d.session_ids.every(isStr))) errs.push(`${at}.session_ids: an array of session ids`);
+    return errs;
+  }
+
+  // agent_params (Assess.partnerParams): { rates, reaction_delay_s, basis }. `rates` maps a SUCCESS event type of §4 to the
+  // chance the partner takes it (hail_acknowledged: 0.58); the failure type is the rest.
+  function validateAgentParams(p, at) {
+    if (!isObj(p)) return [`${at}: must be {rates, reaction_delay_s, basis}`];
+    const errs = extraKeys(p, ['rates', 'reaction_delay_s', 'basis'], at), types = successEventTypes();
+    if (!isObj(p.rates) || !Object.keys(p.rates).length) errs.push(`${at}.rates: an object with at least one success event type`);
+    else for (const [t, v] of Object.entries(p.rates)) {
+      if (!types.includes(t)) errs.push(`${at}.rates.${t}: not a success event type (${types.join(', ')})`);
+      else if (!isNum(v) || v < 0 || v > 1) errs.push(`${at}.rates.${t}: a number from 0 to 1`);
+    }
+    if (!isNum(p.reaction_delay_s) || p.reaction_delay_s < 0 || p.reaction_delay_s > MAX_REACTION_DELAY_S) errs.push(`${at}.reaction_delay_s: 0 to ${MAX_REACTION_DELAY_S} seconds`);
+    const b = p.basis;
+    if (!isObj(b)) errs.push(`${at}.basis: must be {source, sessions}`);
+    else {
+      errs.push(...extraKeys(b, ['source', 'sessions', 'by_competency'], `${at}.basis`));
+      if (!PARAM_SOURCES.includes(b.source)) errs.push(`${at}.basis.source: one of ${PARAM_SOURCES.join(', ')}`);
+      if (!Number.isInteger(b.sessions) || b.sessions < 0) errs.push(`${at}.basis.sessions: integer >= 0`);
+      if ('by_competency' in b) {
+        if (!isObj(b.by_competency)) errs.push(`${at}.basis.by_competency: an object`);
+        else for (const [k, s] of Object.entries(b.by_competency)) if (!COMPETENCIES.includes(k) || !PARAM_SOURCES.includes(s)) errs.push(`${at}.basis.by_competency.${k}: a catalog competency with source ${PARAM_SOURCES.join(', ')}`);
+      }
+    }
+    return errs;
+  }
+
+  // The crew must fill exactly the seats of the platform type, in order, with a different person in each seat, and at
+  // least one seat must be a trainee. A partner seat has no agent_profile: it is played from agent_params.
   function validateCrew(crew, type) {
     const seats = SEATS_BY_TYPE[type];
     if (!Array.isArray(crew)) return ['config.crew: must be an array'];
@@ -96,13 +138,24 @@
     crew.forEach((m, i) => {
       const at = `config.crew[${i}]`;
       if (!isObj(m)) { errs.push(`${at}: must be {seat, trainee_id, agent_profile}`); return; }
-      errs.push(...extraKeys(m, ['seat', 'trainee_id', 'agent_profile'], at));
+      const role = m.role === undefined ? 'trainee' : m.role;
+      if (!ROLES.includes(role)) { errs.push(`${at}.role: one of ${ROLES.join(', ')}`); return; }
       if (m.seat !== seats[i]) errs.push(`${at}.seat: expected "${seats[i]}"`);
-      if (!isStr(m.trainee_id) || !ID_RE.test(m.trainee_id)) errs.push(`${at}.trainee_id: lower-case id required`);
-      if (!isStr(m.agent_profile)) errs.push(`${at}.agent_profile: required`);
+      if (role === 'trainee') {
+        errs.push(...extraKeys(m, ['seat', 'trainee_id', 'agent_profile', 'role'], at));
+        if (!isStr(m.trainee_id) || !ID_RE.test(m.trainee_id) || PARTNER_ID_RE.test(m.trainee_id)) errs.push(`${at}.trainee_id: lower-case id required (ids starting "partner_" are for AI partners)`);
+        if (!isStr(m.agent_profile)) errs.push(`${at}.agent_profile: required`);
+      } else {
+        errs.push(...extraKeys(m, ['seat', 'trainee_id', 'role', 'derived_from', 'agent_params'], at));
+        if (!isStr(m.trainee_id) || !PARTNER_ID_RE.test(m.trainee_id)) errs.push(`${at}.trainee_id: a partner id such as partner_${seats[i]}`);
+        errs.push(...validateDerivedFrom(m.derived_from, `${at}.derived_from`));
+        errs.push(...validateAgentParams(m.agent_params, `${at}.agent_params`));
+      }
     });
-    const ids = crew.filter(isObj).map(m => m.trainee_id);
+    const people = crew.filter(isObj);
+    const ids = people.map(m => m.trainee_id);
     if (new Set(ids).size !== ids.length) errs.push('config.crew: a trainee cannot fill two seats');
+    if (people.length && people.every(m => m.role === 'partner')) errs.push('config.crew: at least one seat must be a trainee');
     return errs;
   }
 
@@ -178,6 +231,11 @@
     'target_competency', 'seat', 'pressure_direction', 'source', 'policy', 'evidence_event_ids', 'explanation'];
   const RECORD_KEYS = ['session_id', 'pane', 'scenario', 'seed', 'mode', 'platform', 'crew', 'outcome', 'duration_s', 'events', 'adjustments'];
   const ADJUSTMENT_SOURCES = ['engine', 'instructor_steer'], POLICIES = ['rules_v1', 'bandit_v2'], DIRECTIONS = ['up', 'down'];
+  // Which of the three signals caused an adjustment (LANES D7): the trainee's live behaviour, their past training (the
+  // profile and history), or cooperation between CGFs. Optional for now so the runtime can adopt it without breaking its
+  // records; it becomes required once Devin's runtime emits it (docs/project/requests-for-devin-cause-and-partners.md).
+  const CAUSES = ['live', 'history', 'team'];
+  const ADJUSTMENT_OPTIONAL_KEYS = ['cause'];
   const near = (a, b) => Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
 
   // seats: optional list of seat ids the event's seat must belong to (the crew of the session)
@@ -208,8 +266,9 @@
   // opts.envelope: optional envelope; then `new` must sit inside the setting's min..max (invariant 1)
   function validateAdjustment(a, opts) {
     if (!isObj(a)) return ['adjustment: must be an object'];
-    const errs = extraKeys(a, ADJUSTMENT_KEYS, 'adjustment');
+    const errs = extraKeys(a, ADJUSTMENT_KEYS.concat(ADJUSTMENT_OPTIONAL_KEYS), 'adjustment');
     for (const k of ADJUSTMENT_KEYS) if (!(k in a)) errs.push(`adjustment.${k}: required`);
+    if ('cause' in a && !CAUSES.includes(a.cause)) errs.push(`adjustment.cause: one of ${CAUSES.join(', ')}`);
     for (const k of ['adjustment_id', 'session_id', 'force']) if (!isStr(a[k])) errs.push(`adjustment.${k}: required`);
     if (!isNum(a.t) || a.t < 0) errs.push('adjustment.t: number >= 0 required');
     if (!isStr(a.setting) || !rangeOf(a.setting)) errs.push('adjustment.setting: a known setting (INTERFACES §2)');
@@ -247,10 +306,19 @@
       if (seats) {
         if (r.crew.length !== seats.length) errs.push(`record.crew: a ${r.platform} has ${seats.length} seats, got ${r.crew.length}`);
         r.crew.forEach((m, i) => {
-          if (!isObj(m)) { errs.push(`record.crew[${i}]: must be {seat, trainee_id}`); return; }
-          errs.push(...extraKeys(m, ['seat', 'trainee_id'], `record.crew[${i}]`));
-          if (m.seat !== seats[i]) errs.push(`record.crew[${i}].seat: expected "${seats[i]}"`);
-          if (!isStr(m.trainee_id) || !ID_RE.test(m.trainee_id)) errs.push(`record.crew[${i}].trainee_id: lower-case id required`);
+          const at = `record.crew[${i}]`;
+          if (!isObj(m)) { errs.push(`${at}: must be {seat, trainee_id}`); return; }
+          errs.push(...extraKeys(m, ['seat', 'trainee_id', 'role', 'derived_from'], at));
+          if (m.seat !== seats[i]) errs.push(`${at}.seat: expected "${seats[i]}"`);
+          const role = m.role === undefined ? 'trainee' : m.role;
+          if (!ROLES.includes(role)) errs.push(`${at}.role: one of ${ROLES.join(', ')}`);
+          else if (role === 'partner') {   // the report lists a partner as "AI partner, based on <trainee_id>"
+            if (!isStr(m.trainee_id) || !PARTNER_ID_RE.test(m.trainee_id)) errs.push(`${at}.trainee_id: a partner id such as partner_${seats[i]}`);
+            errs.push(...validateDerivedFrom(m.derived_from, `${at}.derived_from`));
+          } else {
+            if (!isStr(m.trainee_id) || !ID_RE.test(m.trainee_id) || PARTNER_ID_RE.test(m.trainee_id)) errs.push(`${at}.trainee_id: lower-case id required`);
+            if ('derived_from' in m) errs.push(`${at}.derived_from: only a partner has one`);
+          }
         });
       }
     }
@@ -267,11 +335,12 @@
       errs.push(...validateAdjustment(a, opts).map(m => `record.adjustments[${i}]: ${m}`));
       if (isObj(a) && a.session_id !== r.session_id) errs.push(`record.adjustments[${i}].session_id: must equal the record's`);
       if (isObj(a) && isStr(a.seat) && seats && !seats.includes(a.seat)) errs.push(`record.adjustments[${i}].seat: "${a.seat}" is not a seat of this crew`);
+      if (isObj(a) && isStr(a.seat) && crew.some(m => m.seat === a.seat && m.role === 'partner')) errs.push(`record.adjustments[${i}].seat: "${a.seat}" is an AI partner seat; partners are not adapted to`);
     });
     return errs;
   }
 
   CGF.contracts = { COMPETENCIES, MODES, PANES, SEATS_BY_TYPE, DOMAIN_BY_TYPE, SETTING_RANGES, WEIGHT_RANGE, PRIOR, EVIDENCE_MIN,
-    EVENT_TYPES, validateEnvelope, validateProfile, validatePlatform, validateCrew, validateScenarioConfig, validateAllocation, expandAllocation,
-    validateEvent, validateAdjustment, validateSessionRecord };
+    EVENT_TYPES, ROLES, CAUSES, MAX_REACTION_DELAY_S, validateEnvelope, validateProfile, validatePlatform, validateCrew, validateScenarioConfig,
+    validateAllocation, expandAllocation, validateEvent, validateAdjustment, validateSessionRecord, validateAgentParams, validateDerivedFrom };
 })();

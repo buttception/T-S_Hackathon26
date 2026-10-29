@@ -44,8 +44,10 @@
     if (record.seed !== config.seed) errs.push(`record.seed: this pane was given seed ${config.seed}`);
     if (record.mode !== config.mode) errs.push(`record.mode: this pane was given "${config.mode}"`);
     if (record.platform !== config.platform.type) errs.push(`record.platform: this pane was given a ${config.platform.type}`);
-    const want = JSON.stringify(config.crew.map(m => ({ seat: m.seat, trainee_id: m.trainee_id })));
-    if (JSON.stringify(record.crew) !== want) errs.push('record.crew: differs from the crew this pane was given');
+    // The same seats, people and roles, whatever the key order. A partner is identified by its own id and whose runs it copies.
+    const sig = m => [m && m.seat, m && m.trainee_id, (m && m.role) || 'trainee', m && m.role === 'partner' ? (m.derived_from && m.derived_from.trainee_id) : ''].join('|');
+    const have = Array.isArray(record.crew) ? record.crew.map(sig) : null;
+    if (!have || JSON.stringify(have) !== JSON.stringify(config.crew.map(sig))) errs.push('record.crew: differs from the crew this pane was given');
     return errs;
   }
 
