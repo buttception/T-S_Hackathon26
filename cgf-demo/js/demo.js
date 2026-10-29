@@ -31,7 +31,8 @@
     const d = R.active; if (!d) return;
     const p = d.places && d.places[CGF.scenario.id];
     if (p) api.place(p[0], p[1], p[2]);
-    if (d.view && d.view.zoom && CGF.render && CGF.render.focus) setTimeout(() => { if (R.active === d) CGF.render.focus(CGF.sim.own, { half: d.view.zoom * (CGF.scenario.scale.range || 1) }); }, 0);
+    const st = d.steps[R.idx];   // a step that loads a scenario and sets its own focus keeps it
+    if (d.view && d.view.zoom && CGF.render && CGF.render.focus && !(st && st.focus)) setTimeout(() => { if (R.active === d) CGF.render.focus(CGF.sim.own, { half: d.view.zoom * (CGF.scenario.scale.range || 1) }); }, 0);
   });
 
   const R = { active: null, idx: -1, startReal: 0, steerTo: null, steerUnit: null, loop: false, typing: null };
@@ -55,6 +56,17 @@
     // Camera: glide to and follow an entity of interest (unit, unit name, 'own' or {x, y}); half = zoom
     focus(target, half) { if (CGF.render && CGF.render.focus) CGF.render.focus(target, { half }); },
     overview() { if (CGF.render && CGF.render.overview) CGF.render.overview(); },
+    // Zoom out just enough to show all these units (names or units) at once, centred between them
+    frame(list, margin) {
+      const us = list.map(x => typeof x === 'string' ? (x === 'own' ? CGF.sim.own : api.unit(x)) : x).filter(Boolean);
+      if (!us.length) return;
+      const xs = us.map(u => u.x), ys = us.map(u => u.y);
+      const c = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
+      const half = Math.max(...us.map(u => Math.max(Math.abs(u.x - c.x), Math.abs(u.y - c.y)))) * (margin || 1.4) + 4 * (CGF.scenario.scale.range || 1);
+      api.focus(c, half);
+    },
+    // Units that joined a teammate's response (cooperating CGFs), newest last
+    teammates: () => [...new Set(CGF.sim.actions.filter(x => x.action.startsWith('Joined the response')).map(x => x.unit))],
     timeScale(x) { CGF.params.timeScale = x; CGF.emit('params'); },
     place(x, y, hdg) { const o = CGF.sim.own; o.x = x; o.y = y; if (hdg != null) { o.hdg = hdg; o.ordHdg = hdg; } o.track = []; },
     events: type => CGF.simEvents.log().filter(e => !type || e.type === type),

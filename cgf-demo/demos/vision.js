@@ -24,10 +24,11 @@
 
   CGF.registerDemo({
     id: 'vision',
-    name: 'Vision: adaptive CGF trainer (~5 min)',
+    name: 'Vision: adaptive CGF trainer (~7 min)',
     scenario: 'strait-transit',
     params: { timeScale: 60 },
     view: { zoom: 26 },
+    places: { 'border-patrol': [12, -40, 0], 'airspace-patrol': [80, -240, 0] },   // nearer the action (the maps are large)
     steps: [
       // 1. The problem
       { caption: 'Today every trainee faces the same scripted enemy. Our trainer adjusts the enemy to each trainee.',
@@ -43,9 +44,12 @@
       { caption: 'An enemy patrol boat radios a warning. Ben does not answer.',
         focus: 'R-21', zoom: 14, speed: 30,
         until: a => a.events('hail_ignored').length >= 1, hold: 18, timeout: 45 },
-      { caption: 'The enemy works as a team: the other boats hear about it and join in.',
-        do: a => a.focus('own', 22), speed: 15,
-        until: a => a.teamActions() >= 2, hold: 21, timeout: 40 },
+      { caption: 'The enemy works as a team: the other boats hear about it…', speed: 15,
+        until: a => a.teamActions() >= 2, hold: 6, timeout: 40 },
+      { caption: '…and join in, coming from different directions.',
+        do: a => a.frame(['own', 'R-21', ...a.teammates()], 1.8), hold: 13 },
+      { caption: 'Now Ben is facing the whole patrol, not one boat.',
+        do: a => a.focus('own', 22), hold: 8 },
 
       // 4. Current behaviour sets HOW HARD
       { caption: 'Fast-forward: Ben starts answering the warnings…', speed: 480,
@@ -74,7 +78,29 @@
         do: a => { a.startAdaptive(Object.assign({ mode: 'fixed' }, trainee)); reasoning(a); },
         focus: 'own', zoom: 24, speed: 240, hold: 21 },
 
-      // 9. Close
+      // 9. Neutral forces react to the trainee too
+      { caption: 'Neutral ships react to the trainee as well. Here the trainee locks weapons radar onto a distant enemy ship…',
+        do: a => { a.load('strait-transit', { mode: 'freeplay' }); a.place(14, -34, 0); a.speed(16); a.tab('trainee');
+          a.select(a.unit('R-11')); a.actions.toggleFc(); a.select(a.unit('MV Orion Star')); },
+        focus: 'own', zoom: 16, speed: 60, until: a => a.maxLevel('white') >= 1, hold: 12, timeout: 30 },
+      { caption: '…and the merchant ships nearby speed up, leave the sea lane and get away.',
+        do: a => a.focus(a.top('white'), 16), until: a => a.maxLevel('white') >= 3, hold: 16, timeout: 40 },
+      { caption: 'Radar off: things calm down and the merchants return to the sea lane.',
+        do: a => { if (CGF.sim.fcTarget) a.actions.toggleFc(); a.tab('cgflog'); }, hold: 14 },
+
+      // 10. Swappable harnesses: the same behaviour files on land and in the air
+      { caption: 'Each force\'s behaviour is a swappable file. On land, the same files drive tanks, militia and civilian cars.',
+        do: a => { a.load('border-patrol', { mode: 'freeplay' }); a.tab('instructor'); for (const u of a.units('black')) a.inject.force(u, 'Close block'); },
+        focus: 'B-31', zoom: 16, speed: 30, hold: 16 },
+      { caption: 'The militia block the road, and civilian cars pull off to get away from the confrontation.',
+        do: a => a.focus(a.top('white') || 'own', 18), until: a => a.maxLevel('white') >= 2, hold: 14, timeout: 40 },
+      { caption: 'Swap one file live: the militia become non-hostile. They stop blocking and escort the patrol instead.',
+        do: a => { a.inject.setForceHarness('black', 'non-hostile-state'); a.focus('B-31', 16); }, hold: 16 },
+      { caption: 'In the air, the same files drive fighters and airliners: enemy fighters intercept, airliners leave the airway.',
+        do: a => { a.load('airspace-patrol', { mode: 'freeplay' }); a.tab('trainee'); a.steerTo(-80, -120); a.speed(520); },
+        focus: 'R-F1', zoom: 140, speed: 60, until: a => a.maxLevel('red') >= 2, hold: 18, timeout: 45 },
+
+      // 11. Close
       { caption: 'The same engine works at sea, on land and in the air, and can connect to other simulators to drive their forces. Thank you.',
         do: a => { a.overview(); a.tab('trainee'); }, speed: 60, hold: 22 }
     ]

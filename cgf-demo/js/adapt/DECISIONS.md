@@ -46,7 +46,7 @@ was changed.
 | 22 | **D8 partner seats:** a crew entry with `role: 'partner'` is played from `agent_params.rates` (hail answer rate, safe passage, territorial, fire-control restraint, pirate speed response) and `reaction_delay_s`. Partners have no working copy, no target and never appear in an adjustment; the record's crew entry carries `role` and `derived_from` | LANES D8, INTERFACES §3.2. **JL: `PARTNERS_RUN` can be flipped on** |
 | 23 | Runtime defaults JL asked for (reply C): `calm_down_rate` 1 (range 0.2 to 3), `detection` 20 nm (range 5 to 40) | For the default envelope |
 | 24 | Maps are twice as large. Scripted crews start at a forward position per scenario (`nav.start` in `trainees/*.js`) and follow a route along Red's zone, so the first hail comes about 6 minutes in. Any scripted crew opens the range from a unit that locks fire-control radar on it; a CGF holds its ground when the ownship is leaving | Hails arrive early enough for short runs, and weak crews no longer stall at weapons-ready |
-| 25 | Simulation speed control (×15 to ×480, keys `+`/`-`); demo steps set `speed` and `focus` so demos run fast through quiet stretches and slow down at the moments that matter. New 5-minute demo `demos/vision.js`; setup guide `RUNNING.md` | Devin's request |
+| 25 | Simulation speed control (×15 to ×480, keys `+`/`-`); demo steps set `speed` and `focus` so demos run fast through quiet stretches and slow down at the moments that matter. New 7-minute demo `demos/vision.js`; setup guide `RUNNING.md` | Devin's request |
 | 26 | Pushed directly to `main` | JL's decision (CLAUDE.md, 2026-10-29) |
 
 ## Needs a decision from JL

@@ -34,7 +34,7 @@ Then open `http://localhost:8765/runtime.html`.
 
 | Link | What it does |
 | --- | --- |
-| `runtime.html?demo=vision` | Plays the 5-minute vision demo as soon as the page loads |
+| `runtime.html?demo=vision` | Plays the 7-minute vision demo as soon as the page loads |
 | `runtime.html?demo=vision&loop=1` | The same, on a loop (for a stand) |
 | `allocate.html` | Instructor allocation: pick the crew and the envelope |
 | `host.html` | Runs allocated crews side by side and collects session records |
@@ -42,9 +42,9 @@ Then open `http://localhost:8765/runtime.html`.
 
 ---
 
-## 3. The 5-minute vision demo
+## 3. The 7-minute vision demo
 
-Pick **Vision: adaptive CGF trainer (~5 min)** in the Demo list and press **Play demo**, or open
+Pick **Vision: adaptive CGF trainer (~7 min)** in the Demo list and press **Play demo**, or open
 `runtime.html?demo=vision`. It runs hands-off with a short caption for each moment:
 
 1. The problem: every trainee faces the same scripted enemy.
@@ -56,6 +56,8 @@ Pick **Vision: adaptive CGF trainer (~5 min)** in the Demo list and press **Play
 7. A plain-English instruction steers the trainer onto collision avoidance.
 8. The session is saved for the report and Ben's history.
 9. Fixed mode keeps the enemy the same for everyone (exams).
+10. Neutral merchant ships react to the trainee: when he locks weapons radar, they flee, then return when it is switched off.
+11. Each force's behaviour is a swappable file (a harness): the same files drive tanks, militia and civilian cars on land, with a live swap that turns the militia non-hostile, and fighters and airliners in the air.
 
 The simulation speeds up through quiet stretches and slows down at each moment that matters.
 
